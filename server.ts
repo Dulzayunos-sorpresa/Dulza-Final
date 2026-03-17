@@ -3,14 +3,18 @@ console.log("SERVER.TS STARTING...");
 import cors from "cors";
 import compression from "compression";
 import rateLimit from "express-rate-limit";
-import { createServer as createViteServer } from "vite";
 import { MercadoPagoConfig, Preference } from "mercadopago";
 import axios from "axios";
 import path from "path";
 import { fileURLToPath } from "url";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
+let __dirname = "";
+try {
+  const __filename = fileURLToPath(import.meta.url);
+  __dirname = path.dirname(__filename);
+} catch (e) {
+  __dirname = process.cwd();
+}
 
 const app = express();
 const PORT = 3000;
@@ -106,9 +110,9 @@ app.post("/api/pedidos", async (req, res) => {
               currency_id: "ARS"
             })),
             back_urls: {
-              success: `${baseUrl}/cart?status=success&orderId=${newOrder.id}`,
-              failure: `${baseUrl}/cart?status=failure&orderId=${newOrder.id}`,
-              pending: `${baseUrl}/cart?status=pending&orderId=${newOrder.id}`,
+              success: `${baseUrl}/carrito?status=success&orderId=${newOrder.id}`,
+              failure: `${baseUrl}/carrito?status=failure&orderId=${newOrder.id}`,
+              pending: `${baseUrl}/carrito?status=pending&orderId=${newOrder.id}`,
             },
             auto_return: "approved",
             notification_url: `${baseUrl}/api/webhooks/mercadopago`,
@@ -166,6 +170,7 @@ app.use((err: any, req: express.Request, res: express.Response, next: express.Ne
 // --- VITE MIDDLEWARE ---
 async function startServer() {
   if (process.env.NODE_ENV !== "production") {
+    const { createServer: createViteServer } = await import("vite");
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: "spa",

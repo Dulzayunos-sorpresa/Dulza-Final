@@ -117,17 +117,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <h4 className="text-[10px] uppercase tracking-[2px] text-crema/30 font-bold">Nosotros</h4>
                 <div className="flex flex-col gap-2">
                   <Link to="/nosotros" className="text-sm text-crema/60 hover:text-tostado transition-colors">Quiénes somos</Link>
-                  <a href="#" className="text-sm text-crema/60 hover:text-tostado transition-colors">Cómo trabajamos</a>
-                  <a href="#" className="text-sm text-crema/60 hover:text-tostado transition-colors">Zona de cobertura</a>
+                  <Link to="/nosotros" className="text-sm text-crema/60 hover:text-tostado transition-colors">Cómo trabajamos</Link>
+                  <Link to="/nosotros" className="text-sm text-crema/60 hover:text-tostado transition-colors">Zona de cobertura</Link>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-[10px] uppercase tracking-[2px] text-crema/30 font-bold">Contacto</h4>
                 <div className="flex flex-col gap-2">
-                  <a href="#" className="text-sm text-crema/60 hover:text-tostado transition-colors">Instagram</a>
-                  <a href="#" className="text-sm text-crema/60 hover:text-tostado transition-colors">WhatsApp</a>
-                  <a href="#" className="text-sm text-crema/60 hover:text-tostado transition-colors">TikTok</a>
+                  <a href="https://instagram.com/dulzayunos" target="_blank" rel="noopener noreferrer" className="text-sm text-crema/60 hover:text-tostado transition-colors">Instagram</a>
+                  <a href="https://wa.me/5493510000000" target="_blank" rel="noopener noreferrer" className="text-sm text-crema/60 hover:text-tostado transition-colors">WhatsApp</a>
+                  <a href="https://tiktok.com/@dulzayunos" target="_blank" rel="noopener noreferrer" className="text-sm text-crema/60 hover:text-tostado transition-colors">TikTok</a>
                 </div>
               </div>
             </div>

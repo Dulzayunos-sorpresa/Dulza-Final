@@ -163,6 +163,8 @@ const Cart: React.FC = () => {
   const surcharge = formData.paymentMethod === PaymentMethod.TARJETA_UALA ? subtotal * 0.15 : 0;
   const total = subtotal + surcharge;
 
+  const [returnedOrder, setReturnedOrder] = useState<Order | null>(null);
+
   // Handle return from payment gateway
   React.useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -173,22 +175,14 @@ const Cart: React.FC = () => {
       const order = orders.find(o => o.id === orderId);
       if (order) {
         setRedirectType('success');
+        setReturnedOrder(order);
         setShowRedirectModal(true);
         
         // Clear query params
         window.history.replaceState({}, '', window.location.pathname);
-        
-        const timer = setTimeout(() => {
-          const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(order, products, options)}`;
-          window.open(whatsappUrl, '_blank');
-          setShowRedirectModal(false);
-          navigate('/');
-        }, 3000);
-        
-        return () => clearTimeout(timer);
       }
     }
-  }, [orders, products, options, navigate]);
+  }, [orders]);
 
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -295,17 +289,12 @@ const Cart: React.FC = () => {
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(order, products, options)}`;
       
       if (paymentUrl) {
-        // If there's a payment URL, we open it in a new tab
-        window.open(paymentUrl, '_blank');
+        // Redirect to payment gateway
+        window.location.href = paymentUrl;
+      } else {
+        // Redirect directly to WhatsApp
+        window.location.href = whatsappUrl;
       }
-
-      const timer = setTimeout(() => {
-        window.open(whatsappUrl, '_blank');
-        setShowRedirectModal(false);
-        navigate('/');
-      }, 3000);
-
-      return () => clearTimeout(timer);
     } catch (error) {
       console.error('Error submitting order:', error);
       alert('Hubo un error al procesar tu pedido. Por favor intenta nuevamente.');
@@ -787,13 +776,26 @@ const Cart: React.FC = () => {
             </h2>
             <p className="text-stone-600 mb-6">
               {redirectType === 'success' 
-                ? 'Tu pedido ha sido procesado correctamente. En unos segundos serás redirigido a WhatsApp para confirmar los detalles finales.'
-                : 'Tu pedido ha sido registrado. Ahora te redirigiremos a WhatsApp para que nos envíes el resumen y confirmemos todo.'}
+                ? 'Tu pago ha sido procesado. Por favor, envíanos el detalle por WhatsApp para coordinar la entrega.'
+                : 'Estamos redirigiéndote para completar tu pedido...'}
             </p>
-            <div className="flex items-center justify-center gap-2 text-brand-600 font-bold">
-              <Loader2 className="w-5 h-5 animate-spin" />
-              <span>Redirigiendo a WhatsApp...</span>
-            </div>
+            {redirectType === 'success' && returnedOrder ? (
+              <button
+                onClick={() => {
+                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(returnedOrder, products, options)}`;
+                  window.location.href = whatsappUrl;
+                }}
+                className="w-full bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+              >
+                <MessageSquare className="w-5 h-5" />
+                Enviar WhatsApp
+              </button>
+            ) : (
+              <div className="flex items-center justify-center gap-2 text-brand-600 font-bold">
+                <Loader2 className="w-5 h-5 animate-spin" />
+                <span>Procesando...</span>
+              </div>
+            )}
           </div>
         </div>
       )}
