@@ -190,6 +190,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       await setDoc(doc(db, 'orders', order.id), order);
       console.log('Pedido guardado en Firestore exitosamente.');
       
+      // Guardamos el carrito temporalmente por si el pago falla
+      localStorage.setItem('pendingCart', JSON.stringify(cart));
+      
       // Actualizamos stock localmente y en Firestore
       console.log('Actualizando stock de productos...');
       for (const item of orderData.items) {

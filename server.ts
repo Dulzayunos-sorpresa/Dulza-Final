@@ -50,13 +50,34 @@ try {
 }
 
 // --- UALÁ CONFIG ---
-const UALA_API_URL = "https://api.ualabis.com.ar"; // Production URL
-const UALA_STAGING_URL = "https://api.stage.ualabis.com.ar"; // Staging URL
+const UALA_AUTH_URL = "https://auth.ualabis.com.ar/auth/token";
+const UALA_API_URL = "https://api.ualabis.com.ar/checkout";
 const ualaConfig = {
-  userName: process.env.UALA_USERNAME || "test_user",
-  clientId: process.env.UALA_CLIENT_ID || "test_client_id",
-  clientSecret: process.env.UALA_CLIENT_SECRET || "test_client_secret",
+  userName: process.env.UALA_USERNAME,
+  clientId: process.env.UALA_CLIENT_ID,
+  clientSecret: process.env.UALA_CLIENT_SECRET,
 };
+
+async function getUalaToken() {
+  if (!ualaConfig.userName || !ualaConfig.clientId || !ualaConfig.clientSecret) {
+    console.warn("Ualá credentials missing in environment variables");
+    return null;
+  }
+  try {
+    console.log(`Fetching Ualá token for user: ${ualaConfig.userName}`);
+    const response = await axios.post(UALA_AUTH_URL, {
+      user_name: ualaConfig.userName,
+      client_id: ualaConfig.clientId,
+      client_secret: ualaConfig.clientSecret,
+      grant_type: "client_credentials",
+    });
+    console.log("Ualá token fetched successfully");
+    return response.data.access_token;
+  } catch (error: any) {
+    console.error("Error getting Ualá token:", error?.response?.data || error.message);
+    return null;
+  }
+}
 
 // --- API ROUTES ---
 
@@ -132,11 +153,32 @@ app.post("/api/pedidos", async (req, res) => {
         paymentUrl = "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=mock";
       }
     } else if (orderData.paymentMethod === "Ualá (Tarjeta)") {
-      // For Ualá, we usually need to create a checkout via their API
-      // For now, we'll use a more realistic redirect or a mock if credentials aren't set
-      paymentUrl = `https://checkout.ualabis.com.ar/checkout/${newOrder.id}`;
+      const token = await getUalaToken();
+      const baseUrl = process.env.APP_URL || "http://localhost:3000";
+      
+      if (token) {
+        try {
+          const ualaResponse = await axios.post(UALA_API_URL, {
+            amount: orderData.total,
+            description: `Pedido ${newOrder.id}`,
+            callback_url: `${baseUrl}/carrito?status=success&orderId=${newOrder.id}`,
+            notification_url: `${baseUrl}/api/webhooks/uala`,
+          }, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          paymentUrl = ualaResponse.data.checkoutLink;
+          newOrder.externalPaymentId = ualaResponse.data.uuid;
+          console.log(`Ualá checkout created: ${paymentUrl}`);
+        } catch (ualaError: any) {
+          console.error("Error creating Ualá checkout:", ualaError?.response?.data || ualaError.message);
+          // Fallback to a better mock or error
+          paymentUrl = `https://checkout.ualabis.com.ar/checkout/${newOrder.id}`;
+        }
+      } else {
+        console.warn("Ualá token not available, using fallback URL");
+        paymentUrl = `https://checkout.ualabis.com.ar/checkout/${newOrder.id}`;
+      }
       newOrder.externalPaymentId = `UALA-${newOrder.id}`;
-      console.log(`Ualá redirect generated: ${paymentUrl}`);
     } else {
       // For Efectivo or other manual methods
       paymentUrl = null;

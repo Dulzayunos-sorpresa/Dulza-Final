@@ -99,7 +99,7 @@ const Cart: React.FC = () => {
   const { cart, products, removeFromCart, clearCart, addOrder, orders, options } = useStore();
   const navigate = useNavigate();
   const [showRedirectModal, setShowRedirectModal] = useState(false);
-  const [redirectType, setRedirectType] = useState<'success' | 'processing'>('processing');
+  const [redirectType, setRedirectType] = useState<'success' | 'processing' | 'failure' | 'pending'>('processing');
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
@@ -164,6 +164,7 @@ const Cart: React.FC = () => {
   const total = subtotal + surcharge;
 
   const [returnedOrder, setReturnedOrder] = useState<Order | null>(null);
+  const { cart: currentCart, clearCart: clearStoreCart, addToCart } = useStore();
 
   // Handle return from payment gateway
   React.useEffect(() => {
@@ -171,10 +172,10 @@ const Cart: React.FC = () => {
     const status = params.get('status');
     const orderId = params.get('orderId');
 
-    if (status === 'success' && orderId) {
+    if (orderId) {
       let order = orders.find(o => o.id === orderId);
       
-      // If order is not found in state (e.g. non-admin user can't read from Firestore), try localStorage
+      // If order is not found in state, try localStorage
       if (!order) {
         const savedOrder = localStorage.getItem('lastOrder');
         if (savedOrder) {
@@ -190,10 +191,30 @@ const Cart: React.FC = () => {
       }
 
       if (order) {
-        setRedirectType('success');
         setReturnedOrder(order);
-        setShowRedirectModal(true);
-        localStorage.removeItem('lastOrder');
+        
+        if (status === 'success') {
+          setRedirectType('success');
+          setShowRedirectModal(true);
+          localStorage.removeItem('lastOrder');
+          localStorage.removeItem('pendingCart');
+        } else if (status === 'failure' || status === 'pending') {
+          setRedirectType(status as 'failure' | 'pending');
+          setShowRedirectModal(true);
+          
+          // Restore cart if it was cleared
+          const pendingCart = localStorage.getItem('pendingCart');
+          if (pendingCart && currentCart.length === 0) {
+            try {
+              const items = JSON.parse(pendingCart);
+              items.forEach((item: any) => {
+                addToCart(item.productId, item.quantity, item.selectedOptions);
+              });
+            } catch (e) {
+              console.error('Error restoring cart:', e);
+            }
+          }
+        }
         
         // Clear query params
         window.history.replaceState({}, '', window.location.pathname);
@@ -789,21 +810,33 @@ const Cart: React.FC = () => {
       {showRedirectModal && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-scale-in">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${redirectType === 'success' ? 'bg-green-100' : 'bg-brand-100'}`}>
+            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
+              redirectType === 'success' ? 'bg-green-100' : 
+              (redirectType === 'failure' || redirectType === 'pending') ? 'bg-amber-100' : 'bg-brand-100'
+            }`}>
               {redirectType === 'success' ? (
                 <Send className="w-10 h-10 text-green-600 animate-bounce" />
+              ) : (redirectType === 'failure' || redirectType === 'pending') ? (
+                <CreditCard className="w-10 h-10 text-amber-600" />
               ) : (
                 <ShoppingBag className="w-10 h-10 text-brand-600 animate-pulse" />
               )}
             </div>
+            
             <h2 className="text-2xl font-display font-bold text-stone-900 mb-2">
-              {redirectType === 'success' ? '¡Pago Exitoso!' : '¡Pedido Realizado!'}
+              {redirectType === 'success' ? '¡Pago Exitoso!' : 
+               redirectType === 'failure' ? 'Pago no realizado' :
+               redirectType === 'pending' ? 'Pago pendiente' : '¡Pedido Realizado!'}
             </h2>
+            
             <p className="text-stone-600 mb-6">
               {redirectType === 'success' 
                 ? 'Tu pago ha sido procesado. Por favor, envíanos el detalle por WhatsApp para coordinar la entrega.'
+                : redirectType === 'failure' || redirectType === 'pending'
+                ? 'Parece que no se completó el pago. ¿Qué te gustaría hacer?'
                 : 'Estamos redirigiéndote para completar tu pedido...'}
             </p>
+
             {redirectType === 'success' && returnedOrder ? (
               <button
                 onClick={() => {
@@ -815,6 +848,39 @@ const Cart: React.FC = () => {
                 <MessageSquare className="w-5 h-5" />
                 Enviar WhatsApp
               </button>
+            ) : (redirectType === 'failure' || redirectType === 'pending') && returnedOrder ? (
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    // Retry payment - we need to call the backend again or use the saved paymentUrl if we had it
+                    // For simplicity, we'll re-trigger the submit logic or just redirect to the saved order
+                    // Actually, the easiest is to let them re-submit
+                    setShowRedirectModal(false);
+                  }}
+                  className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition-colors"
+                >
+                  Reintentar pago
+                </button>
+                <button
+                  onClick={() => {
+                    // Change payment method - just close modal and let them change it
+                    setShowRedirectModal(false);
+                  }}
+                  className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                >
+                  Cambiar forma de pago
+                </button>
+                <button
+                  onClick={() => {
+                    // Cancel - clear order and close
+                    localStorage.removeItem('lastOrder');
+                    setShowRedirectModal(false);
+                  }}
+                  className="w-full text-stone-400 py-2 text-sm hover:text-stone-600 transition-colors"
+                >
+                  Cancelar pedido
+                </button>
+              </div>
             ) : (
               <div className="flex items-center justify-center gap-2 text-brand-600 font-bold">
                 <Loader2 className="w-5 h-5 animate-spin" />
