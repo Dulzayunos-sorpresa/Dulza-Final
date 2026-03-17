@@ -29,6 +29,21 @@ import {
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
+  const [isPasswordCorrect, setIsPasswordCorrect] = useState(() => {
+    return sessionStorage.getItem('adminAuth') === 'true';
+  });
+  const [passwordInput, setPasswordInput] = useState('');
+
+  const handlePasswordSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD || 'admin123';
+    if (passwordInput === adminPassword) {
+      setIsPasswordCorrect(true);
+      sessionStorage.setItem('adminAuth', 'true');
+    } else {
+      alert("¡Rajá de acá! Clave incorrecta. 💅");
+    }
+  };
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -276,7 +291,34 @@ const Admin = () => {
   if (authLoading) {
     return (
       <div className="min-h-screen bg-stone-50 pt-24 pb-12 px-4 md:px-8 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-brand-500"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-tostado"></div>
+      </div>
+    );
+  }
+
+  if (!isPasswordCorrect) {
+    return (
+      <div className="min-h-screen bg-stone-50 pt-24 pb-12 px-4 md:px-8 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+          <LayoutDashboard className="w-16 h-16 text-tostado mx-auto mb-6" />
+          <h1 className="text-2xl font-display text-cafe mb-2">Acceso Restringido</h1>
+          <p className="text-stone-600 mb-8">Ingresá la clave de administrador para continuar.</p>
+          <form onSubmit={handlePasswordSubmit} className="flex flex-col gap-4">
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="Contraseña"
+              className="w-full px-4 py-3 rounded-xl border border-stone-200 focus:outline-none focus:ring-2 focus:ring-tostado"
+            />
+            <button
+              type="submit"
+              className="w-full bg-tostado text-white py-3 px-6 rounded-xl font-medium hover:bg-cafe transition-colors"
+            >
+              Ingresar
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
@@ -285,12 +327,12 @@ const Admin = () => {
     return (
       <div className="min-h-screen bg-stone-50 pt-24 pb-12 px-4 md:px-8 flex items-center justify-center">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
-          <LayoutDashboard className="w-16 h-16 text-brand-500 mx-auto mb-6" />
-          <h1 className="text-2xl font-display text-brand-900 mb-2">Acceso Restringido</h1>
+          <LayoutDashboard className="w-16 h-16 text-tostado mx-auto mb-6" />
+          <h1 className="text-2xl font-display text-cafe mb-2">Acceso Restringido</h1>
           <p className="text-stone-600 mb-8">Por favor, inicia sesión para acceder al panel de administración.</p>
           <button
             onClick={loginWithGoogle}
-            className="w-full bg-brand-500 text-white py-3 px-6 rounded-xl font-medium hover:bg-brand-600 transition-colors flex items-center justify-center gap-2"
+            className="w-full bg-tostado text-white py-3 px-6 rounded-xl font-medium hover:bg-cafe transition-colors flex items-center justify-center gap-2"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -299,6 +341,32 @@ const Admin = () => {
               <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
             </svg>
             Iniciar sesión con Google
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const ADMIN_EMAILS = [
+    'audisiofausto@gmail.com',
+    ...(import.meta.env.VITE_ADMIN_EMAILS ? import.meta.env.VITE_ADMIN_EMAILS.split(',') : [])
+  ];
+  const isUserAdmin = user.email && ADMIN_EMAILS.includes(user.email);
+
+  if (!isUserAdmin) {
+    return (
+      <div className="min-h-screen bg-stone-50 pt-24 pb-12 px-4 md:px-8 flex items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+          <XCircle className="w-16 h-16 text-red-500 mx-auto mb-6" />
+          <h1 className="text-2xl font-display text-cafe mb-2">Acceso Denegado</h1>
+          <p className="text-stone-600 mb-8">
+            Tu cuenta ({user.email}) no tiene permisos de administrador para ver esta página.
+          </p>
+          <button
+            onClick={logout}
+            className="w-full bg-stone-200 text-stone-800 py-3 px-6 rounded-xl font-medium hover:bg-stone-300 transition-colors"
+          >
+            Cerrar sesión y volver
           </button>
         </div>
       </div>

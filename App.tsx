@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { HashRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import { StoreProvider } from './context/store';
 import Layout from './components/Layout';
 import ScrollToTop from './components/ScrollToTop';
@@ -21,7 +21,7 @@ const LoadingFallback = () => (
 const App = () => {
   return (
     <StoreProvider>
-      <HashRouter>
+      <BrowserRouter>
         <ScrollToTop />
         <Layout>
           <Suspense fallback={<LoadingFallback />}>
@@ -35,7 +35,7 @@ const App = () => {
             </Routes>
           </Suspense>
         </Layout>
-      </HashRouter>
+      </BrowserRouter>
     </StoreProvider>
   );
 };

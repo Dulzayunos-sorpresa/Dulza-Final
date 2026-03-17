@@ -173,7 +173,7 @@ async function startServer() {
       configFile: path.join(__dirname, "vite.config.ts"),
     });
     app.use(vite.middlewares);
-  } else {
+  } else if (process.env.VERCEL !== "1") {
     app.use(express.static(path.join(__dirname, "dist")));
     app.get("*", (req, res) => {
       res.sendFile(path.join(__dirname, "dist", "index.html"));
