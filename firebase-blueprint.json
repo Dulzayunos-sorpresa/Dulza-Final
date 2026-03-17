@@ -1,0 +1,83 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A product available for purchase.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "oldPrice": { "type": "number" },
+        "image": { "type": "string" },
+        "galleryImages": { "type": "array", "items": { "type": "string" } },
+        "videoUrl": { "type": "string" },
+        "category": { "type": "string" },
+        "tags": { "type": "array", "items": { "type": "string" } },
+        "stock": { "type": "number" },
+        "options": { "type": "array" }
+      },
+      "required": ["name", "description", "price", "image", "category"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "An order placed by a customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerPhone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "deliveryType": { "type": "string" },
+        "deliveryDate": { "type": "string" },
+        "deliveryTime": { "type": "string" },
+        "recipientName": { "type": "string" },
+        "recipientPhone": { "type": "string" },
+        "neighborhood": { "type": "string" },
+        "reference": { "type": "string" },
+        "isPrivateNeighborhood": { "type": "boolean" },
+        "familyName": { "type": "string" },
+        "blockLot": { "type": "string" },
+        "houseNumber": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "notes": { "type": "string" },
+        "items": { "type": "array" },
+        "total": { "type": "number" },
+        "status": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["customerName", "customerPhone", "deliveryType", "deliveryDate", "deliveryTime", "paymentMethod", "items", "total", "status", "paymentStatus", "createdAt"]
+    },
+    "Option": {
+      "title": "Option",
+      "description": "A product option.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "type": { "type": "string" },
+        "isRequired": { "type": "boolean" },
+        "maxSelections": { "type": "number" },
+        "description": { "type": "string" },
+        "values": { "type": "array" }
+      },
+      "required": ["name", "type", "values"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Stores all products."
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Stores all orders."
+    },
+    "/options/{optionId}": {
+      "schema": { "$ref": "#/entities/Option" },
+      "description": "Stores all product options."
+    }
+  }
+}

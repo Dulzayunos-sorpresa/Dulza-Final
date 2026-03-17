@@ -1,0 +1,87 @@
+// ===============================================================
+// Assumed Data Model
+// ===============================================================
+//
+// Collection: products
+// Document ID: auto-generated or custom string
+// Fields:
+//   - name: string
+//   - description: string
+//   - price: number
+//   - image: string
+//   - category: string
+//
+// Collection: orders
+// Document ID: auto-generated
+// Fields:
+//   - customerName: string
+//   - customerPhone: string
+//   - deliveryAddress: string
+//   - total: number
+//
+// Collection: options
+// Document ID: auto-generated
+// Fields:
+//   - name: string
+//   - type: string
+//   - values: list
+//
+// Collection: users
+// Document ID: uid
+// Fields:
+//   - role: string
+//
+// ===============================================================
+
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    function isAuthenticated() {
+       return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
+         (request.auth.token.email == "audisiofausto@gmail.com" && request.auth.token.email_verified == true));
+    }
+
+    // ===============================================================
+    // Rules
+    // ===============================================================
+
+    match /users/{userId} {
+      allow read: if isAuthenticated() && request.auth.uid == userId || isAdmin();
+      allow create: if isAuthenticated() && request.auth.uid == userId && request.resource.data.role == 'user' || isAdmin();
+      allow update: if isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    match /products/{productId} {
+      // Anyone can read products
+      allow read: if true;
+      // Only admins can create, update, delete products
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /options/{optionId} {
+      // Anyone can read options
+      allow read: if true;
+      // Only admins can create, update, delete options
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /orders/{orderId} {
+      // Anyone can create an order (public checkout)
+      allow create: if true;
+      // Only admins can read, update, delete orders (contains PII)
+      allow read, update, delete: if isAdmin();
+    }
+  }
+}

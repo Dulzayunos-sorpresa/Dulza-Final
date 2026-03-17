@@ -1,0 +1,103 @@
+
+export enum ProductCategory {
+  // Full Catalog Categories
+  CUSTOM_BOX = 'Personalizados',
+  VALENTINE = 'San Valentín',
+  
+  // Standard Categories
+  BREAKFAST = 'Desayunos Artesanales',
+  CAKES_AND_SWEETS = 'Tortas y Picadas dulces',
+  CORPORATE = 'Empresas',
+  BOARD = 'Tablas y Picadas saladas',
+  KIDS = 'Infantiles y Bebés',
+  FOOTBALL = 'Equipos de Fútbol'
+}
+
+export interface ProductOptionValue {
+  name: string;
+  price?: number;
+  stock?: number;
+}
+
+export interface ProductOption {
+  id: string;
+  name: string;
+  type: 'select' | 'multi-select';
+  values: ProductOptionValue[];
+  maxSelections?: number;
+  description?: string;
+  isRequired?: boolean;
+}
+
+export interface Product {
+  id: string;
+  name: string;
+  subtitle?: string;
+  description: string;
+  price: number;
+  oldPrice?: number;
+  category: ProductCategory;
+  image: string;
+  galleryImages?: string[];
+  videoUrl?: string;
+  tags?: string[];
+  stock?: number;
+  options?: ProductOption[];
+}
+
+export enum OrderStatus {
+  PENDING = 'Pendiente',
+  PREPARING = 'En Preparación',
+  DELIVERED = 'Entregado',
+  CANCELLED = 'Cancelado'
+}
+
+export enum PaymentStatus {
+  PENDING = 'Pendiente de pago',
+  PAID = 'Pagado',
+  REJECTED = 'Rechazado',
+  REFUNDED = 'Reembolsado'
+}
+
+export enum PaymentMethod {
+  TRANSFERENCIA_MP = 'Mercado Pago (Transferencia)',
+  TARJETA_UALA = 'Ualá (Tarjeta)',
+  EFECTIVO = 'Efectivo',
+  PAGOS_INTERNACIONALES = 'Pagos Internacionales (PayPal o Western Union)'
+}
+
+export interface Order {
+  id: string;
+  customerName: string;
+  customerPhone: string;
+  deliveryAddress: string;
+  deliveryType?: 'DELIVERY' | 'PICKUP';
+  deliveryDate: string;
+  deliveryTime?: string;
+  recipientName?: string;
+  recipientPhone?: string;
+  neighborhood?: string;
+  reference?: string;
+  isPrivateNeighborhood?: boolean;
+  familyName?: string;
+  blockLot?: string;
+  houseNumber?: string;
+  paymentMethod: PaymentMethod;
+  paymentStatus: PaymentStatus;
+  items: CartItem[];
+  total: number;
+  status: OrderStatus;
+  createdAt: string;
+  notes?: string;
+  externalPaymentId?: string;
+}
+
+export interface CartItem {
+  id: string;
+  productId: string;
+  quantity: number;
+  selectedOptions?: {
+    optionId: string;
+    values: string[];
+  }[];
+}

@@ -1,0 +1,115 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Avenir";
+  --font-display: "Bergen";
+  --font-slogan: "Causten";
+
+  --color-crema: #F5EFE0;
+  --color-tostado: #C8956A;
+  --color-cafe: #3D2314;
+  --color-cafe-medio: #6B3A20;
+  --color-blanco: #FDFAF4;
+  --color-verde-suave: #8AAE8B;
+  --color-dorado: #D4A853;
+  --color-gris-calido: #A89A8A;
+  --color-texto: #2A1A0E;
+  
+  /* Mapping brand colors to the new palette for compatibility with existing components */
+  --color-brand-50: #F5EFE0;
+  --color-brand-100: #EDE0C8;
+  --color-brand-200: #E5D1B0;
+  --color-brand-300: #DCC298;
+  --color-brand-400: #D4B380;
+  --color-brand-500: #C8956A;
+  --color-brand-600: #B07848;
+  --color-brand-700: #985C26;
+  --color-brand-800: #804004;
+  --color-brand-900: #682400;
+}
+
+@layer base {
+  body {
+    @apply bg-blanco text-texto font-sans antialiased;
+  }
+  
+  h1, h2, h3, h4, .font-display {
+    @apply font-display;
+  }
+}
+
+@layer utilities {
+  .noise-pattern {
+    background-image: url('data:image/svg+xml,%3Csvg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg"%3E%3Cfilter id="n"%3E%3CfeTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/%3E%3C/filter%3E%3Crect width="100%25" height="100%25" filter="url(%23n)"/%3E%3C/svg%3E');
+  }
+
+  .animate-ticker {
+    animation: ticker 25s linear infinite;
+  }
+  
+  .animate-fade-up {
+    animation: fadeUp 0.8s ease-out forwards;
+  }
+  
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  .animate-scale-in {
+    animation: scaleIn 0.3s ease-out forwards;
+  }
+  
+  .animate-fade-in {
+    animation: fadeIn 0.5s ease-out forwards;
+  }
+  
+  .animate-fade-in-up {
+    animation: fadeInUp 0.5s ease-out forwards;
+  }
+}
+
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes scaleIn {
+  from { opacity: 0; transform: scale(0.9); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--color-crema);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--color-tostado);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-cafe-medio);
+}

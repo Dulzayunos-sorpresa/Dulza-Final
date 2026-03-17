@@ -1,0 +1,51 @@
+import { Product, ProductCategory } from '../../types';
+
+export const footballProducts: Product[] = [
+  {
+    id: 'belgrano-deluxe',
+    name: 'Desayuno Deluxe de Belgrano',
+    description: "Para el pirata que tiene el corazón celeste, que vibra en el gigante de Alberdi y vive cada partido como una fiesta.\n Un desayuno que grita ¡Vamos Belgrano, carajo! desde el primer vistazo.\n\nEste Mega desayuno incluye:\n🥤 Taza cerámica de Belgrano\n🍰 Torta temática de Belgrano (450gr)\n🍪 Pastafrola artesanal\n🥪 Sándwich artesanal de jamón y queso\n🔵 Cookie temática artesanal de Belgrano\n👑Café\n👑Té\n👑Leche\n👑Azúcar\n👑Endulzante\n🍪 Pepas artesanales\n🍪 Pavlovas artesanales\n🍪 Palmeritas artesanales \n⚽🎈 3 globos alusivos\n🔵⚓ Decoración especial de Belgrano\n🔵🏴‍☠️Velita o bengala de cumpleaños (según stock)\n🏷️ Stickers temáticos + tarjeta para el hincha\n\nEl desayuno perfecto para el hincha que lleva el cielo en el pecho!",
+    price: 84000,
+    category: ProductCategory.FOOTBALL,
+    image: 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/ur_EVh7bSTA1O27UOsTqF.png?size=2000x2000',
+    galleryImages: ['https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/ur_EVh7bSTA1O27UOsTqF.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/nkIBxBM2bpGCLus2XybkL.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/PugYWMkdrFXqMAoGJmMcj.png?size=2000x2000'],
+  },
+  {
+    id: 'instituto-deluxe',
+    name: 'Desayuno Deluxe de Instituto',
+    description: "Para el glorioso que siente la sangre roja y blanca, que alienta en Alta Córdoba y que vive cada partido con orgullo! Un desayuno que dice ¡Vamos la Gloria! y abraza la pasión de toda la vida!\n\nEste Mega desayuno Incluye:\n🥤 Taza cerámica de Instituto\n🍰 Torta temática de Instituto (450gr)\n🍪 Pastafrola artesanal\n🥪 Sándwich artesanal de jamón y queso\n❤️🤍 Cookie temática artesanal de Instituto\n👑Café\n👑Té\n👑Leche\n👑Azúcar\n👑Endulzante\n🍪Pepas artesanales\n🍪Pavlovas artesanales\n🍪Palmeritas artesanales\n⚽🎈 3 globos alusivos\n❤️🤍 Decoración especial de Instituto\n❤️🤍Vela o bengala de cumpleaños (según stock)\n🏷️ Stickers temáticos + tarjeta para el hincha\n\nUn desayuno con alma gloriosa para empezar el día con toda la pasión albirroja!",
+    price: 84000,
+    category: ProductCategory.FOOTBALL,
+    image: 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/4hDRFN1bbCmouA5Urnehv.png?size=2000x2000',
+    galleryImages: ['https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/4hDRFN1bbCmouA5Urnehv.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/WT1CW2bs9EEezbjqJTJ-w.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/fFvCz6i1xlhlrDGzdsPmO.png?size=2000x2000'],
+  },
+  {
+    id: 'talleres-deluxe',
+    name: 'Desayuno Deluxe de Talleres',
+    description: "Para el matador que canta “soy de Talleres” con el alma y que nunca deja de alentar.\nUn desayuno que ilumina la mañana con el orgullo albiazul.\n\nEste Mega desayuno incluye:\n🥤 Taza cerámica deTalleres\n🍰 Torta temática de Talleres (450gr)\n🍪 Pastafrola artesanal\n👑Café\n👑Té\n👑Leche\n👑Azúcar\n👑Endulzante\n🥪 Sándwich artesanal de jamón y queso\n🔵⚪ Cookie temática de Talleres\n🍪Pepas artesanales\n🍪Pavlovas artesanales\n🍪Palmeritas artesanales\n🎈 Decoración con 3 globos metalizados de colores alusivos\n🔵⚪ Decoración especial de Talleres\n🔵⚪ Velita o bengala de cumpleaños (según stock)\n🏷️ Stickers temáticos + tarjeta para el hincha\n\nUna experiencia albiazul para empezar el día con energía matadora!!!",
+    price: 84000,
+    category: ProductCategory.FOOTBALL,
+    image: 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/8gQc9fydXCjdsqhTD9D9N.png?size=2000x2000',
+    galleryImages: ['https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/8gQc9fydXCjdsqhTD9D9N.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/bPmVylLe6KW8AgXySCFJv.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/afIyKMp87LzsEgvXPqYbI.png?size=2000x2000'],
+  },
+  {
+    id: 'boca-deluxe',
+    name: 'Desayuno Deluxe de Boca Juniors',
+    description: "Para el fanático que late con la Bombonera, que siente la pasión azul y oro en cada jugada y que nunca deja de alentar. Un desayuno que te hace decir ¡Dale, dale Bo! desde que lo ves!\n\nEste Mega desayuno Incluye:\n🥤 Taza cerámica de Boca Juniors o Vaso térmico\n🍰 Torta temática de Boca (450gr)\n🍪 Pastafrola artesanal\n🥪 Sándwich artesanal de jamón y queso\n💙💛  Cookie temática artesanal de Boca\n👑Café\n👑Té\n👑Leche\n👑Azúcar\n👑Endulzante\n🍪Pepas artesanales\n🍪Pavlovas artesanales\n🍪Palmeritas artesanales\n⚽🎈 3 globos alusivos\n💙💛 Decoración especial de Boca Juniors\n💙💛 Vela o bengala de cumpleaños (según stock) \n🏷️ Stickers temáticos + tarjeta para el hincha\n\nPerfecto para quienes llevan la pasión azul y oro en cada despertar, en cada sueño, en cada corazón!",
+    price: 84000,
+    category: ProductCategory.FOOTBALL,
+    image: 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/_gPatPttVe3yYTu4F1vO9.png?size=2000x2000',
+    tags: ['MÁS VENDIDO'],
+    galleryImages: ['https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/_gPatPttVe3yYTu4F1vO9.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/QIX48soJkcRFRaGs793lj.png?size=2000x2000', 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/XmhPrUUScJ78Bqw5S_4k7.png?size=2000x2000','https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/KiEESfa6Er03CyrGwnFT_.png?size=2000x2000','https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/1mAuXCUWPmDP10moJ5c6q.png?size=2000x2000'],
+  },
+  {
+    id: 'river-deluxe',
+    name: 'Desayuno Deluxe de River Plate',
+    description: "Para el hincha que vibra con cada partido, que se emociona con el Monumental y que lleva la banda roja grabada en el corazón. Un regalo que grita ¡Vamos River! desde el primer bocado.\n\nEste Mega desayuno Incluye:\n🥤Vaso térmico o Taza cerámica de River Plate\n🍰 Torta temática de River (450gr)\n🍪 Pastafrola artesanal\n🥪 Sándwich artesanal de jamón y queso\n⚽ Cookie temática artesanal de River\n👑Café\n👑Té\n👑Leche\n👑Azúcar\n👑Endulzante\n🍪Pepas artesanales\n🍪Pavlovas artesanales\n🍪Palmeritas artesanales\n⚽🎈 3 globos alusivos\n🔴⚪ Decoración especial de River Plate\n🔴⚪Velita o bengala de cumpleaños (según stock)\n🏷️ Stickers temáticos + tarjeta para el hincha\n\nUn desayuno épico para empezar el día como un verdadero millonario!",
+    price: 84000,
+    category: ProductCategory.FOOTBALL,
+    image: 'https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/vicMGCb3me7mRGLxQ528F.png?size=2000x2000',
+    tags: ['MÁS VENDIDO'],
+    galleryImages: ['https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/vicMGCb3me7mRGLxQ528F.png?size=2000x2000','https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/Ls_6USSUWA9xgqXyWM0yY.png?size=2000x2000','https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/qyflXhJAN4J3jq1N79Arq.png?size=2000x2000','https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/I-N13js7Z3_KExvvIYYn4.png?size=2000x2000'],
+  },
+];
