@@ -172,11 +172,28 @@ const Cart: React.FC = () => {
     const orderId = params.get('orderId');
 
     if (status === 'success' && orderId) {
-      const order = orders.find(o => o.id === orderId);
+      let order = orders.find(o => o.id === orderId);
+      
+      // If order is not found in state (e.g. non-admin user can't read from Firestore), try localStorage
+      if (!order) {
+        const savedOrder = localStorage.getItem('lastOrder');
+        if (savedOrder) {
+          try {
+            const parsed = JSON.parse(savedOrder);
+            if (parsed.id === orderId) {
+              order = parsed;
+            }
+          } catch (e) {
+            console.error('Error parsing saved order:', e);
+          }
+        }
+      }
+
       if (order) {
         setRedirectType('success');
         setReturnedOrder(order);
         setShowRedirectModal(true);
+        localStorage.removeItem('lastOrder');
         
         // Clear query params
         window.history.replaceState({}, '', window.location.pathname);
@@ -289,15 +306,23 @@ const Cart: React.FC = () => {
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(order, products, options)}`;
       
       if (paymentUrl) {
+        console.log('Redirecting to payment gateway:', paymentUrl);
+        // Save order to localStorage for when they return
+        localStorage.setItem('lastOrder', JSON.stringify(order));
         // Redirect to payment gateway
         window.location.href = paymentUrl;
+      } else if (formData.paymentMethod === PaymentMethod.TRANSFERENCIA_MP || formData.paymentMethod === PaymentMethod.TARJETA_UALA) {
+        console.warn('Payment link expected but not received, falling back to WhatsApp');
+        alert('No pudimos generar el link de pago automáticamente, pero tu pedido fue registrado. Serás redirigido a WhatsApp para coordinar el pago.');
+        window.location.href = whatsappUrl;
       } else {
+        console.log('Manual payment method, redirecting to WhatsApp');
         // Redirect directly to WhatsApp
         window.location.href = whatsappUrl;
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error submitting order:', error);
-      alert('Hubo un error al procesar tu pedido. Por favor intenta nuevamente.');
+      alert(error.message || 'Hubo un error al procesar tu pedido. Por favor intenta nuevamente.');
     } finally {
       setIsSubmitting(false);
     }

@@ -86,6 +86,8 @@ app.post("/api/pedidos", async (req, res) => {
   let paymentUrl = null;
 
   try {
+    console.log(`Processing payment for method: ${orderData.paymentMethod}`);
+    
     if (orderData.paymentMethod === "Mercado Pago (Transferencia)") {
       if (mpClient) {
         const preference = new Preference(mpClient);
@@ -99,12 +101,13 @@ app.post("/api/pedidos", async (req, res) => {
         }
 
         const baseUrl = process.env.APP_URL || "http://localhost:3000";
+        console.log(`Using baseUrl for MP: ${baseUrl}`);
 
-        const response = await preference.create({
+        const preferenceData = {
           body: {
             items: orderData.items.map((item: any) => ({
               id: item.productId,
-              title: `Producto ${item.productId}`,
+              title: item.name || `Producto ${item.productId}`,
               quantity: item.quantity,
               unit_price: unitPrice,
               currency_id: "ARS"
@@ -115,32 +118,44 @@ app.post("/api/pedidos", async (req, res) => {
               pending: `${baseUrl}/carrito?status=pending&orderId=${newOrder.id}`,
             },
             auto_return: "approved",
-            notification_url: `${baseUrl}/api/webhooks/mercadopago`,
+            notification_url: baseUrl.startsWith('https') ? `${baseUrl}/api/webhooks/mercadopago` : undefined,
             external_reference: newOrder.id,
           },
-        });
+        };
+
+        const response = await preference.create(preferenceData);
         paymentUrl = response.init_point;
         newOrder.externalPaymentId = response.id;
+        console.log(`MP Preference created: ${response.id}, init_point: ${paymentUrl}`);
       } else {
         console.warn("MercadoPago client not initialized, using mock URL");
         paymentUrl = "https://www.mercadopago.com.ar/checkout/v1/redirect?pref_id=mock";
       }
     } else if (orderData.paymentMethod === "Ualá (Tarjeta)") {
+      // For Ualá, we usually need to create a checkout via their API
+      // For now, we'll use a more realistic redirect or a mock if credentials aren't set
       paymentUrl = `https://checkout.ualabis.com.ar/checkout/${newOrder.id}`;
       newOrder.externalPaymentId = `UALA-${newOrder.id}`;
-    } else if (orderData.paymentMethod === "Pagos Internacionales (PayPal o Western Union)") {
-      // Manual payment, no URL needed
+      console.log(`Ualá redirect generated: ${paymentUrl}`);
+    } else {
+      // For Efectivo or other manual methods
       paymentUrl = null;
-      newOrder.externalPaymentId = `INTL-${newOrder.id}`;
+      newOrder.externalPaymentId = `MANUAL-${newOrder.id}`;
+      console.log(`Manual payment method, no redirect needed.`);
     }
     
     res.status(201).json({ order: newOrder, paymentUrl });
   } catch (error: any) {
-    console.error("Error creating payment details:", error?.message || error);
+    console.error("Error in /api/pedidos:", error?.message || error);
     if (error?.response?.data) {
-      console.error("Mercado Pago Error Data:", JSON.stringify(error.response.data));
+      console.error("External API Error Data:", JSON.stringify(error.response.data));
     }
-    res.status(201).json({ order: newOrder, paymentUrl: null, error: error?.message || "Error al generar link de pago" });
+    // Return a 400 error so the frontend catch block is triggered
+    res.status(400).json({ 
+      error: "Error al procesar el pedido", 
+      message: error?.message || "Ocurrió un error inesperado al generar el pago",
+      details: error?.response?.data
+    });
   }
 });
 

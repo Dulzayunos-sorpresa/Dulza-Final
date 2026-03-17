@@ -53,7 +53,7 @@ const Corporate: React.FC = () => {
     const phoneNumber = "5493512261245";
     const url = `https://wa.me/${phoneNumber}?text=${encodeURIComponent(whatsappMessage)}`;
     
-    window.open(url, '_blank');
+    window.location.href = url;
     setSubmitted(true);
   };
 

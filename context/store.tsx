@@ -175,26 +175,42 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const addOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => {
     try {
+      console.log('Iniciando proceso de pedido...', orderData);
       const baseUrl = window.location.origin;
-      // We still call the backend to generate the MercadoPago link
+      
+      // Llamamos al backend para crear el pedido y generar el link de pago
+      console.log('Llamando al backend para crear pedido y link de pago...');
       const response = await axios.post(`${baseUrl}/api/pedidos`, orderData);
       const { order, paymentUrl } = response.data;
       
-      // Save to Firestore
-      await setDoc(doc(db, 'orders', order.id), order);
+      console.log('Respuesta del backend recibida:', { orderId: order.id, hasPaymentUrl: !!paymentUrl });
       
-      // Update local stock in Firestore
+      // Guardamos en Firestore
+      console.log('Guardando pedido en Firestore...');
+      await setDoc(doc(db, 'orders', order.id), order);
+      console.log('Pedido guardado en Firestore exitosamente.');
+      
+      // Actualizamos stock localmente y en Firestore
+      console.log('Actualizando stock de productos...');
       for (const item of orderData.items) {
         const p = products.find(prod => prod.id === item.productId);
         if (p && p.stock !== undefined) {
-          await updateDoc(doc(db, 'products', p.id), { stock: Math.max(0, p.stock - item.quantity) });
+          try {
+            await updateDoc(doc(db, 'products', p.id), { stock: Math.max(0, p.stock - item.quantity) });
+          } catch (stockError) {
+            console.warn('No se pudo actualizar el stock (probablemente no eres admin):', stockError);
+          }
         }
       }
-
+      
       clearCart();
       return { order, paymentUrl };
-    } catch (error) {
-      console.error('Error adding order:', error);
+    } catch (error: any) {
+      console.error('Error detallado en addOrder:', error);
+      if (error.response) {
+        console.error('Datos del error del backend:', error.response.data);
+        throw new Error(error.response.data.message || error.response.data.error || 'Error en el servidor al procesar el pedido');
+      }
       throw error;
     }
   };
