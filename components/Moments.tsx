@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const Moments = () => {
   const moments = [
@@ -40,32 +41,88 @@ const Moments = () => {
     }
   ];
 
-  return (
-    <section className="px-6 md:px-20 py-24 bg-blanco">
-      <div className="max-w-7xl mx-auto">
-        <p className="text-[10px] uppercase tracking-[2.5px] text-tostado font-bold mb-4">Para cada momento</p>
-        <h2 className="text-4xl md:text-5xl font-display text-cafe leading-[1.15] mb-6">
-          Hay un Dulzayunos<br />para <span className="text-tostado italic">eso.</span>
-        </h2>
-        <p className="text-sm md:text-base text-gris-calido leading-relaxed max-w-lg mb-16 font-light">
-          Sin importar la razón — o sin razón alguna — hay una forma de hacer que mañana a la mañana alguien se sienta la persona más querida del mundo.
-        </p>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {moments.map((moment, i) => (
-            <div key={i} className="group relative bg-crema rounded-3xl p-8 transition-all duration-300 hover:-translate-y-1.5 hover:shadow-2xl hover:shadow-cafe/10 overflow-hidden">
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-tostado scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
-              <span className="text-4xl mb-6 block">{moment.icon}</span>
-              <h3 className="text-xl font-display text-cafe mb-3">{moment.title}</h3>
-              <p className="text-xs text-gris-calido italic leading-relaxed border-l-2 border-tostado pl-4 mb-4">
-                "{moment.quote}"
-              </p>
-              <p className="text-xs text-cafe-medio font-bold leading-relaxed">
-                {moment.hook}
-              </p>
-            </div>
-          ))}
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  };
+
+  return (
+    <section className="px-6 md:px-20 py-32 bg-crema relative overflow-hidden">
+      {/* Decorative elements */}
+      <div className="absolute top-0 right-0 w-64 h-64 bg-rosa-suave/20 rounded-full blur-3xl -mr-32 -mt-32" />
+      <div className="absolute bottom-0 left-0 w-96 h-96 bg-naranja/5 rounded-full blur-3xl -ml-48 -mb-48" />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            whileInView={{ opacity: 1, x: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="max-w-2xl"
+          >
+            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Para cada momento</p>
+            <h2 className="text-5xl md:text-7xl font-display text-texto leading-[0.9] mb-8 uppercase tracking-tighter">
+              Hay un Dulzayunos<br />para <span className="text-naranja italic">eso.</span>
+            </h2>
+            <p className="text-base md:text-lg text-texto/70 leading-relaxed max-w-xl font-light">
+              Sin importar la razón — o sin razón alguna — hay una forma de hacer que mañana a la mañana alguien se sienta la persona más querida del mundo.
+            </p>
+          </motion.div>
+          <div className="hidden md:block">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="w-24 h-24 rounded-full border border-naranja/20 flex items-center justify-center text-naranja"
+            >
+              <span className="text-2xl">✦</span>
+            </motion.div>
+          </div>
         </div>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
+          {moments.map((moment, i) => (
+            <motion.div 
+              key={i} 
+              variants={itemVariants}
+              whileHover={{ y: -10, boxShadow: "0 30px 60px -15px rgba(242,125,38,0.1)" }}
+              className="group relative bg-white rounded-[40px] p-10 transition-all duration-500 border border-naranja/5"
+            >
+              <motion.div 
+                whileHover={{ scale: 1.1, rotate: 5 }}
+                className="w-16 h-16 bg-crema rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform duration-500"
+              >
+                {moment.icon}
+              </motion.div>
+              <h3 className="text-2xl font-display text-texto mb-4 uppercase tracking-tight">{moment.title}</h3>
+              <div className="space-y-6">
+                <p className="text-sm text-texto/60 italic leading-relaxed border-l-2 border-naranja/30 pl-6 py-1">
+                  "{moment.quote}"
+                </p>
+                <p className="text-sm text-texto font-bold leading-relaxed flex items-start gap-3">
+                  <span className="text-naranja mt-1">→</span>
+                  {moment.hook}
+                </p>
+              </div>
+            </motion.div>
+          ))}
+        </motion.div>
       </div>
     </section>
   );

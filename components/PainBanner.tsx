@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const PainBanner = () => {
   const items = [
@@ -11,15 +12,23 @@ const PainBanner = () => {
   ];
 
   return (
-    <div className="bg-cafe py-5 overflow-hidden relative">
-      <div className="flex gap-16 animate-ticker whitespace-nowrap">
+    <div className="bg-texto py-6 overflow-hidden relative">
+      <motion.div 
+        animate={{ x: ["0%", "-50%"] }}
+        transition={{ 
+          duration: 30, 
+          ease: "linear", 
+          repeat: Infinity 
+        }}
+        className="flex gap-20 whitespace-nowrap"
+      >
         {[...items, ...items].map((item, i) => (
-          <span key={i} className="text-xs md:text-sm text-crema/60 tracking-wide flex items-center gap-3">
-            <strong className="text-crema font-medium">{item}</strong>
-            <span className="text-tostado opacity-50">·</span>
+          <span key={i} className="text-[10px] md:text-xs text-crema/40 uppercase tracking-[0.2em] flex items-center gap-4">
+            <strong className="text-crema font-bold">{item}</strong>
+            <span className="text-naranja opacity-50">✦</span>
           </span>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 };

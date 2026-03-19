@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const HowItWorks = () => {
   const steps = [
@@ -28,34 +29,105 @@ const HowItWorks = () => {
     }
   ];
 
-  return (
-    <section className="px-6 md:px-20 py-24 bg-cafe text-crema">
-      <div className="max-w-7xl mx-auto">
-        <p className="text-[10px] uppercase tracking-[2.5px] text-tostado font-bold mb-4">El proceso</p>
-        <h2 className="text-4xl md:text-5xl font-display text-crema leading-[1.15] mb-6">
-          De cero a sorpresa<br /><span className="text-tostado italic">en minutos.</span>
-        </h2>
-        <p className="text-sm md:text-base text-crema/50 leading-relaxed max-w-lg mb-16 font-light">
-          No hace falta planificarlo con días de anticipación. Si pedís antes de medianoche, llegamos mañana a la mañana.
-        </p>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.2
+      }
+    }
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: [0.22, 1, 0.36, 1]
+      }
+    }
+  };
+
+  return (
+    <section className="px-6 md:px-20 py-32 bg-texto text-crema relative overflow-hidden">
+      {/* Background patterns */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 0.03 }}
+        viewport={{ once: true }}
+        className="absolute inset-0 pointer-events-none" 
+        style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '40px 40px' }} 
+      />
+
+      <div className="max-w-7xl mx-auto relative z-10">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="max-w-3xl mb-24"
+        >
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">El proceso</p>
+          <h2 className="text-5xl md:text-7xl font-display text-crema leading-[0.9] mb-8 uppercase tracking-tighter">
+            De cero a sorpresa<br /><span className="text-naranja italic">en minutos.</span>
+          </h2>
+          <p className="text-base md:text-lg text-crema/50 leading-relaxed max-w-xl font-light">
+            No hace falta planificarlo con días de anticipación. Si pedís antes de medianoche, llegamos mañana a la mañana.
+          </p>
+        </motion.div>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16"
+        >
           {steps.map((step, i) => (
-            <div key={i} className="relative group animate-fade-up" style={{ animationDelay: `${i * 150}ms` }}>
-              <div className="font-display text-7xl font-bold text-tostado/20 leading-none mb-4">
-                {step.num}
+            <motion.div 
+              key={i} 
+              variants={itemVariants}
+              whileHover={{ y: -5 }}
+              className="relative group"
+            >
+              <div className="flex items-baseline gap-4 mb-8">
+                <motion.div 
+                  initial={{ opacity: 0.2 }}
+                  whileHover={{ opacity: 0.4, scale: 1.1 }}
+                  className="font-display text-6xl font-bold text-naranja leading-none transition-colors duration-500"
+                >
+                  {step.num}
+                </motion.div>
+                <div className="w-12 h-[1px] bg-naranja/30 group-hover:w-16 transition-all duration-500" />
               </div>
-              <span className="text-3xl mb-4 block">{step.icon}</span>
-              <h3 className="text-lg font-bold text-crema mb-3">{step.title}</h3>
-              <p className="text-sm text-crema/50 leading-relaxed">
+              
+              <motion.div 
+                whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
+                className="w-14 h-14 bg-crema/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-naranja/10 transition-colors duration-500"
+              >
+                {step.icon}
+              </motion.div>
+              
+              <h3 className="text-xl font-bold text-crema mb-4 uppercase tracking-tight">{step.title}</h3>
+              <p className="text-sm text-crema/40 leading-relaxed font-light group-hover:text-crema/60 transition-colors duration-500">
                 {step.desc}
               </p>
+              
               {i < 3 && (
-                <span className="hidden lg:block absolute top-10 -right-6 text-tostado/40 text-2xl">→</span>
+                <motion.div 
+                  animate={{ x: [0, 5, 0] }}
+                  transition={{ repeat: Infinity, duration: 2 }}
+                  className="hidden lg:block absolute top-12 -right-12 text-naranja/20 text-3xl"
+                >
+                  →
+                </motion.div>
               )}
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );

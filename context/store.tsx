@@ -1,15 +1,20 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, ProductCategory } from '../types';
+import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, ProductCategory, Coupon, ShippingSettings } from '../types';
 import { COMMON_OPTIONS } from '../data/options';
 import { MOCK_PRODUCTS } from '../data/products/allProducts';
 import axios from 'axios';
 import { db } from '../firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs } from 'firebase/firestore';
+import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, where, getDoc } from 'firebase/firestore';
+import { auth } from '../firebase';
+import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
 
 export interface StoreContextType {
   products: Product[];
   cart: CartItem[];
   orders: Order[];
+  coupons: Coupon[];
+  shippingSettings: ShippingSettings;
   addToCart: (productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => void;
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
@@ -18,12 +23,26 @@ export interface StoreContextType {
   addOrder: (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => Promise<{ order: Order; paymentUrl: string | null }>;
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   updateOrderPaymentStatus: (orderId: string, status: PaymentStatus) => void;
+  updateOrderShipping: (orderId: string, cost: number, zone: string, distance?: number) => Promise<void>;
+  updateShippingSettings: (settings: ShippingSettings) => Promise<void>;
   updateStock: (productId: string, newStock: number) => void;
   options: ProductOption[];
   addOption: (option: ProductOption) => void;
   updateOption: (option: ProductOption) => void;
   deleteOption: (optionId: string) => void;
   updateProductOptions: (productId: string, optionIds: string[]) => void;
+  subobjects: ProductOptionValue[];
+  addSubobject: (subobject: ProductOptionValue) => void;
+  updateSubobject: (subobject: ProductOptionValue) => void;
+  deleteSubobject: (subobjectId: string) => void;
+  addCoupon: (coupon: Coupon) => void;
+  updateCoupon: (coupon: Coupon) => void;
+  deleteCoupon: (couponId: string) => void;
+  validateCoupon: (code: string) => Coupon | undefined;
+  shippingSettings: ShippingSettings;
+  user: User | null;
+  loginWithGoogle: () => Promise<void>;
+  logout: () => Promise<void>;
 }
 
 export const StoreContext = createContext<StoreContextType | undefined>(undefined);
@@ -33,7 +52,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [options, setOptions] = useState<ProductOption[]>([]);
+  const [subobjects, setSubobjects] = useState<ProductOptionValue[]>([]);
+  const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [shippingSettings, setShippingSettings] = useState<ShippingSettings>({
+    baseCost: 3000,
+    pricePerKm: 1350,
+    maxKmForAutoPayment: 25 // Default threshold for "Zona 10"
+  });
   const [isInitialized, setIsInitialized] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+
+  useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
+      setUser(u);
+    });
+    return () => unsubscribeAuth();
+  }, []);
 
   useEffect(() => {
     const unsubscribeProducts = onSnapshot(collection(db, 'products'), async (snapshot) => {
@@ -101,27 +135,88 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setOptions(Object.values(COMMON_OPTIONS));
     });
 
-    const unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), async (snapshot) => {
-      if (snapshot.empty && !isInitialized) {
-        // Try to migrate from backend
-        try {
-          const baseUrl = window.location.origin;
-          const response = await axios.get(`${baseUrl}/api/pedidos`);
-          const oldOrders: Order[] = response.data;
-          if (oldOrders && oldOrders.length > 0) {
-            const batch = oldOrders.map(o => setDoc(doc(db, 'orders', o.id), o));
-            await Promise.all(batch);
-          }
-        } catch (e) {
-          console.warn("Migration error or no orders to migrate");
+    const unsubscribeSubobjects = onSnapshot(collection(db, 'subobjects'), (snapshot) => {
+      if (snapshot.empty) {
+        // Extract all unique values from COMMON_OPTIONS to seed subobjects
+        const allValues: ProductOptionValue[] = [];
+        Object.values(COMMON_OPTIONS).forEach(opt => {
+          opt.values.forEach(val => {
+            if (!allValues.find(v => v.id === val.id)) {
+              allValues.push({ ...val, category: opt.name });
+            }
+          });
+        });
+        setSubobjects(allValues);
+
+        if (!isInitialized) {
+          try {
+            const batch = allValues.map(v => setDoc(doc(db, 'subobjects', v.id), v));
+            Promise.all(batch).catch(console.warn);
+          } catch (e) {}
         }
       } else {
-        const ords: Order[] = [];
-        snapshot.forEach(doc => ords.push(doc.data() as Order));
-        setOrders(ords);
+        const subs: ProductOptionValue[] = [];
+        snapshot.forEach(doc => subs.push(doc.data() as ProductOptionValue));
+        setSubobjects(subs);
       }
     }, (error) => {
-      console.error('Firestore Error (orders):', error);
+      console.error('Firestore Error (subobjects):', error);
+    });
+
+    const adminEmails = ['audisiofausto@gmail.com', 'uateventos@gmail.com'];
+    const isAdmin = user && adminEmails.includes(user.email || '');
+
+    let unsubscribeOrders = () => {};
+    if (isAdmin) {
+      unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), async (snapshot) => {
+        if (snapshot.empty && !isInitialized) {
+          // Try to migrate from backend
+          try {
+            const baseUrl = window.location.origin;
+            const response = await axios.get(`${baseUrl}/api/pedidos`);
+            const oldOrders: Order[] = response.data;
+            if (oldOrders && oldOrders.length > 0) {
+              const batch = oldOrders.map(o => setDoc(doc(db, 'orders', o.id), o));
+              await Promise.all(batch);
+            }
+          } catch (e) {
+            console.warn("Migration error or no orders to migrate");
+          }
+        } else {
+          const ords: Order[] = [];
+          snapshot.forEach(doc => ords.push(doc.data() as Order));
+          setOrders(ords);
+        }
+      }, (error) => {
+        console.error('Firestore Error (orders):', error);
+      });
+    }
+
+    const unsubscribeCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+      const cups: Coupon[] = [];
+      snapshot.forEach(doc => cups.push(doc.data() as Coupon));
+      setCoupons(cups);
+    }, (error) => {
+      if (error.code !== 'permission-denied') {
+        console.error('Firestore Error (coupons):', error);
+      }
+    });
+
+    const unsubscribeShipping = onSnapshot(doc(db, 'settings', 'shipping'), (snapshot) => {
+      if (snapshot.exists()) {
+        setShippingSettings(snapshot.data() as ShippingSettings);
+      } else if (isAdmin) {
+        // Initialize if not exists and is admin
+        setDoc(doc(db, 'settings', 'shipping'), {
+          baseCost: 3000,
+          pricePerKm: 1350,
+          maxKmForAutoPayment: 25
+        }).catch(console.error);
+      }
+    }, (error) => {
+      if (error.code !== 'permission-denied') {
+        console.error('Firestore Error (shipping):', error);
+      }
     });
 
     setIsInitialized(true);
@@ -129,9 +224,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => {
       unsubscribeProducts();
       unsubscribeOptions();
+      unsubscribeSubobjects();
       unsubscribeOrders();
+      unsubscribeCoupons();
+      unsubscribeShipping();
     };
-  }, [isInitialized]);
+  }, [isInitialized, user]);
 
   const addToCart = (productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => {
     const product = products.find(p => p.id === productId);
@@ -147,9 +245,27 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       selectedOptions
     };
     setCart(prev => [...prev, newItem]);
+
+    trackEvent(AnalyticsEvents.ADD_TO_CART, {
+      item_id: productId,
+      item_name: product.name,
+      quantity: quantity,
+      price: product.price,
+      currency: 'ARS'
+    });
   };
 
   const removeFromCart = (cartItemId: string) => {
+    const itemToRemove = cart.find(item => item.id === cartItemId);
+    if (itemToRemove) {
+      const product = products.find(p => p.id === itemToRemove.productId);
+      trackEvent(AnalyticsEvents.REMOVE_FROM_CART, {
+        item_id: itemToRemove.productId,
+        item_name: product?.name || 'Unknown',
+        quantity: itemToRemove.quantity,
+        currency: 'ARS'
+      });
+    }
     setCart(prev => prev.filter(item => item.id !== cartItemId));
   };
 
@@ -207,9 +323,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       
       clearCart();
+      
+      trackEvent(AnalyticsEvents.PURCHASE, {
+        transaction_id: order.id,
+        value: order.total,
+        currency: 'ARS',
+        items: order.items.map(i => ({
+          item_id: i.productId,
+          item_name: i.name,
+          quantity: i.quantity,
+          price: i.price
+        }))
+      });
+
       return { order, paymentUrl };
     } catch (error: any) {
       console.error('Error detallado en addOrder:', error);
+      
+      trackEvent(AnalyticsEvents.PAYMENT_FAILED, {
+        error_message: error.message || 'Unknown error'
+      });
       if (error.response) {
         console.error('Datos del error del backend:', error.response.data);
         throw new Error(error.response.data.message || error.response.data.error || 'Error en el servidor al procesar el pedido');
@@ -234,11 +367,74 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const updateOrderShipping = async (orderId: string, cost: number, zone: string, distance?: number) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      const order = orders.find(o => o.id === orderId);
+      if (!order) return;
+
+      const newTotal = order.items.reduce((sum, item) => sum + item.totalPrice, 0) - (order.discountAmount || 0) + cost;
+
+      await updateDoc(orderRef, {
+        shippingCost: cost,
+        shippingZone: zone,
+        distanceKm: distance,
+        total: newTotal
+      });
+    } catch (error) {
+      console.error('Error updating shipping:', error);
+    }
+  };
+
+  const updateShippingSettings = async (settings: ShippingSettings) => {
+    try {
+      await setDoc(doc(db, 'settings', 'shipping'), settings);
+    } catch (error) {
+      console.error('Error updating shipping settings:', error);
+    }
+  };
+
   const addOption = async (option: ProductOption) => {
     try {
       await setDoc(doc(db, 'options', option.id), option);
     } catch (error) {
       console.error('Error adding option:', error);
+    }
+  };
+
+  const addSubobject = async (subobject: ProductOptionValue) => {
+    try {
+      await setDoc(doc(db, 'subobjects', subobject.id), subobject);
+    } catch (error) {
+      console.error('Error adding subobject:', error);
+    }
+  };
+
+  const updateSubobject = async (subobject: ProductOptionValue) => {
+    try {
+      await setDoc(doc(db, 'subobjects', subobject.id), subobject);
+      // Update options that use this subobject
+      const optionsToUpdate = options.filter(o => o.values.some(v => v.id === subobject.id));
+      for (const o of optionsToUpdate) {
+        const newValues = o.values.map(v => v.id === subobject.id ? subobject : v);
+        await updateOption({ ...o, values: newValues });
+      }
+    } catch (error) {
+      console.error('Error updating subobject:', error);
+    }
+  };
+
+  const deleteSubobject = async (subobjectId: string) => {
+    try {
+      await deleteDoc(doc(db, 'subobjects', subobjectId));
+      // Remove from options
+      const optionsToUpdate = options.filter(o => o.values.some(v => v.id === subobjectId));
+      for (const o of optionsToUpdate) {
+        const newValues = o.values.filter(v => v.id !== subobjectId);
+        await updateOption({ ...o, values: newValues });
+      }
+    } catch (error) {
+      console.error('Error deleting subobject:', error);
     }
   };
 
@@ -279,11 +475,66 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const addCoupon = async (coupon: Coupon) => {
+    try {
+      await setDoc(doc(db, 'coupons', coupon.id), coupon);
+    } catch (error) {
+      console.error('Error adding coupon:', error);
+    }
+  };
+
+  const updateCoupon = async (coupon: Coupon) => {
+    try {
+      await updateDoc(doc(db, 'coupons', coupon.id), { ...coupon });
+    } catch (error) {
+      console.error('Error updating coupon:', error);
+    }
+  };
+
+  const deleteCoupon = async (couponId: string) => {
+    try {
+      await deleteDoc(doc(db, 'coupons', couponId));
+    } catch (error) {
+      console.error('Error deleting coupon:', error);
+    }
+  };
+
+  const validateCoupon = (code: string) => {
+    const coupon = coupons.find(c => c.code.toUpperCase() === code.toUpperCase() && c.isActive);
+    if (!coupon) return undefined;
+    
+    // Check expiry
+    if (coupon.expiryDate) {
+      const expiry = new Date(coupon.expiryDate);
+      if (expiry < new Date()) return undefined;
+    }
+    
+    return coupon;
+  };
+
+  const loginWithGoogle = async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (error) {
+      console.error('Error signing in with Google:', error);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await signOut(auth);
+    } catch (error) {
+      console.error('Error signing out:', error);
+    }
+  };
+
   return (
     <StoreContext.Provider value={{
       products,
       cart,
       orders,
+      coupons,
       addToCart,
       removeFromCart,
       clearCart,
@@ -292,12 +543,26 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       addOrder,
       updateOrderStatus,
       updateOrderPaymentStatus,
+      updateOrderShipping,
+      updateShippingSettings,
       updateStock,
       options,
       addOption,
       updateOption,
       deleteOption,
-      updateProductOptions
+      updateProductOptions,
+      subobjects,
+      addSubobject,
+      updateSubobject,
+      deleteSubobject,
+      addCoupon,
+      updateCoupon,
+      deleteCoupon,
+      validateCoupon,
+      shippingSettings,
+      user,
+      loginWithGoogle,
+      logout
     }}>
       {children}
     </StoreContext.Provider>

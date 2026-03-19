@@ -14,9 +14,11 @@ export enum ProductCategory {
 }
 
 export interface ProductOptionValue {
+  id: string;
   name: string;
   price?: number;
   stock?: number;
+  category?: string;
 }
 
 export interface ProductOption {
@@ -43,6 +45,7 @@ export interface Product {
   tags?: string[];
   stock?: number;
   options?: ProductOption[];
+  freeDelivery?: boolean;
 }
 
 export enum OrderStatus {
@@ -66,6 +69,22 @@ export enum PaymentMethod {
   PAGOS_INTERNACIONALES = 'Pagos Internacionales (PayPal o Western Union)'
 }
 
+export interface Coupon {
+  id: string;
+  code: string;
+  discount: number;
+  type: 'percentage' | 'fixed';
+  minPurchase?: number;
+  isActive: boolean;
+  expiryDate?: string;
+}
+
+export interface ShippingSettings {
+  baseCost: number;
+  pricePerKm: number;
+  maxKmForAutoPayment: number;
+}
+
 export interface Order {
   id: string;
   customerName: string;
@@ -86,10 +105,15 @@ export interface Order {
   paymentStatus: PaymentStatus;
   items: CartItem[];
   total: number;
+  shippingCost?: number;
+  shippingZone?: string;
+  distanceKm?: number;
   status: OrderStatus;
   createdAt: string;
   notes?: string;
   externalPaymentId?: string;
+  couponCode?: string;
+  discountAmount?: number;
 }
 
 export interface CartItem {

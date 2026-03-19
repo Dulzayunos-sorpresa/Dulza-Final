@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useStore } from '../context/store';
-import { OrderStatus, Product, Order, ProductOption, PaymentStatus, PaymentMethod } from '../types';
+import { OrderStatus, Product, Order, ProductOption, PaymentStatus, PaymentMethod, ShippingSettings } from '../types';
 import { PrinterService } from '../services/PrinterService';
 import { auth, loginWithGoogle, logout } from '../firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -23,8 +23,47 @@ import {
   Camera,
   Video,
   Image as ImageIcon,
-  LogOut
+  LogOut,
+  TrendingUp,
+  DollarSign,
+  Truck,
+  Info,
+  Users,
+  Calendar as CalendarIcon,
+  Tag,
+  Gift,
+  AlertCircle,
+  ChevronRight,
+  ChevronLeft,
+  Loader2,
+  MessageSquare,
+  User as UserIcon,
+  Phone,
+  MapPin,
+  Home,
+  CreditCard,
+  Send
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
+import { 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer, 
+  LineChart, 
+  Line, 
+  PieChart, 
+  Pie, 
+  Cell,
+  AreaChart,
+  Area
+} from 'recharts';
+import { Coupon } from '../types';
+import { formatOrderToWhatsApp } from '../src/utils/orderUtils';
+import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
 
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -53,10 +92,125 @@ const Admin = () => {
     return () => unsubscribe();
   }, []);
 
-  const { products, orders, updateStock, updateOrderStatus, updateOrderPaymentStatus, addOrder, options, addOption, updateOption, deleteOption, updateProductOptions, updateProduct } = useStore();
-  const [activeTab, setActiveTab] = useState<'orders' | 'stock' | 'new-order' | 'options'>('orders');
+  const { 
+    products, 
+    orders, 
+    updateStock, 
+    updateOrderStatus, 
+    updateOrderPaymentStatus, 
+    updateOrderShipping,
+    addOrder, 
+    options, 
+    addOption, 
+    updateOption, 
+    deleteOption, 
+    updateProductOptions, 
+    updateProduct, 
+    subobjects,
+    addSubobject,
+    updateSubobject,
+    deleteSubobject,
+    coupons, 
+    addCoupon, 
+    updateCoupon, 
+    deleteCoupon,
+    shippingSettings,
+    updateShippingSettings
+  } = useStore();
+
+  const SHIPPING_ZONES = [
+    { name: 'Zona 1 (Cerca)', cost: 2000 },
+    { name: 'Zona 2 (Media)', cost: 4000 },
+    { name: 'Zona 3 (Lejos)', cost: 6000 },
+    { name: 'Zona 4 (Muy Lejos)', cost: 8000 },
+    { name: 'Envío Gratis', cost: 0 }
+  ];
+
+  const hasFreeDelivery = (order: Order) => {
+    return order.items.some(item => {
+      const p = products.find(prod => prod.id === item.id);
+      return p?.tags?.includes('ENVÍO GRATIS') || p?.freeDelivery;
+    });
+  };
+
+  const getGoogleMapsLink = (order: Order) => {
+    const origin = encodeURIComponent("Nicolas Avellaneda 327");
+    let destination = "";
+    if (order.isPrivateNeighborhood) {
+      destination = encodeURIComponent(`${order.neighborhood}, Manzana ${order.blockLot}, Casa ${order.houseNumber}`);
+    } else {
+      destination = encodeURIComponent(order.deliveryAddress || "");
+    }
+    return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}`;
+  };
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stock' | 'new-order' | 'options' | 'subobjects' | 'coupons' | 'shipping'>('dashboard');
+  const [isEditingShipping, setIsEditingShipping] = useState(false);
+  const [tempShipping, setTempShipping] = useState<ShippingSettings | null>(null);
+
+  const handleSaveShipping = async () => {
+    if (tempShipping) {
+      await updateShippingSettings(tempShipping);
+      setIsEditingShipping(false);
+    }
+  };
+
   const [searchTerm, setSearchTerm] = useState('');
+  const [filterStatus, setFilterStatus] = useState<OrderStatus | 'TODOS'>('TODOS');
   const [printingOrderId, setPrintingOrderId] = useState<string | null>(null);
+
+  // Coupons State
+  const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+  const [newCouponForm, setNewCouponForm] = useState<Omit<Coupon, 'id'>>({
+    code: '',
+    discount: 0,
+    type: 'percentage',
+    isActive: true,
+    minPurchase: 0
+  });
+
+  // Stats calculation
+  const stats = {
+    totalRevenue: orders.filter(o => o.paymentStatus === PaymentStatus.PAID).reduce((sum, o) => sum + o.total, 0),
+    orderCount: orders.length,
+    pendingOrders: orders.filter(o => o.status === OrderStatus.PENDING).length,
+    preparingOrders: orders.filter(o => o.status === OrderStatus.PREPARING).length,
+    deliveredOrders: orders.filter(o => o.status === OrderStatus.DELIVERED).length,
+    cancelledOrders: orders.filter(o => o.status === OrderStatus.CANCELLED).length,
+    revenueByDay: orders
+      .filter(o => o.paymentStatus === PaymentStatus.PAID)
+      .reduce((acc: any[], order) => {
+        const date = new Date(order.createdAt).toLocaleDateString();
+        const existing = acc.find(item => item.date === date);
+        if (existing) {
+          existing.revenue += order.total;
+          existing.orders += 1;
+        } else {
+          acc.push({ date, revenue: order.total, orders: 1 });
+        }
+        return acc;
+      }, [])
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+      .slice(-7),
+    topProducts: products
+      .map(p => ({
+        name: p.name,
+        count: orders.reduce((sum, o) => sum + o.items.filter(i => i.productId === p.id).reduce((iSum, i) => iSum + i.quantity, 0), 0)
+      }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5),
+    paymentMethods: orders.reduce((acc: any[], order) => {
+      const existing = acc.find(item => item.name === order.paymentMethod);
+      if (existing) {
+        existing.value += 1;
+      } else {
+        acc.push({ name: order.paymentMethod, value: 1 });
+      }
+      return acc;
+    }, [])
+  };
+
+  const COLORS = ['#D4A373', '#A98467', '#6B705C', '#B7B7A4', '#FFE8D6'];
 
   // Product Editing State
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -71,7 +225,18 @@ const Admin = () => {
     values: [],
     description: ''
   });
-  const [newValue, setNewValue] = useState({ name: '', price: 0 });
+  const [newValue, setNewValue] = useState({ id: '', name: '', price: 0 });
+  const [subobjectSearch, setSubobjectSearch] = useState('');
+
+  // Subobjects Management State
+  const [editingSubobject, setEditingSubobject] = useState<ProductOptionValue | null>(null);
+  const [isAddingSubobject, setIsAddingSubobject] = useState(false);
+  const [newSubobjectForm, setNewSubobjectForm] = useState<ProductOptionValue>({
+    id: '',
+    name: '',
+    price: 0,
+    category: ''
+  });
 
   // New Order Form State
   const [newOrderForm, setNewOrderForm] = useState({
@@ -143,7 +308,18 @@ const Admin = () => {
       }
     }
 
-    if (!newOrderForm.deliveryDate.trim()) newErrors.deliveryDate = 'Fecha obligatoria';
+    if (!newOrderForm.deliveryDate.trim()) {
+      newErrors.deliveryDate = 'Fecha obligatoria';
+    } else {
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      const selectedDate = new Date(newOrderForm.deliveryDate + 'T00:00:00');
+      
+      if (selectedDate < today) {
+        newErrors.deliveryDate = 'La fecha no puede ser anterior a hoy';
+      }
+    }
+    
     if (!newOrderForm.deliveryTime.trim()) newErrors.deliveryTime = 'Horario obligatorio';
 
     setOrderErrors(newErrors);
@@ -383,10 +559,19 @@ const Admin = () => {
           </h1>
           
           <div className="flex items-center gap-4">
-            <div className="flex bg-white rounded-xl p-1 shadow-sm border border-stone-200">
+            <div className="flex bg-white rounded-xl p-1 shadow-sm border border-stone-200 overflow-x-auto max-w-[calc(100vw-120px)] md:max-w-none">
+            <button 
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'dashboard' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+            >
+              <div className="flex items-center gap-2">
+                <LayoutDashboard className="w-4 h-4" />
+                Dashboard
+              </div>
+            </button>
             <button 
               onClick={() => setActiveTab('orders')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'orders' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'orders' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
             >
               <div className="flex items-center gap-2">
                 <ShoppingCart className="w-4 h-4" />
@@ -395,7 +580,7 @@ const Admin = () => {
             </button>
             <button 
               onClick={() => setActiveTab('stock')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'stock' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'stock' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
             >
               <div className="flex items-center gap-2">
                 <Package className="w-4 h-4" />
@@ -404,16 +589,43 @@ const Admin = () => {
             </button>
             <button 
               onClick={() => setActiveTab('options')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'options' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'options' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
             >
               <div className="flex items-center gap-2">
                 <Settings2 className="w-4 h-4" />
-                Opciones
+                Complementos
+              </div>
+            </button>
+            <button 
+              onClick={() => setActiveTab('subobjects')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'subobjects' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Package className="w-4 h-4" />
+                Subobjetos
+              </div>
+            </button>
+            <button 
+              onClick={() => setActiveTab('coupons')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'coupons' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+            >
+              <div className="flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Cupones
+              </div>
+            </button>
+            <button 
+              onClick={() => setActiveTab('shipping')}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'shipping' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+            >
+              <div className="flex items-center gap-2">
+                <Truck className="w-4 h-4" />
+                Envíos
               </div>
             </button>
             <button 
               onClick={() => setActiveTab('new-order')}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${activeTab === 'new-order' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${activeTab === 'new-order' ? 'bg-brand-500 text-white shadow-md' : 'text-stone-600 hover:bg-stone-50'}`}
             >
               <div className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
@@ -431,173 +643,851 @@ const Admin = () => {
           </div>
         </div>
 
-        {activeTab === 'orders' && (
-          <div className="space-y-6">
-            {orders.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center border border-stone-200 shadow-sm">
-                <ShoppingCart className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-                <p className="text-stone-500 font-medium">No hay pedidos registrados aún.</p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {orders.map(order => (
-                  <div key={order.id} className="bg-white rounded-2xl p-6 border border-stone-200 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <span className="text-xs font-bold text-stone-400 uppercase tracking-wider">{order.id}</span>
-                        <h3 className="text-xl font-bold text-stone-800">{order.customerName}</h3>
-                        <p className="text-sm text-stone-500">{new Date(order.createdAt).toLocaleString()}</p>
+        <AnimatePresence mode="wait">
+          {activeTab === 'shipping' && (
+            <motion.div
+              key="shipping"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8"
+            >
+              <div className="bg-white rounded-2xl p-8 border border-stone-100 shadow-sm">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-brand-100 rounded-xl flex items-center justify-center text-brand-600">
+                      <Truck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-2xl font-display text-stone-800">Configuración de Envíos</h2>
+                      <p className="text-stone-500 text-sm">Gestiona los costos y el rango de cobertura automática</p>
+                    </div>
+                  </div>
+                  {!isEditingShipping ? (
+                    <button
+                      onClick={() => {
+                        setTempShipping(shippingSettings);
+                        setIsEditingShipping(true);
+                      }}
+                      className="px-6 py-2 bg-brand-600 text-white rounded-xl font-bold hover:bg-brand-700 transition-all flex items-center gap-2"
+                    >
+                      <Settings2 className="w-4 h-4" />
+                      Editar Configuración
+                    </button>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => setIsEditingShipping(false)}
+                        className="px-6 py-2 bg-stone-100 text-stone-600 rounded-xl font-bold hover:bg-stone-200 transition-all"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={handleSaveShipping}
+                        className="px-6 py-2 bg-green-600 text-white rounded-xl font-bold hover:bg-green-700 transition-all flex items-center gap-2"
+                      >
+                        <CheckCircle className="w-4 h-4" />
+                        Guardar Cambios
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                  <div className="space-y-4 p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                    <div className="flex items-center gap-2 text-stone-500 mb-2">
+                      <DollarSign className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Costo Base</span>
+                    </div>
+                    {isEditingShipping ? (
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">$</span>
+                        <input
+                          type="number"
+                          value={tempShipping?.baseCost}
+                          onChange={(e) => setTempShipping(prev => prev ? { ...prev, baseCost: Number(e.target.value) } : null)}
+                          className="w-full pl-8 pr-4 py-3 bg-white border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                        />
                       </div>
-                      <div className={`px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 ${
-                        order.status === OrderStatus.PENDING ? 'bg-amber-100 text-amber-700' :
-                        order.status === OrderStatus.PREPARING ? 'bg-blue-100 text-blue-700' :
-                        order.status === OrderStatus.DELIVERED ? 'bg-green-100 text-green-700' :
-                        'bg-red-100 text-red-700'
-                      }`}>
-                        {order.status === OrderStatus.PENDING && <Clock className="w-3 h-3" />}
-                        {order.status === OrderStatus.PREPARING && <Clock className="w-3 h-3 animate-pulse" />}
-                        {order.status === OrderStatus.DELIVERED && <CheckCircle className="w-3 h-3" />}
-                        {order.status === OrderStatus.CANCELLED && <XCircle className="w-3 h-3" />}
-                        {order.status}
+                    ) : (
+                      <p className="text-3xl font-display font-bold text-stone-800">${shippingSettings.baseCost.toLocaleString()}</p>
+                    )}
+                    <p className="text-xs text-stone-500 leading-relaxed">Este monto se cobra siempre como base para cualquier envío a domicilio.</p>
+                  </div>
+
+                  <div className="space-y-4 p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                    <div className="flex items-center gap-2 text-stone-500 mb-2">
+                      <MapPin className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Precio por KM</span>
+                    </div>
+                    {isEditingShipping ? (
+                      <div className="relative">
+                        <span className="absolute left-4 top-1/2 -translate-y-1/2 text-stone-400">$</span>
+                        <input
+                          type="number"
+                          value={tempShipping?.pricePerKm}
+                          onChange={(e) => setTempShipping(prev => prev ? { ...prev, pricePerKm: Number(e.target.value) } : null)}
+                          className="w-full pl-8 pr-4 py-3 bg-white border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-display font-bold text-stone-800">${shippingSettings.pricePerKm.toLocaleString()}</p>
+                    )}
+                    <p className="text-xs text-stone-500 leading-relaxed">Costo adicional por cada kilómetro de distancia desde el local.</p>
+                  </div>
+
+                  <div className="space-y-4 p-6 bg-stone-50 rounded-2xl border border-stone-100">
+                    <div className="flex items-center gap-2 text-stone-500 mb-2">
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="text-xs font-bold uppercase tracking-wider">Límite Auto-Pago (KM)</span>
+                    </div>
+                    {isEditingShipping ? (
+                      <div className="relative">
+                        <input
+                          type="number"
+                          value={tempShipping?.maxKmForAutoPayment}
+                          onChange={(e) => setTempShipping(prev => prev ? { ...prev, maxKmForAutoPayment: Number(e.target.value) } : null)}
+                          className="w-full px-4 py-3 bg-white border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                        />
+                      </div>
+                    ) : (
+                      <p className="text-3xl font-display font-bold text-stone-800">{shippingSettings.maxKmForAutoPayment} km</p>
+                    )}
+                    <p className="text-xs text-stone-500 leading-relaxed">Distancia máxima para permitir pago automático. Pasado este límite se considera "Zona 10" (A coordinar).</p>
+                  </div>
+                </div>
+
+                <div className="mt-8 p-6 bg-brand-50 rounded-2xl border border-brand-100">
+                  <h3 className="text-sm font-bold text-brand-800 mb-2 flex items-center gap-2">
+                    <Info className="w-4 h-4" />
+                    Fórmula de Cálculo
+                  </h3>
+                  <p className="text-sm text-brand-700 leading-relaxed">
+                    Costo de Envío = Costo Base + (Distancia en KM × Precio por KM)
+                    <br />
+                    <span className="text-xs opacity-75">* El resultado se redondea hacia arriba a la centena más cercana (ej: $2483 → $2500).</span>
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'dashboard' && (
+            <motion.div 
+              key="dashboard"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="space-y-8"
+            >
+              {/* Key Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-emerald-50 rounded-xl">
+                    <DollarSign className="w-6 h-6 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-stone-500 text-xs font-medium uppercase tracking-wider">Ventas Totales</p>
+                    <p className="text-2xl font-bold text-stone-900">${stats.totalRevenue.toLocaleString()}</p>
+                  </div>
+                </motion.div>
+                
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-brand-50 rounded-xl">
+                    <ShoppingCart className="w-6 h-6 text-brand-600" />
+                  </div>
+                  <div>
+                    <p className="text-stone-500 text-xs font-medium uppercase tracking-wider">Pedidos Totales</p>
+                    <p className="text-2xl font-bold text-stone-900">{stats.orderCount}</p>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-amber-50 rounded-xl">
+                    <Clock className="w-6 h-6 text-amber-600" />
+                  </div>
+                  <div>
+                    <p className="text-stone-500 text-xs font-medium uppercase tracking-wider">Pendientes</p>
+                    <p className="text-2xl font-bold text-stone-900">{stats.pendingOrders}</p>
+                  </div>
+                </motion.div>
+
+                <motion.div 
+                  whileHover={{ y: -5 }}
+                  className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex items-center gap-4"
+                >
+                  <div className="p-3 bg-blue-50 rounded-xl">
+                    <TrendingUp className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-stone-500 text-xs font-medium uppercase tracking-wider">Conversión</p>
+                    <p className="text-2xl font-bold text-stone-900">
+                      {stats.orderCount > 0 ? ((stats.deliveredOrders / stats.orderCount) * 100).toFixed(1) : 0}%
+                    </p>
+                  </div>
+                </motion.div>
+              </div>
+
+              {/* Charts Row 1: Revenue & Top Products */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
+                  <h2 className="text-lg font-bold text-stone-900 mb-6 flex items-center gap-2">
+                    <TrendingUp className="w-5 h-5 text-brand-500" />
+                    Ingresos (Últimos 7 días)
+                  </h2>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={stats.revenueByDay}>
+                        <defs>
+                          <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="5%" stopColor="#D4A373" stopOpacity={0.8}/>
+                            <stop offset="95%" stopColor="#D4A373" stopOpacity={0}/>
+                          </linearGradient>
+                        </defs>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f5f5f5" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
+                        <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#78716c' }} />
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Area type="monotone" dataKey="revenue" stroke="#D4A373" fillOpacity={1} fill="url(#colorRev)" strokeWidth={3} />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
+                  <h2 className="text-lg font-bold text-stone-900 mb-6 flex items-center gap-2">
+                    <Package className="w-5 h-5 text-brand-500" />
+                    Top 5 Productos
+                  </h2>
+                  <div className="h-[300px]">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={stats.topProducts} layout="vertical">
+                        <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f5f5f5" />
+                        <XAxis type="number" hide />
+                        <YAxis dataKey="name" type="category" axisLine={false} tickLine={false} width={120} tick={{ fontSize: 11, fill: '#78716c' }} />
+                        <Tooltip 
+                          cursor={{ fill: '#fafaf9' }}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                        <Bar dataKey="count" fill="#D4A373" radius={[0, 4, 4, 0]} barSize={20} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Charts Row 2: Payment Methods & Order Status */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
+                  <h2 className="text-lg font-bold text-stone-900 mb-6 flex items-center gap-2">
+                    <CreditCard className="w-5 h-5 text-brand-500" />
+                    Métodos de Pago
+                  </h2>
+                  <div className="h-[300px] flex items-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Pie
+                          data={stats.paymentMethods}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={60}
+                          outerRadius={80}
+                          paddingAngle={5}
+                          dataKey="value"
+                        >
+                          {stats.paymentMethods.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip 
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                        />
+                      </PieChart>
+                    </ResponsiveContainer>
+                    <div className="w-1/3 space-y-2">
+                      {stats.paymentMethods.map((entry, index) => (
+                        <div key={entry.name} className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }}></div>
+                          <span className="text-xs text-stone-600 font-medium">{entry.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white p-8 rounded-2xl shadow-sm border border-stone-100">
+                  <h2 className="text-lg font-bold text-stone-900 mb-6 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-brand-500" />
+                    Estado de Pedidos
+                  </h2>
+                  <div className="space-y-6">
+                    {[
+                      { label: 'Pendientes', count: stats.pendingOrders, color: 'bg-amber-500', total: stats.orderCount },
+                      { label: 'En Preparación', count: stats.preparingOrders, color: 'bg-brand-500', total: stats.orderCount },
+                      { label: 'Entregados', count: stats.deliveredOrders, color: 'bg-emerald-500', total: stats.orderCount },
+                      { label: 'Cancelados', count: stats.cancelledOrders, color: 'bg-red-500', total: stats.orderCount }
+                    ].map((item) => (
+                      <div key={item.label}>
+                        <div className="flex justify-between text-sm mb-2">
+                          <span className="text-stone-600 font-medium">{item.label}</span>
+                          <span className="font-bold">{item.count}</span>
+                        </div>
+                        <div className="w-full bg-stone-100 h-2 rounded-full overflow-hidden">
+                          <motion.div 
+                            initial={{ width: 0 }}
+                            animate={{ width: `${(item.count / (item.total || 1)) * 100}%` }}
+                            transition={{ duration: 1, ease: "easeOut" }}
+                            className={`${item.color} h-full`}
+                          ></motion.div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'coupons' && (
+            <motion.div 
+              key="coupons"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div>
+                  <h2 className="text-2xl font-bold text-stone-900 flex items-center gap-2">
+                    <Gift className="w-6 h-6 text-brand-500" />
+                    Gestión de Cupones
+                  </h2>
+                  <p className="text-stone-500 text-sm">Crea y administra códigos de descuento para tus clientes.</p>
+                </div>
+                <button 
+                  onClick={() => setIsAddingCoupon(true)}
+                  className="bg-brand-500 text-white px-6 py-3 rounded-xl font-bold hover:bg-brand-600 transition-all flex items-center gap-2 shadow-lg shadow-brand-200"
+                >
+                  <Plus className="w-5 h-5" />
+                  Nuevo Cupón
+                </button>
+              </div>
+
+              <AnimatePresence>
+                {(isAddingCoupon || editingCoupon) && (
+                  <motion.div 
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="bg-white p-8 rounded-2xl shadow-xl border border-brand-100 mb-8">
+                      <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
+                        {editingCoupon ? <Edit className="w-5 h-5 text-brand-500" /> : <Plus className="w-5 h-5 text-brand-500" />}
+                        {editingCoupon ? 'Editar Cupón' : 'Crear Nuevo Cupón'}
+                      </h3>
+                      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-stone-600">Código</label>
+                          <div className="relative">
+                            <Tag className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                            <input 
+                              type="text"
+                              value={editingCoupon ? editingCoupon.code : newCouponForm.code}
+                              onChange={(e) => {
+                                const val = e.target.value.toUpperCase().replace(/\s/g, '');
+                                editingCoupon ? setEditingCoupon({...editingCoupon, code: val}) : setNewCouponForm({...newCouponForm, code: val})
+                              }}
+                              className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none font-mono"
+                              placeholder="EJ: DULCE10"
+                            />
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-stone-600">Tipo</label>
+                          <select 
+                            value={editingCoupon ? editingCoupon.type : newCouponForm.type}
+                            onChange={(e) => editingCoupon ? setEditingCoupon({...editingCoupon, type: e.target.value as 'percentage' | 'fixed'}) : setNewCouponForm({...newCouponForm, type: e.target.value as 'percentage' | 'fixed'})}
+                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                          >
+                            <option value="percentage">Porcentaje (%)</option>
+                            <option value="fixed">Monto Fijo ($)</option>
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-stone-600">Valor</label>
+                          <input 
+                            type="number"
+                            value={editingCoupon ? editingCoupon.discount : newCouponForm.discount}
+                            onChange={(e) => editingCoupon ? setEditingCoupon({...editingCoupon, discount: parseFloat(e.target.value)}) : setNewCouponForm({...newCouponForm, discount: parseFloat(e.target.value)})}
+                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                            placeholder="0"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <label className="text-sm font-bold text-stone-600">Compra Mínima ($)</label>
+                          <input 
+                            type="number"
+                            value={editingCoupon ? editingCoupon.minPurchase : newCouponForm.minPurchase}
+                            onChange={(e) => editingCoupon ? setEditingCoupon({...editingCoupon, minPurchase: parseFloat(e.target.value)}) : setNewCouponForm({...newCouponForm, minPurchase: parseFloat(e.target.value)})}
+                            className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                            placeholder="0"
+                          />
+                        </div>
+                      </div>
+                      <div className="mt-8 flex flex-wrap gap-4">
+                        <button 
+                          onClick={() => {
+                            if (editingCoupon) {
+                              updateCoupon(editingCoupon);
+                              setEditingCoupon(null);
+                            } else {
+                              if (!newCouponForm.code) return alert('El código es obligatorio');
+                              addCoupon({ ...newCouponForm, id: Math.random().toString(36).substr(2, 9) });
+                              setIsAddingCoupon(false);
+                              setNewCouponForm({ code: '', discount: 0, type: 'percentage', isActive: true, minPurchase: 0 });
+                            }
+                          }}
+                          className="bg-brand-500 text-white px-8 py-3 rounded-xl font-bold hover:bg-brand-600 transition-all flex-1 shadow-lg shadow-brand-100"
+                        >
+                          {editingCoupon ? 'Guardar Cambios' : 'Crear Cupón'}
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setEditingCoupon(null);
+                            setIsAddingCoupon(false);
+                          }}
+                          className="bg-stone-100 text-stone-600 px-8 py-3 rounded-xl font-bold hover:bg-stone-200 transition-all"
+                        >
+                          Cancelar
+                        </button>
                       </div>
                     </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
 
-                    <div className="space-y-3 mb-6">
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-2">
-                        <div className="flex items-start gap-2 text-sm">
-                          <span className="font-bold text-stone-600 w-24 shrink-0">Tipo:</span>
-                          <span className={`text-stone-700 font-medium ${order.deliveryType === 'PICKUP' ? 'text-brand-600' : ''}`}>
-                            {order.deliveryType === 'PICKUP' ? 'Retiro Local' : 'Delivery'}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {coupons.map((coupon, idx) => (
+                  <motion.div 
+                    key={coupon.id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: idx * 0.05 }}
+                    className={`bg-white p-6 rounded-2xl shadow-sm border ${coupon.isActive ? 'border-stone-100' : 'border-red-100 bg-red-50/10'} flex flex-col justify-between relative overflow-hidden`}
+                  >
+                    {!coupon.isActive && (
+                      <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+                        INACTIVO
+                      </div>
+                    )}
+                    <div>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className={`p-2 rounded-lg ${coupon.isActive ? 'bg-brand-50 text-brand-600' : 'bg-stone-100 text-stone-400'}`}>
+                            <Tag className="w-4 h-4" />
+                          </div>
+                          <span className="font-mono font-bold text-stone-900 tracking-wider">
+                            {coupon.code}
                           </span>
                         </div>
-                        <div className="flex items-start gap-2 text-sm">
-                          <span className="font-bold text-stone-600 w-24 shrink-0">Entrega:</span>
-                          <span className="text-stone-700">
-                            {order.isPrivateNeighborhood ? (
-                              <>
-                                <strong>Barrio:</strong> {order.neighborhood}<br/>
-                                <strong>Familia:</strong> {order.familyName}<br/>
-                                <strong>Mza/Lote:</strong> {order.blockLot} - <strong>Casa:</strong> {order.houseNumber}
-                              </>
-                            ) : (
-                              <>{order.deliveryAddress} {order.neighborhood ? `(${order.neighborhood})` : ''}</>
-                            )}
-                          </span>
+                        <div className="flex gap-1">
+                          <button onClick={() => setEditingCoupon(coupon)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if(confirm('¿Estás seguro de eliminar este cupón?')) {
+                                deleteCoupon(coupon.id);
+                              }
+                            }} 
+                            className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
                         </div>
-                        <div className="flex items-start gap-2 text-sm">
-                          <span className="font-bold text-stone-600 w-24 shrink-0">Fecha/Hora:</span>
-                          <span className="text-stone-700">{order.deliveryDate} {order.deliveryTime}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm">
-                          <span className="font-bold text-stone-600 w-24 shrink-0">Teléfono:</span>
-                          <span className="text-stone-700">{order.customerPhone}</span>
-                        </div>
-                        <div className="flex items-start gap-2 text-sm">
-                          <span className="font-bold text-stone-600 w-24 shrink-0">Pago:</span>
-                          <div className="flex flex-col gap-1">
-                            <span className="text-stone-700">
-                              {order.paymentMethod}
-                            </span>
-                            <div className="flex items-center gap-2">
-                              <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                order.paymentStatus === PaymentStatus.PAID ? 'bg-green-100 text-green-700' :
-                                order.paymentStatus === PaymentStatus.PENDING ? 'bg-amber-100 text-amber-700' :
-                                'bg-red-100 text-red-700'
-                              }`}>
-                                {order.paymentStatus}
-                              </span>
-                              <select 
-                                value={order.paymentStatus}
-                                onChange={(e) => updateOrderPaymentStatus(order.id, e.target.value as PaymentStatus)}
-                                className="text-[10px] border border-stone-200 rounded px-1 py-0.5 outline-none bg-stone-50"
+                      </div>
+                      
+                      <div className="flex items-baseline gap-1 mb-1">
+                        <span className="text-3xl font-bold text-stone-900">
+                          {coupon.type === 'percentage' ? `${coupon.discount}%` : `$${coupon.discount}`}
+                        </span>
+                        <span className="text-stone-500 text-sm font-medium">OFF</span>
+                      </div>
+                      
+                      <p className="text-xs text-stone-500 font-medium">
+                        {coupon.minPurchase > 0 ? `Válido desde $${coupon.minPurchase.toLocaleString()}` : 'Sin compra mínima'}
+                      </p>
+                    </div>
+
+                    <div className="mt-6 pt-4 border-t border-stone-50 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${coupon.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'}`}></div>
+                        <span className={`text-[10px] font-bold tracking-wider uppercase ${coupon.isActive ? 'text-emerald-600' : 'text-stone-400'}`}>
+                          {coupon.isActive ? 'Activo' : 'Pausado'}
+                        </span>
+                      </div>
+                      <button 
+                        onClick={() => updateCoupon({...coupon, isActive: !coupon.isActive})}
+                        className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+                          coupon.isActive 
+                            ? 'text-stone-600 bg-stone-100 hover:bg-stone-200' 
+                            : 'text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-100'
+                        }`}
+                      >
+                        {coupon.isActive ? 'Desactivar' : 'Activar'}
+                      </button>
+                    </div>
+                  </motion.div>
+                ))}
+                
+                {coupons.length === 0 && (
+                  <div className="col-span-full py-12 text-center bg-stone-50 rounded-2xl border-2 border-dashed border-stone-200">
+                    <Gift className="w-12 h-12 text-stone-300 mx-auto mb-4" />
+                    <p className="text-stone-500 font-medium">No hay cupones creados aún.</p>
+                    <button 
+                      onClick={() => setIsAddingCoupon(true)}
+                      className="mt-4 text-brand-600 font-bold hover:underline"
+                    >
+                      Crear el primero
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'orders' && (
+            <motion.div 
+              key="orders"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-6"
+            >
+              <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
+                <div className="relative flex-1 w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+                  <input 
+                    type="text"
+                    placeholder="Buscar por nombre o ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+                  {['TODOS', ...Object.values(OrderStatus)].map(status => (
+                    <button
+                      key={status}
+                      onClick={() => setFilterStatus(status)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                        filterStatus === status 
+                          ? 'bg-brand-500 text-white shadow-md' 
+                          : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                      }`}
+                    >
+                      {status}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {orders.length === 0 ? (
+                <div className="bg-white rounded-2xl p-12 text-center border border-stone-200 shadow-sm">
+                  <ShoppingCart className="w-16 h-16 text-stone-300 mx-auto mb-4" />
+                  <p className="text-stone-500 font-medium">No hay pedidos registrados aún.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                  {orders
+                    .filter(o => {
+                      const matchesSearch = o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.toLowerCase().includes(searchTerm.toLowerCase());
+                      const matchesStatus = filterStatus === 'TODOS' || o.status === filterStatus;
+                      return matchesSearch && matchesStatus;
+                    })
+                    .map((order, idx) => (
+                    <motion.div 
+                      key={order.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="bg-white rounded-2xl border border-stone-100 shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col"
+                    >
+                      <div className="p-6 flex-1">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-mono font-bold text-stone-400 uppercase tracking-tighter bg-stone-50 px-1.5 py-0.5 rounded">#{order.id.slice(-6)}</span>
+                              <span className="text-[10px] font-bold text-stone-400 uppercase tracking-wider">{new Date(order.createdAt).toLocaleDateString()}</span>
+                            </div>
+                            <h3 className="text-xl font-bold text-stone-800">{order.customerName}</h3>
+                            <div className="flex items-center gap-2 mt-1">
+                              <a href={`tel:${order.customerPhone}`} className="text-xs text-brand-600 font-medium flex items-center gap-1 hover:underline">
+                                <Phone className="w-3 h-3" />
+                                {order.customerPhone}
+                              </a>
+                              <a 
+                                href={`https://wa.me/${order.customerPhone.replace(/\D/g, '')}`} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="p-1 bg-emerald-50 text-emerald-600 rounded hover:bg-emerald-100 transition-colors"
                               >
-                                {Object.values(PaymentStatus).map(status => (
-                                  <option key={status} value={status}>{status}</option>
-                                ))}
-                              </select>
+                                <MessageSquare className="w-3 h-3" />
+                              </a>
+                            </div>
+                          </div>
+                          <div className="flex flex-col items-end gap-2">
+                            <div className={`px-3 py-1 rounded-full text-[10px] font-bold flex items-center gap-1.5 ${
+                              order.status === OrderStatus.PENDING ? 'bg-amber-100 text-amber-700' :
+                              order.status === OrderStatus.PREPARING ? 'bg-blue-100 text-blue-700' :
+                              order.status === OrderStatus.DELIVERED ? 'bg-emerald-100 text-emerald-700' :
+                              'bg-red-100 text-red-700'
+                            }`}>
+                              <div className={`w-1.5 h-1.5 rounded-full ${
+                                order.status === OrderStatus.PENDING ? 'bg-amber-500' :
+                                order.status === OrderStatus.PREPARING ? 'bg-blue-500 animate-pulse' :
+                                order.status === OrderStatus.DELIVERED ? 'bg-emerald-500' :
+                                'bg-red-500'
+                              }`} />
+                              {order.status}
+                            </div>
+                            <div className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider ${
+                              order.paymentStatus === PaymentStatus.PAID ? 'bg-emerald-50 text-emerald-600 border border-emerald-100' :
+                              order.paymentStatus === PaymentStatus.PENDING ? 'bg-amber-50 text-amber-600 border border-amber-100' :
+                              'bg-red-50 text-red-600 border border-red-100'
+                            }`}>
+                              {order.paymentStatus}
                             </div>
                           </div>
                         </div>
-                        {order.recipientName && (
-                          <div className="flex items-start gap-2 text-sm">
-                            <span className="font-bold text-stone-600 w-24 shrink-0">Recibe:</span>
-                            <span className="text-stone-700">{order.recipientName} ({order.recipientPhone})</span>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 bg-stone-50 p-4 rounded-xl border border-stone-100">
+                          <div className="space-y-2">
+                            <div className="flex items-start gap-2 text-xs">
+                              <MapPin className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                              <div className="text-stone-700">
+                                <p className="font-bold text-stone-900 mb-0.5">{order.deliveryType === 'PICKUP' ? 'Retiro en Local' : 'Envío a Domicilio'}</p>
+                                {order.deliveryType === 'DELIVERY' && (
+                                  <p className="leading-relaxed">
+                                    {order.isPrivateNeighborhood ? (
+                                      <>
+                                        {order.neighborhood}, Fam. {order.familyName}<br/>
+                                        Mza {order.blockLot}, Casa {order.houseNumber}
+                                      </>
+                                    ) : (
+                                      <>{order.deliveryAddress} {order.neighborhood ? `(${order.neighborhood})` : ''}</>
+                                    )}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2 text-xs">
+                              <CalendarIcon className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span className="text-stone-700 font-medium">{order.deliveryDate} a las {order.deliveryTime}</span>
+                            </div>
                           </div>
-                        )}
-                        {order.reference && (
-                          <div className="flex items-start gap-2 text-sm col-span-full">
-                            <span className="font-bold text-stone-600 w-24 shrink-0">Referencia:</span>
-                            <span className="text-stone-700 italic">{order.reference}</span>
+                          
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2 text-xs">
+                              <CreditCard className="w-3.5 h-3.5 text-stone-400 shrink-0" />
+                              <span className="text-stone-700 font-medium">{order.paymentMethod}</span>
+                            </div>
+                            {order.recipientName && (
+                              <div className="flex items-start gap-2 text-xs">
+                                <UserIcon className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                                <div className="text-stone-700">
+                                  <p className="font-bold text-stone-900">Recibe:</p>
+                                  <p>{order.recipientName} ({order.recipientPhone})</p>
+                                </div>
+                              </div>
+                            )}
                           </div>
-                        )}
-                      </div>
-                      <div className="border-t border-stone-100 pt-3">
-                        <p className="text-xs font-bold text-stone-400 uppercase mb-2">Productos</p>
-                        <ul className="space-y-1">
+                          
+                          {order.notes && (
+                            <div className="col-span-full flex items-start gap-2 text-xs pt-2 border-t border-stone-200">
+                              <MessageSquare className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
+                              <p className="text-stone-600 italic">"{order.notes}"</p>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="space-y-2 mb-6">
+                          <p className="text-[10px] font-bold text-stone-400 uppercase tracking-widest mb-2">Detalle del Pedido</p>
                           {order.items.map((item, idx) => {
                             const p = products.find(prod => prod.id === item.productId);
                             return (
-                              <li key={idx} className="text-sm border-b border-stone-50 pb-2 last:border-0 last:pb-0">
-                                <div className="flex justify-between">
-                                  <span className="text-stone-700 font-medium">{item.quantity}x {p?.name || 'Producto desconocido'}</span>
-                                  <span className="text-stone-500 font-bold">${((p?.price || 0) * item.quantity).toLocaleString()}</span>
+                              <div key={idx} className="flex flex-col py-2 border-b border-stone-50 last:border-0">
+                                <div className="flex justify-between items-center">
+                                  <span className="text-sm font-bold text-stone-800">{item.quantity}x {p?.name || 'Producto'}</span>
+                                  <span className="text-sm font-bold text-stone-900">${((p?.price || 0) * item.quantity).toLocaleString()}</span>
                                 </div>
                                 {item.selectedOptions && item.selectedOptions.length > 0 && (
-                                  <div className="mt-1 pl-4 space-y-0.5">
+                                  <div className="flex flex-wrap gap-1 mt-1">
                                     {item.selectedOptions.map((opt, optIdx) => (
-                                      <p key={optIdx} className="text-[10px] text-stone-400 italic">
-                                        • {opt.values.join(', ')}
-                                      </p>
+                                      <span key={optIdx} className="text-[9px] bg-stone-100 text-stone-500 px-1.5 py-0.5 rounded">
+                                        {opt.values.join(', ')}
+                                      </span>
                                     ))}
                                   </div>
                                 )}
-                              </li>
+                              </div>
                             );
                           })}
-                        </ul>
-                      </div>
-                      <div className="flex justify-between items-center pt-3 border-t border-stone-100">
-                        <span className="font-bold text-stone-800">Total:</span>
-                        <span className="text-xl font-bold text-brand-600">${order.total.toLocaleString()}</span>
-                      </div>
-                    </div>
+                          
+                          {order.couponCode && (
+                            <div className="flex justify-between items-center py-2 text-emerald-600">
+                              <div className="flex items-center gap-1 text-xs font-bold">
+                                <Tag className="w-3 h-3" />
+                                Cupón: {order.couponCode}
+                              </div>
+                              <span className="text-sm font-bold">-${order.discountAmount?.toLocaleString()}</span>
+                            </div>
+                          )}
 
-                    <div className="flex flex-wrap gap-2">
-                      <select 
-                        value={order.status}
-                        onChange={(e) => updateOrderStatus(order.id, e.target.value as OrderStatus)}
-                        className="flex-1 bg-stone-50 border border-stone-200 rounded-xl px-3 py-2 text-sm focus:ring-2 focus:ring-brand-500 outline-none"
-                      >
-                        {Object.values(OrderStatus).map(status => (
-                          <option key={status} value={status}>{status}</option>
-                        ))}
-                      </select>
-                      
-                      <div className="flex gap-2">
-                        <button 
-                          onClick={() => handlePrint(order, 'bluetooth')}
-                          disabled={printingOrderId === order.id}
-                          className="p-2 bg-stone-100 text-stone-600 rounded-xl hover:bg-brand-500 hover:text-white transition-all disabled:opacity-50"
-                          title="Imprimir vía Bluetooth"
-                        >
-                          <Bluetooth className="w-5 h-5" />
-                        </button>
-                        <button 
-                          onClick={() => handlePrint(order, 'usb')}
-                          disabled={printingOrderId === order.id}
-                          className="p-2 bg-stone-100 text-stone-600 rounded-xl hover:bg-brand-500 hover:text-white transition-all disabled:opacity-50"
-                          title="Imprimir vía USB"
-                        >
-                          <Usb className="w-5 h-5" />
-                        </button>
+                          {order.deliveryType === 'DELIVERY' && (
+                            <div className="mt-4 pt-4 border-t border-stone-100 space-y-3">
+                              <div className="flex items-center justify-between">
+                                <span className="text-xs font-bold text-stone-500 uppercase tracking-wider">Calculadora de Envío</span>
+                                <div className="flex gap-2">
+                                  {hasFreeDelivery(order) && (
+                                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-bold">
+                                      ¡TIENE ENVÍO GRATIS!
+                                    </span>
+                                  )}
+                                  <a 
+                                    href={getGoogleMapsLink(order)} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-bold flex items-center gap-1 hover:bg-blue-200 transition-colors"
+                                  >
+                                    <MapPin className="w-2.5 h-2.5" /> Ver Distancia
+                                  </a>
+                                </div>
+                              </div>
+                              
+                              <div className="grid grid-cols-2 gap-2">
+                                {SHIPPING_ZONES.map(zone => (
+                                  <button
+                                    key={zone.name}
+                                    onClick={() => updateOrderShipping(order.id, zone.cost, zone.name)}
+                                    className={`px-3 py-2 rounded-xl text-[10px] font-bold transition-all border ${
+                                      order.shippingZone === zone.name
+                                        ? 'bg-brand-600 text-white border-brand-600'
+                                        : 'bg-white text-stone-600 border-stone-200 hover:border-brand-300'
+                                    }`}
+                                  >
+                                    {zone.name} (${zone.cost})
+                                  </button>
+                                ))}
+                              </div>
+                              
+                              {order.shippingCost !== undefined && (
+                                <div className="flex justify-between items-center text-stone-600 text-sm font-medium">
+                                  <span>Costo de Envío ({order.shippingZone})</span>
+                                  <span>${order.shippingCost.toLocaleString()}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
+
+                      <div className="bg-stone-50 p-6 border-t border-stone-100">
+                        <div className="flex justify-between items-center mb-6">
+                          <span className="text-sm font-bold text-stone-500 uppercase tracking-wider">Total a Cobrar</span>
+                          <span className="text-2xl font-bold text-brand-600">${order.total.toLocaleString()}</span>
+                        </div>
+
+                        <div className="flex flex-wrap gap-3">
+                          <div className="flex-1 min-w-[200px] flex gap-2">
+                            <select 
+                              value={order.status}
+                              onChange={(e) => {
+                                const newStatus = e.target.value as OrderStatus;
+                                updateOrderStatus(order.id, newStatus);
+                                if (newStatus === OrderStatus.CANCELLED) {
+                                  trackEvent(AnalyticsEvents.ORDER_CANCELLED, {
+                                    order_id: order.id,
+                                    reason: 'Admin cancelled'
+                                  });
+                                }
+                                trackEvent('order_status_update', {
+                                  order_id: order.id,
+                                  new_status: newStatus
+                                });
+                              }}
+                              className="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-700 focus:ring-2 focus:ring-brand-500 outline-none shadow-sm"
+                            >
+                              {Object.values(OrderStatus).map(status => (
+                                <option key={status} value={status}>{status}</option>
+                              ))}
+                            </select>
+                            <select 
+                              value={order.paymentStatus}
+                              onChange={(e) => {
+                                const newStatus = e.target.value as PaymentStatus;
+                                updateOrderPaymentStatus(order.id, newStatus);
+                                trackEvent('payment_status_update', {
+                                  order_id: order.id,
+                                  new_status: newStatus
+                                });
+                              }}
+                              className="flex-1 bg-white border border-stone-200 rounded-xl px-3 py-2.5 text-sm font-bold text-stone-700 focus:ring-2 focus:ring-brand-500 outline-none shadow-sm"
+                            >
+                              {Object.values(PaymentStatus).map(status => (
+                                <option key={status} value={status}>{status}</option>
+                              ))}
+                            </select>
+                          </div>
+                          
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => handlePrint(order, 'bluetooth')}
+                              disabled={printingOrderId === order.id}
+                              className="p-3 bg-white text-stone-600 border border-stone-200 rounded-xl hover:bg-brand-500 hover:text-white hover:border-brand-500 transition-all disabled:opacity-50 shadow-sm"
+                              title="Imprimir Bluetooth"
+                            >
+                              <Bluetooth className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => handlePrint(order, 'usb')}
+                              disabled={printingOrderId === order.id}
+                              className="p-3 bg-white text-stone-600 border border-stone-200 rounded-xl hover:bg-brand-500 hover:text-white hover:border-brand-500 transition-all disabled:opacity-50 shadow-sm"
+                              title="Imprimir USB"
+                            >
+                              <Usb className="w-5 h-5" />
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const text = formatOrderToWhatsApp(order, products);
+                                window.open(`https://wa.me/${order.customerPhone.replace(/\D/g, '')}?text=${text}`, '_blank');
+                              }}
+                              className="p-3 bg-emerald-500 text-white rounded-xl hover:bg-emerald-600 transition-all shadow-md shadow-emerald-100"
+                              title="Enviar por WhatsApp"
+                            >
+                              <Send className="w-5 h-5" />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </motion.div>
+                  ))}
+                </div>
+              )}
+            </motion.div>
+          )}
 
         {activeTab === 'stock' && (
           <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
@@ -940,18 +1830,60 @@ const Admin = () => {
                 </div>
 
                 <div className="space-y-4">
-                  <label className="text-sm font-bold text-stone-600 block">Opciones (Valores)</label>
+                  <label className="text-sm font-bold text-stone-600 block">Vincular Subobjetos</label>
+                  
+                  <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                      <Search className="h-4 w-4 text-stone-400" />
+                    </div>
+                    <input
+                      type="text"
+                      placeholder="Buscar subobjetos existentes..."
+                      value={subobjectSearch}
+                      onChange={(e) => setSubobjectSearch(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                    />
+                    
+                    {subobjectSearch && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+                        {subobjects
+                          .filter(s => s.name.toLowerCase().includes(subobjectSearch.toLowerCase()))
+                          .map(sub => (
+                            <button
+                              key={sub.id}
+                              onClick={() => {
+                                if (!newOptionForm.values.find(v => v.id === sub.id)) {
+                                  setNewOptionForm({
+                                    ...newOptionForm,
+                                    values: [...newOptionForm.values, sub]
+                                  });
+                                }
+                                setSubobjectSearch('');
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-stone-50 flex justify-between items-center border-b border-stone-50 last:border-0"
+                            >
+                              <div>
+                                <p className="text-sm font-bold text-stone-800">{sub.name}</p>
+                                <p className="text-xs text-stone-500">{sub.category}</p>
+                              </div>
+                              <span className="text-xs font-bold text-brand-600">+${sub.price?.toLocaleString()}</span>
+                            </button>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
                   <div className="flex gap-2">
                     <input 
                       type="text" 
-                      placeholder="Nombre de la opción (ej: Chocotorta)"
+                      placeholder="Nuevo subobjeto (ej: Chocotorta)"
                       value={newValue.name}
                       onChange={(e) => setNewValue({...newValue, name: e.target.value})}
                       className="flex-1 px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
                     />
                     <input 
                       type="number" 
-                      placeholder="Precio extra"
+                      placeholder="Precio"
                       value={newValue.price || ''}
                       onChange={(e) => setNewValue({...newValue, price: parseInt(e.target.value) || 0})}
                       className="w-32 px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
@@ -960,22 +1892,26 @@ const Admin = () => {
                       type="button"
                       onClick={() => {
                         if (newValue.name) {
+                          const subId = Math.random().toString(36).substr(2, 9);
+                          const newSub = { ...newValue, id: subId, category: newOptionForm.name };
                           setNewOptionForm({
                             ...newOptionForm,
-                            values: [...newOptionForm.values, { ...newValue }]
+                            values: [...newOptionForm.values, newSub]
                           });
-                          setNewValue({ name: '', price: 0 });
+                          // Also add to global subobjects
+                          addSubobject(newSub);
+                          setNewValue({ id: '', name: '', price: 0 });
                         }
                       }}
                       className="bg-stone-800 text-white px-4 py-3 rounded-xl hover:bg-stone-900 transition-all font-bold"
                     >
-                      Añadir
+                      Crear y Añadir
                     </button>
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
                     {newOptionForm.values.map((val, idx) => (
-                      <div key={idx} className="flex justify-between items-center bg-stone-50 p-3 rounded-xl border border-stone-100">
+                      <div key={val.id || idx} className="flex justify-between items-center bg-stone-50 p-3 rounded-xl border border-stone-100">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-stone-800">{val.name}</span>
                           <span className="text-xs text-stone-500">${val.price?.toLocaleString()}</span>
@@ -1057,6 +1993,132 @@ const Admin = () => {
                   </div>
                 </div>
               ))}
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'subobjects' && (
+          <div className="space-y-8">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-display text-stone-800">Gestionar Subobjetos (Valores)</h2>
+              <button 
+                onClick={() => {
+                  setIsAddingSubobject(true);
+                  setEditingSubobject(null);
+                  setNewSubobjectForm({ id: Math.random().toString(36).substr(2, 9), name: '', price: 0, category: '' });
+                }}
+                className="bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-600 transition-all shadow-md"
+              >
+                <Plus className="w-5 h-5" />
+                Nuevo Subobjeto
+              </button>
+            </div>
+
+            {(isAddingSubobject || editingSubobject) && (
+              <div className="bg-white rounded-2xl p-8 border border-stone-200 shadow-sm space-y-6">
+                <div className="flex justify-between items-center border-b border-stone-100 pb-4">
+                  <h3 className="text-xl font-display text-stone-800">
+                    {editingSubobject ? 'Editar Subobjeto' : 'Nuevo Subobjeto'}
+                  </h3>
+                  <button onClick={() => { setIsAddingSubobject(false); setEditingSubobject(null); }} className="text-stone-400 hover:text-stone-600">
+                    <XCircle className="w-6 h-6" />
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-stone-600">Nombre</label>
+                    <input 
+                      type="text" 
+                      value={newSubobjectForm.name}
+                      onChange={(e) => setNewSubobjectForm({...newSubobjectForm, name: e.target.value})}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                      placeholder="ej: Chocotorta"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-stone-600">Precio Extra</label>
+                    <input 
+                      type="number" 
+                      value={newSubobjectForm.price || ''}
+                      onChange={(e) => setNewSubobjectForm({...newSubobjectForm, price: parseInt(e.target.value) || 0})}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                      placeholder="ej: 500"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-sm font-bold text-stone-600">Categoría (opcional)</label>
+                    <input 
+                      type="text" 
+                      value={newSubobjectForm.category || ''}
+                      onChange={(e) => setNewSubobjectForm({...newSubobjectForm, category: e.target.value})}
+                      className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none"
+                      placeholder="ej: Tortas"
+                    />
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => {
+                    if (editingSubobject) {
+                      updateSubobject(newSubobjectForm);
+                    } else {
+                      addSubobject(newSubobjectForm);
+                    }
+                    setIsAddingSubobject(false);
+                    setEditingSubobject(null);
+                  }}
+                  className="w-full bg-brand-500 text-white py-4 rounded-xl font-bold hover:bg-brand-600 transition-all shadow-lg"
+                >
+                  {editingSubobject ? 'Guardar Cambios' : 'Crear Subobjeto'}
+                </button>
+              </div>
+            )}
+
+            <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
+              <table className="w-full text-left">
+                <thead className="bg-stone-50 border-b border-stone-200">
+                  <tr>
+                    <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase">Nombre</th>
+                    <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase">Categoría</th>
+                    <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase">Precio</th>
+                    <th className="px-6 py-4 text-xs font-bold text-stone-500 uppercase text-right">Acciones</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {subobjects.map(sub => (
+                    <tr key={sub.id} className="hover:bg-stone-50 transition-colors">
+                      <td className="px-6 py-4 font-medium text-stone-800">{sub.name}</td>
+                      <td className="px-6 py-4 text-stone-500 text-sm">{sub.category || '-'}</td>
+                      <td className="px-6 py-4 font-bold text-stone-900">${sub.price?.toLocaleString()}</td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <button 
+                            onClick={() => {
+                              setEditingSubobject(sub);
+                              setNewSubobjectForm(sub);
+                              setIsAddingSubobject(false);
+                            }}
+                            className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"
+                          >
+                            <Edit className="w-4 h-4" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              if (confirm('¿Estás seguro de eliminar este subobjeto? Se quitará de todos los complementos.')) {
+                                deleteSubobject(sub.id);
+                              }
+                            }}
+                            className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </div>
         )}
@@ -1274,30 +2336,37 @@ const Admin = () => {
                   <label className="text-sm font-bold text-stone-600">Fecha de Entrega</label>
                   <input 
                     required
-                    type="text" 
+                    type="date" 
                     value={newOrderForm.deliveryDate}
                     onChange={(e) => {
                       setNewOrderForm({...newOrderForm, deliveryDate: e.target.value});
                       if (orderErrors.deliveryDate) setOrderErrors({...orderErrors, deliveryDate: ''});
                     }}
                     className={`w-full px-4 py-3 bg-stone-50 border ${orderErrors.deliveryDate ? 'border-red-500' : 'border-stone-200'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none`}
-                    placeholder="Ej: 14/02"
                   />
                   {orderErrors.deliveryDate && <p className="text-[10px] text-red-500 mt-1">{orderErrors.deliveryDate}</p>}
                 </div>
                 <div className="space-y-2">
                   <label className="text-sm font-bold text-stone-600">Horario</label>
-                  <input 
+                  <select 
                     required
-                    type="text" 
                     value={newOrderForm.deliveryTime}
                     onChange={(e) => {
                       setNewOrderForm({...newOrderForm, deliveryTime: e.target.value});
                       if (orderErrors.deliveryTime) setOrderErrors({...orderErrors, deliveryTime: ''});
                     }}
-                    className={`w-full px-4 py-3 bg-stone-50 border ${orderErrors.deliveryTime ? 'border-red-500' : 'border-stone-200'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none`}
-                    placeholder="Ej: 08:30 a 09:45hs"
-                  />
+                    className={`w-full px-4 py-3 bg-stone-50 border ${orderErrors.deliveryTime ? 'border-red-500' : 'border-stone-200'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none appearance-none`}
+                  >
+                    <option value="">Seleccionar rango horario</option>
+                    <option value="8 a 9.15hs">8 a 9.15hs</option>
+                    <option value="8.30 a 9.45hs">8.30 a 9.45hs</option>
+                    <option value="9 a 10.15hs">9 a 10.15hs</option>
+                    <option value="9.30 a 10.45hs">9.30 a 10.45hs</option>
+                    <option value="10 a 11.15hs">10 a 11.15hs</option>
+                    <option value="10.30 a 12hs">10.30 a 12hs</option>
+                    <option value="12 a 14hs">12 a 14hs</option>
+                    <option value="16.30 a 19hs">16.30 a 19hs</option>
+                  </select>
                   {orderErrors.deliveryTime && <p className="text-[10px] text-red-500 mt-1">{orderErrors.deliveryTime}</p>}
                 </div>
               </div>
@@ -1517,6 +2586,7 @@ const Admin = () => {
             </form>
           </div>
         )}
+        </AnimatePresence>
       </div>
     </div>
   );

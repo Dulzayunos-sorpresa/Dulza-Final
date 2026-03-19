@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Urgency = () => {
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
@@ -23,48 +24,94 @@ const Urgency = () => {
   }, []);
 
   return (
-    <section className="px-6 md:px-20 py-24 bg-gradient-to-br from-tostado to-cafe-medio text-center relative overflow-hidden">
-      <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-5">
-        <span className="text-[200px]">☀️</span>
-      </div>
+    <section className="px-6 md:px-20 py-32 bg-naranja text-center relative overflow-hidden">
+      {/* Decorative background elements */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 0.1 }}
+        viewport={{ once: true }}
+        className="absolute inset-0 pointer-events-none"
+      >
+        <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '30px 30px' }} />
+      </motion.div>
       
-      <div className="max-w-4xl mx-auto relative z-10">
-        <h2 className="text-4xl md:text-6xl font-display text-white leading-[1.15] mb-6">
-          Su cumpleaños es mañana.<br />
-          <span className="opacity-80 italic">Todavía llegás.</span>
-        </h2>
-        <p className="text-lg text-white/75 mb-12 font-light">
-          Pedidos antes de medianoche → entrega mañana a la mañana.
-        </p>
+      <div className="max-w-5xl mx-auto relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white/60 font-bold mb-8">No pierdas tiempo</p>
+          <h2 className="text-5xl md:text-8xl font-display text-white leading-[0.85] mb-10 uppercase tracking-tighter">
+            Su cumpleaños es mañana.<br />
+            <span className="text-texto italic">Todavía llegás.</span>
+          </h2>
+          <p className="text-lg md:text-xl text-white/80 mb-16 font-light max-w-2xl mx-auto">
+            Pedidos antes de medianoche → entrega mañana a la mañana.
+          </p>
+        </motion.div>
 
-        <div className="flex gap-8 justify-center mb-12">
-          <div className="text-center">
-            <span className="font-display text-5xl md:text-6xl text-white block leading-none">{String(timeLeft.h).padStart(2, '0')}</span>
-            <span className="text-[10px] uppercase tracking-[1.5px] text-white/50 font-bold">Horas</span>
+        <div className="flex gap-6 md:gap-12 justify-center mb-20">
+          <div className="text-center min-w-[80px] md:min-w-[120px]">
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={timeLeft.h}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="font-display text-6xl md:text-8xl text-white block leading-none mb-2"
+              >
+                {String(timeLeft.h).padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Horas</span>
           </div>
-          <span className="text-4xl text-white/30 pt-2">:</span>
-          <div className="text-center">
-            <span className="font-display text-5xl md:text-6xl text-white block leading-none">{String(timeLeft.m).padStart(2, '0')}</span>
-            <span className="text-[10px] uppercase tracking-[1.5px] text-white/50 font-bold">Minutos</span>
+          <span className="text-5xl md:text-7xl text-white/20 pt-2 font-display">:</span>
+          <div className="text-center min-w-[80px] md:min-w-[120px]">
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={timeLeft.m}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="font-display text-6xl md:text-8xl text-white block leading-none mb-2"
+              >
+                {String(timeLeft.m).padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Minutos</span>
           </div>
-          <span className="text-4xl text-white/30 pt-2">:</span>
-          <div className="text-center">
-            <span className="font-display text-5xl md:text-6xl text-white block leading-none">{String(timeLeft.s).padStart(2, '0')}</span>
-            <span className="text-[10px] uppercase tracking-[1.5px] text-white/50 font-bold">Segundos</span>
+          <span className="text-5xl md:text-7xl text-white/20 pt-2 font-display">:</span>
+          <div className="text-center min-w-[80px] md:min-w-[120px]">
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={timeLeft.s}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="font-display text-6xl md:text-8xl text-white block leading-none mb-2"
+              >
+                {String(timeLeft.s).padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Segundos</span>
           </div>
         </div>
 
-        <button 
+        <motion.button 
+          whileHover={{ scale: 1.05, y: -5 }}
+          whileTap={{ scale: 0.95 }}
           onClick={() => {
             const element = document.getElementById('catalog');
             if (element) {
               element.scrollIntoView({ behavior: 'smooth' });
             }
           }}
-          className="bg-white text-cafe px-12 py-5 rounded-full text-base font-bold shadow-2xl hover:bg-crema transition-all transform hover:-translate-y-1 active:scale-95"
+          className="bg-texto text-crema px-16 py-6 rounded-full text-sm font-bold uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-texto/90 transition-all"
         >
           Armar mi desayuno sorpresa →
-        </button>
+        </motion.button>
       </div>
     </section>
   );

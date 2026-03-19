@@ -5,7 +5,7 @@ import { ChevronRight, Sparkles, CheckCircle } from 'lucide-react';
 import ProductModal from '../components/ProductModal';
 
 const CustomOrders: React.FC = () => {
-  const { products } = useStore();
+  const { products, addToCart } = useStore();
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 
   // Filter only Custom Box products and sort by price
@@ -114,12 +114,21 @@ const CustomOrders: React.FC = () => {
       </div>
 
       {/* Modal - Handles the Wizard Flow internally based on product category */}
-      {selectedProduct && (
-        <ProductModal 
-          product={selectedProduct} 
-          onClose={() => setSelectedProduct(null)} 
-        />
-      )}
+      <ProductModal 
+        product={selectedProduct} 
+        isOpen={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)} 
+        onAddToCart={(product, quantity, options) => {
+          const formattedOptions = Object.entries(options).map(([optionName, values]) => {
+            const option = product.options?.find(o => o.name === optionName);
+            return {
+              optionId: option?.id || optionName,
+              values: values
+            };
+          });
+          addToCart(product.id, quantity, formattedOptions);
+        }}
+      />
     </div>
   );
 };

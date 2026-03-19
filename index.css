@@ -1,40 +1,46 @@
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Avenir";
-  --font-display: "Bergen";
-  --font-slogan: "Causten";
+  --font-sans: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Outfit", ui-sans-serif, system-ui, sans-serif;
+  --font-slogan: "Outfit", ui-sans-serif, system-ui, sans-serif;
 
-  --color-crema: #F5EFE0;
-  --color-tostado: #C8956A;
-  --color-cafe: #3D2314;
-  --color-cafe-medio: #6B3A20;
-  --color-blanco: #FDFAF4;
-  --color-verde-suave: #8AAE8B;
-  --color-dorado: #D4A853;
-  --color-gris-calido: #A89A8A;
+  /* Brand Colors from Brandbook */
+  --color-crema: #FCF3EA;
+  --color-rosa-suave: #FADDD7;
+  --color-naranja: #F46E3B;
+  --color-dorado: #FBAF41;
+  --color-verde: #9AC1A3;
   --color-texto: #2A1A0E;
   
   /* Mapping brand colors to the new palette for compatibility with existing components */
-  --color-brand-50: #F5EFE0;
-  --color-brand-100: #EDE0C8;
-  --color-brand-200: #E5D1B0;
-  --color-brand-300: #DCC298;
-  --color-brand-400: #D4B380;
-  --color-brand-500: #C8956A;
-  --color-brand-600: #B07848;
-  --color-brand-700: #985C26;
-  --color-brand-800: #804004;
-  --color-brand-900: #682400;
+  --color-brand-50: #FCF3EA;
+  --color-brand-100: #FADDD7;
+  --color-brand-200: #FBAF41;
+  --color-brand-300: #F46E3B;
+  --color-brand-400: #E05A28;
+  --color-brand-500: #F46E3B;
+  --color-brand-600: #D04A18;
+  --color-brand-700: #B03A08;
+  --color-brand-800: #902A00;
+  --color-brand-900: #701A00;
+
+  /* Secondary colors */
+  --color-tostado: #F46E3B;
+  --color-cafe: #2A1A0E;
+  --color-cafe-medio: #4A3A2E;
+  --color-blanco: #FFFFFF;
+  --color-verde-suave: #9AC1A3;
+  --color-gris-calido: #A89A8A;
 }
 
 @layer base {
   body {
-    @apply bg-blanco text-texto font-sans antialiased;
+    @apply bg-crema text-texto font-sans antialiased;
   }
   
   h1, h2, h3, h4, .font-display {
-    @apply font-display;
+    @apply font-display font-bold tracking-tight;
   }
 }
 

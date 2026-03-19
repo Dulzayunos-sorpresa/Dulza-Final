@@ -49,7 +49,7 @@ service cloud.firestore {
       return isAuthenticated() &&
         (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-         (request.auth.token.email == "audisiofausto@gmail.com" && request.auth.token.email_verified == true));
+         ((request.auth.token.email == "audisiofausto@gmail.com" || request.auth.token.email == "uateventos@gmail.com") && request.auth.token.email_verified == true));
     }
 
     // ===============================================================
@@ -82,6 +82,20 @@ service cloud.firestore {
       allow create: if true;
       // Only admins can read, update, delete orders (contains PII)
       allow read, update, delete: if isAdmin();
+    }
+
+    match /coupons/{couponId} {
+      // Anyone can read coupons to validate them in the cart
+      allow read: if true;
+      // Only admins can create, update, delete coupons
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /settings/{settingId} {
+      // Anyone can read settings (like shipping costs)
+      allow read: if true;
+      // Only admins can update settings
+      allow write: if isAdmin();
     }
   }
 }

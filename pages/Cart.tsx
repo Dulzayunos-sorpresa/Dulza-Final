@@ -1,105 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Trash2, ShoppingBag, Send, MapPin, Phone, User, Calendar, MessageSquare, CreditCard, Home, Loader2 } from 'lucide-react';
+import { Trash2, ShoppingBag, Send, MapPin, Phone, User, Calendar, MessageSquare, CreditCard, Home, Loader2, ChevronRight, ChevronLeft, CheckCircle, XCircle, AlertCircle, Gift, Tag, Plus, Minus, Clock } from 'lucide-react';
+import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
 import { useStore } from '../context/store';
-import { PaymentMethod, Order, Product, ProductOption } from '../types';
+import { PaymentMethod, Order, Product, ProductOption, Coupon } from '../types';
+import { formatOrderToWhatsApp } from '../src/utils/orderUtils';
+import { motion, AnimatePresence } from 'motion/react';
 
 const WHATSAPP_NUMBER = '5493512261245'; // Número real de Dulzayunos
 
-const formatOrderToWhatsApp = (order: Order, products: Product[], options: ProductOption[]) => {
-  const date = new Date(order.createdAt).toLocaleDateString('es-AR');
-  const time = new Date(order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
-  
-  let message = `_¡Hola! Te paso el resumen de mi pedido_\n\n`;
-  message += `*Pedido:* \`\`\`#${order.id.split('-')[1]?.slice(-4) || order.id}\`\`\`\n`;
-  message += `*Tienda:* dulzayunos-sorpresa\n`;
-  message += `*Fecha:* ${date} - ${time}hs\n`;
-  message += `*Nombre:* ${order.customerName}\n`;
-  message += `*Teléfono:* ${order.customerPhone}\n\n`;
-  
-  message += `*Forma de pago:* ${order.paymentMethod}\n`;
-  message += `*Total:* $${order.total.toLocaleString()}\n\n`;
-
-  if (order.paymentMethod === PaymentMethod.TRANSFERENCIA_MP) {
-    message += `► _El cbu se envía una vez recibido el pedido_\n\n`;
-  } else if (order.paymentMethod === PaymentMethod.PAGOS_INTERNACIONALES) {
-    message += `► _Solicito los datos para el pago internacional_\n\n`;
-  }
-  
-  message += `*Entrega:* ${order.deliveryType === 'PICKUP' ? 'Retiro por el local' : 'Delivery'}\n`;
-  
-  if (order.deliveryType === 'DELIVERY') {
-    if (order.isPrivateNeighborhood) {
-      message += `*Barrio Privado:* ${order.neighborhood}\n`;
-      message += `*Familia:* ${order.familyName}\n`;
-      message += `*Manzana y Lote:* ${order.blockLot}\n`;
-      message += `*Casa N⁰:* ${order.houseNumber}\n\n`;
-    } else {
-      message += `*Dirección:* ${order.deliveryAddress}\n`;
-      message += `*Referencia:* ${order.reference || 'Sin referencia'}\n`;
-      message += `*Barrio:* ${order.neighborhood || 'No especificado'}\n\n`;
-    }
-  } else {
-    message += `*Dirección:* Nicolas Avellaneda 327\n\n`;
-  }
-  
-  const formattedDeliveryDate = order.deliveryDate.includes('-') 
-    ? order.deliveryDate.split('-').reverse().join('/') 
-    : order.deliveryDate;
-
-  message += `*📅Fecha de entrega:* ${formattedDeliveryDate}\n`;
-  message += `*🕤Horario (aproximados):* ${order.deliveryTime}\n`;
-  
-  if (order.deliveryType === 'DELIVERY') {
-    message += `*🏷️Nombre y apellido de quién recibe:* ${order.recipientName}\n`;
-    message += `*📱Teléfono de quién recibe:* ${order.recipientPhone}\n`;
-  }
-
-  message += `*📩Tarjeta dedicatoria:* ${order.notes || 'Sin dedicatoria'}\n\n`;
-  
-  message += `_Mi pedido es_\n\n`;
-  
-  order.items.forEach(item => {
-    const product = products.find(p => p.id === item.productId);
-    if (product) {
-      message += `*${product.category}*\n`;
-      
-      // Calculate item options details
-      const itemOptionsDetails: string[] = [];
-      if (item.selectedOptions && product.options) {
-        item.selectedOptions.forEach(selectedOpt => {
-          const option = product.options?.find(o => o.id === selectedOpt.optionId);
-          if (option) {
-            selectedOpt.values.forEach(valName => {
-              const val = option.values.find(v => v.name === valName);
-              if (val) {
-                itemOptionsDetails.push(`${option.name}: ${val.name}${val.price ? ` (+$${val.price.toLocaleString()})` : ''}`);
-              }
-            });
-          }
-        });
-      }
-
-      message += `${item.quantity}x ${product.name}\n`;
-      if (itemOptionsDetails.length > 0) {
-        itemOptionsDetails.forEach(opt => {
-          message += `  - ${opt}\n`;
-        });
-      }
-    }
-  });
-  
-  message += `\n*TOTAL:* *$${order.total.toLocaleString()}*\n\n`;
-  message += `_Espero tu respuesta para confirmar mi pedido_`;
-  
-  return encodeURIComponent(message);
-};
-
 const Cart: React.FC = () => {
-  const { cart, products, removeFromCart, clearCart, addOrder, orders, options } = useStore();
+  const { cart, products, removeFromCart, addToCart, clearCart, addOrder, orders, validateCoupon, shippingSettings } = useStore();
   const navigate = useNavigate();
   const [showRedirectModal, setShowRedirectModal] = useState(false);
   const [redirectType, setRedirectType] = useState<'success' | 'processing' | 'failure' | 'pending'>('processing');
+  const [step, setStep] = useState(1);
+  const [couponCode, setCouponCode] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<Coupon | null>(null);
+  const [couponError, setCouponError] = useState('');
+
   const [formData, setFormData] = useState({
     customerName: '',
     customerPhone: '',
@@ -116,10 +35,143 @@ const Cart: React.FC = () => {
     blockLot: '',
     houseNumber: '',
     paymentMethod: PaymentMethod.TRANSFERENCIA_MP,
-    notes: ''
+    notes: '',
+    selectedZone: '',
+    distanceKm: 0
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+  const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
+  const [mapUrl, setMapUrl] = useState('');
+
+  // Automatic distance calculation with debounce
+  useEffect(() => {
+    const address = formData.isPrivateNeighborhood 
+      ? formData.neighborhood 
+      : formData.deliveryAddress;
+
+    if (!address || address.length < 5) {
+      if (formData.distanceKm !== 0) {
+        setFormData(prev => ({ ...prev, distanceKm: 0 }));
+      }
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      calculateDistance(address);
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [formData.deliveryAddress, formData.neighborhood, formData.isPrivateNeighborhood]);
+
+  // Update map URL when address changes
+  useEffect(() => {
+    const address = formData.isPrivateNeighborhood 
+      ? `${formData.neighborhood}, Córdoba, Argentina`
+      : `${formData.deliveryAddress}, Córdoba, Argentina`;
+    
+    if (formData.deliveryAddress || formData.neighborhood) {
+      setMapUrl(`https://maps.google.com/maps?q=${encodeURIComponent(address)}&t=&z=13&ie=UTF8&iwloc=&output=embed`);
+    }
+  }, [formData.deliveryAddress, formData.neighborhood, formData.isPrivateNeighborhood]);
+
+  // Real distance calculation using Nominatim + Haversine
+  const calculateDistance = async (address: string) => {
+    if (!address) return;
+    
+    setIsCalculatingDistance(true);
+    try {
+      // Use Nominatim for geocoding (free, no key required for low volume)
+      // We add "Córdoba Capital" to be more specific and avoid results in other provinces
+      // We also use a viewbox to restrict results to the Córdoba city area
+      const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Córdoba Capital, Argentina')}&viewbox=-64.3,-31.3,-64.1,-31.5&bounded=1&limit=3`);
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        // Find the best match (usually the first one if bounded=1 worked)
+        const lat = parseFloat(data[0].lat);
+        const lon = parseFloat(data[0].lon);
+        
+        // Origin: Nicolas Avellaneda 327, Córdoba, Argentina
+        // Precise coordinates for the store
+        const originLat = -31.408722;
+        const originLon = -64.195311;
+        
+        // Haversine formula to calculate straight-line distance
+        const R = 6371; // Earth's radius in km
+        const dLat = (lat - originLat) * Math.PI / 180;
+        const dLon = (lon - originLon) * Math.PI / 180;
+        const a = 
+          Math.sin(dLat/2) * Math.sin(dLat/2) +
+          Math.cos(originLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * 
+          Math.sin(dLon/2) * Math.sin(dLon/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const distance = R * c;
+        
+        // Road distance is usually ~20-30% longer than straight line
+        // We also round up to the nearest integer
+        const roadDistance = Math.max(1, Math.ceil(distance * 1.3));
+        
+        // Safety check: if distance is suspiciously large (> 50km) for a city delivery, 
+        // it might be a geocoding error. We'll cap it or handle it.
+        // But for now, we'll trust the bounded search.
+        setFormData(prev => ({ ...prev, distanceKm: roadDistance }));
+      } else {
+        // Fallback: if bounded search fails, try a broader search but still in Cordoba
+        const broadResponse = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address + ', Córdoba, Argentina')}&limit=1`);
+        const broadData = await broadResponse.json();
+        if (broadData && broadData.length > 0) {
+          const lat = parseFloat(broadData[0].lat);
+          const lon = parseFloat(broadData[0].lon);
+          const originLat = -31.408722;
+          const originLon = -64.195311;
+          const R = 6371;
+          const dLat = (lat - originLat) * Math.PI / 180;
+          const dLon = (lon - originLon) * Math.PI / 180;
+          const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(originLat * Math.PI / 180) * Math.cos(lat * Math.PI / 180) * Math.sin(dLon/2) * Math.sin(dLon/2);
+          const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+          const distance = R * c;
+          const roadDistance = Math.max(1, Math.ceil(distance * 1.3));
+          
+          // If it's still huge, maybe it's really far or a wrong city
+          setFormData(prev => ({ ...prev, distanceKm: roadDistance }));
+        }
+      }
+    } catch (error) {
+      console.error("Error calculating distance:", error);
+    } finally {
+      setIsCalculatingDistance(false);
+    }
+  };
+
+  // Complementos (Upselling) categorized
+  const allComplementos = products.filter(p => 
+    p.category === 'Complementos' || 
+    p.tags?.includes('complemento') ||
+    ['Globo', 'Peluche', 'Vino', 'Bombones', 'Taza', 'Mate', 'Champaña', 'Cerveza', 'Whisky'].some(keyword => p.name.includes(keyword))
+  );
+
+  const complementosCategories = [
+    { name: 'Globos', keywords: ['Globo'] },
+    { name: 'Peluches', keywords: ['Peluche'] },
+    { name: 'Bebidas', keywords: ['Vino', 'Champaña', 'Cerveza', 'Whisky'] },
+    { name: 'Dulces', keywords: ['Bombones', 'Chocolate', 'Alfajor'] },
+    { name: 'Tazas y Mates', keywords: ['Taza', 'Mate'] }
+  ];
+
+  const groupedComplementos = complementosCategories.map(cat => ({
+    ...cat,
+    products: allComplementos.filter(p => cat.keywords.some(k => p.name.includes(k)))
+  })).filter(cat => cat.products.length > 0);
+
+  const [activeComplementCategory, setActiveComplementCategory] = useState(groupedComplementos[0]?.name || '');
+
+  useEffect(() => {
+    if (!activeComplementCategory && groupedComplementos.length > 0) {
+      setActiveComplementCategory(groupedComplementos[0].name);
+    }
+  }, [groupedComplementos]);
 
   // Calculate cart items with details
   const cartItems = cart.map(item => {
@@ -160,11 +212,94 @@ const Cart: React.FC = () => {
   }).filter(Boolean);
 
   const subtotal = cartItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0);
-  const surcharge = formData.paymentMethod === PaymentMethod.TARJETA_UALA ? subtotal * 0.15 : 0;
-  const total = subtotal + surcharge;
+  
+  const isOutOfCoverage = formData.deliveryType === 'DELIVERY' && formData.distanceKm > shippingSettings.maxKmForAutoPayment;
+
+  const calculateShippingCost = () => {
+    if (formData.deliveryType === 'PICKUP') return 0;
+    if (isOutOfCoverage) return 0; // Manual coordination
+    
+    // Check for free delivery items
+    const hasFreeDelivery = cartItems.some(item => {
+      const p = products.find(prod => prod.id === item.id);
+      return p?.tags?.includes('ENVÍO GRATIS') || p?.freeDelivery;
+    });
+    
+    if (hasFreeDelivery) return 0;
+
+    if (formData.distanceKm <= 0) return 0;
+
+    const cost = shippingSettings.baseCost + (formData.distanceKm * shippingSettings.pricePerKm);
+    return Math.ceil(cost / 100) * 100;
+  };
+
+  const shippingCost = calculateShippingCost();
+  const discountAmount = appliedCoupon 
+    ? (appliedCoupon.type === 'percentage' ? (subtotal * appliedCoupon.discount / 100) : appliedCoupon.discount)
+    : 0;
+
+  const totalAfterDiscount = Math.max(0, subtotal - discountAmount);
+  const surcharge = formData.paymentMethod === PaymentMethod.TARJETA_UALA ? totalAfterDiscount * 0.15 : 0;
+  const total = totalAfterDiscount + surcharge + shippingCost;
+
+  const handleApplyCoupon = () => {
+    setCouponError('');
+    const coupon = validateCoupon(couponCode);
+    if (coupon) {
+      if (coupon.minPurchase && subtotal < coupon.minPurchase) {
+        setCouponError(`Compra mínima para este cupón: $${coupon.minPurchase}`);
+        return;
+      }
+      setAppliedCoupon(coupon);
+      setCouponCode('');
+      
+      trackEvent(AnalyticsEvents.APPLY_COUPON, {
+        coupon_code: coupon.code,
+        discount_type: coupon.type,
+        discount_value: coupon.discount
+      });
+    } else {
+      setCouponError('Cupón inválido o expirado');
+    }
+  };
+
+  const removeCoupon = () => {
+    setAppliedCoupon(null);
+  };
+
+  const nextStep = () => {
+    if (step === 1 && cart.length === 0) return;
+    
+    trackEvent(AnalyticsEvents.CHECKOUT_PROGRESS, {
+      step: step,
+      step_name: step === 1 ? 'Cart' : step === 2 ? 'Delivery' : 'Payment'
+    });
+
+    if (step === 2) {
+      if (isOutOfCoverage) {
+        handleSubmit();
+        return;
+      }
+      const newErrors = validateForm();
+      if (Object.keys(newErrors).length > 0) {
+        // Scroll to first error
+        const firstErrorField = Object.keys(newErrors)[0];
+        const element = document.getElementsByName(firstErrorField)[0];
+        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+    setStep(step + 1);
+    window.scrollTo(0, 0);
+  };
+
+  const prevStep = () => {
+    setStep(step - 1);
+    window.scrollTo(0, 0);
+  };
 
   const [returnedOrder, setReturnedOrder] = useState<Order | null>(null);
-  const { cart: currentCart, clearCart: clearStoreCart, addToCart } = useStore();
+  const { cart: currentCart, clearCart: clearStoreCart } = useStore();
 
   // Handle return from payment gateway
   React.useEffect(() => {
@@ -198,9 +333,19 @@ const Cart: React.FC = () => {
           setShowRedirectModal(true);
           localStorage.removeItem('lastOrder');
           localStorage.removeItem('pendingCart');
+          
+          trackEvent(AnalyticsEvents.PURCHASE, {
+            transaction_id: orderId,
+            status: 'success'
+          });
         } else if (status === 'failure' || status === 'pending') {
           setRedirectType(status as 'failure' | 'pending');
           setShowRedirectModal(true);
+          
+          trackEvent(AnalyticsEvents.PAYMENT_FAILED, {
+            transaction_id: orderId,
+            status: status
+          });
           
           // Restore cart if it was cleared
           const pendingCart = localStorage.getItem('pendingCart');
@@ -221,8 +366,6 @@ const Cart: React.FC = () => {
       }
     }
   }, [orders]);
-
-  const [errors, setErrors] = useState<Record<string, string>>({});
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -267,7 +410,17 @@ const Cart: React.FC = () => {
       } else if (selectedDate.getTime() === today.getTime()) {
         // If it's today, check the time
         if (formData.deliveryTime) {
-          const [hours, minutes] = formData.deliveryTime.split(':').map(Number);
+          // Extract start time from range (e.g., "8.30 a 9.45hs" -> 8:30)
+          const firstPart = formData.deliveryTime.split(' ')[0];
+          let hours = 0;
+          let minutes = 0;
+          
+          if (firstPart.includes('.')) {
+            [hours, minutes] = firstPart.split('.').map(Number);
+          } else {
+            hours = Number(firstPart);
+          }
+
           const selectedTime = new Date();
           selectedTime.setHours(hours, minutes, 0, 0);
           
@@ -285,15 +438,71 @@ const Cart: React.FC = () => {
     if (!formData.deliveryTime.trim()) newErrors.deliveryTime = 'El horario es obligatorio';
 
     setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    return newErrors;
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     
-    if (!validateForm()) {
-      const firstError = Object.values(errors)[0];
-      if (firstError) alert(firstError);
+    const newErrors = validateForm();
+    if (Object.keys(newErrors).length > 0) {
+      const firstErrorField = Object.keys(newErrors)[0];
+      const element = document.getElementsByName(firstErrorField)[0];
+      if (element) {
+        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      } else {
+        const firstError = Object.values(newErrors)[0];
+        if (firstError) alert(firstError);
+      }
+      return;
+    }
+
+    if (isOutOfCoverage) {
+      // Handle out of coverage: Send to WhatsApp directly
+      trackEvent(AnalyticsEvents.OUT_OF_COVERAGE, {
+        distance: formData.distanceKm,
+        customer_name: formData.customerName
+      });
+
+      const orderData = {
+        customerName: formData.customerName,
+        customerPhone: formData.customerPhone,
+        deliveryAddress: formData.deliveryAddress,
+        deliveryType: formData.deliveryType as 'DELIVERY' | 'PICKUP',
+        deliveryDate: formData.deliveryDate,
+        deliveryTime: formData.deliveryTime,
+        recipientName: formData.recipientName,
+        recipientPhone: formData.recipientPhone,
+        neighborhood: formData.neighborhood,
+        reference: formData.reference,
+        isPrivateNeighborhood: formData.isPrivateNeighborhood,
+        familyName: formData.familyName,
+        blockLot: formData.blockLot,
+        houseNumber: formData.houseNumber,
+        paymentMethod: formData.paymentMethod as PaymentMethod,
+        notes: formData.notes,
+        items: cart,
+        total: subtotal - discountAmount, // Shipping cost not included yet
+        shippingCost: 0,
+        shippingZone: 'Zona 10 (Fuera de Rango)',
+        distanceKm: formData.distanceKm,
+        couponCode: appliedCoupon?.code,
+        discountAmount: discountAmount
+      };
+      
+      const paymentMethodNames = {
+        [PaymentMethod.TRANSFERENCIA_MP]: 'Mercado Pago / Transferencia',
+        [PaymentMethod.TARJETA_UALA]: 'Tarjeta (Ualá)',
+        [PaymentMethod.EFECTIVO]: 'Efectivo',
+        [PaymentMethod.PAGOS_INTERNACIONALES]: 'Pagos Internacionales'
+      };
+
+      const text = formatOrderToWhatsApp(orderData as any, products);
+      const whatsappMsg = `${text}\n\n*Método de Pago Preferido:* ${paymentMethodNames[formData.paymentMethod as PaymentMethod]}\n\n*Nota:* ¡El envío está fuera de nuestro rango! Pero podemos coordinar por Whatsapp.`;
+      
+      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
+      clearStoreCart();
+      navigate('/');
       return;
     }
     
@@ -318,13 +527,18 @@ const Cart: React.FC = () => {
         paymentMethod: formData.paymentMethod as PaymentMethod,
         notes: formData.notes,
         items: cart,
-        total
+        total,
+        shippingCost,
+        shippingZone: formData.selectedZone,
+        distanceKm: formData.distanceKm,
+        couponCode: appliedCoupon?.code,
+        discountAmount
       });
 
       setRedirectType('processing');
       setShowRedirectModal(true);
 
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(order, products, options)}`;
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(order, products)}`;
       
       if (paymentUrl) {
         console.log('Redirecting to payment gateway:', paymentUrl);
@@ -352,16 +566,16 @@ const Cart: React.FC = () => {
   if (cartItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 animate-fade-in-up">
-        <div className="bg-brand-100 p-6 rounded-full mb-6 animate-pulse">
-          <ShoppingBag className="h-12 w-12 text-brand-500" />
+        <div className="bg-crema p-8 rounded-[40px] mb-8 animate-pulse">
+          <ShoppingBag className="h-16 w-16 text-naranja" />
         </div>
-        <h2 className="text-2xl font-display font-bold text-stone-800 mb-2">Tu carrito está vacío</h2>
-        <p className="text-stone-500 mb-8 max-w-md">
+        <h2 className="text-4xl font-display font-bold text-texto mb-4 uppercase tracking-tighter">Tu carrito está vacío</h2>
+        <p className="text-texto/60 mb-10 max-w-md font-light">
           Parece que aún no has agregado ninguna caja de desayuno. ¡Elige tu regalo perfecto!
         </p>
         <Link 
           to="/personalizados"
-          className="bg-brand-600 text-white px-8 py-3 rounded-full font-bold hover:bg-brand-700 transition-all shadow-lg hover:shadow-xl transform hover:-translate-y-1"
+          className="bg-naranja text-white px-10 py-4 rounded-full font-bold uppercase tracking-[0.2em] text-sm hover:bg-naranja/90 transition-all shadow-xl hover:shadow-2xl transform hover:-translate-y-1"
         >
           Ver Personalizados
         </Link>
@@ -371,479 +585,699 @@ const Cart: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12 animate-fade-in">
-      <h1 className="text-3xl font-display font-bold text-stone-900 mb-8">Tu Pedido</h1>
-      
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-brand-100 overflow-hidden mb-8 animate-fade-in-up">
-            <ul className="divide-y divide-brand-100">
-              {cartItems.map((item, index) => (
-                <li key={item?.cartItemId} className="p-6 flex flex-col sm:flex-row items-start sm:items-center gap-6 animate-fade-in" style={{ animationDelay: `${index * 100}ms` }}>
-                  <img src={item?.image} alt={item?.name} loading="lazy" className="w-20 h-20 rounded-lg object-cover bg-stone-100 shadow-sm" />
-                  <div className="flex-1 w-full">
-                    <div className="flex justify-between items-start">
-                       <div>
-                          <h3 className="font-bold text-stone-900 text-lg">{item?.name}</h3>
-                          <p className="text-stone-500 text-sm mb-1">{item?.category}</p>
-                          {item?.itemOptionsDetails && item.itemOptionsDetails.length > 0 && (
-                            <div className="mt-1 space-y-0.5">
-                              {item.itemOptionsDetails.map((opt, i) => (
-                                <p key={i} className="text-[10px] text-stone-400 font-medium leading-tight">• {opt}</p>
-                              ))}
-                            </div>
-                          )}
-                       </div>
-                       <div className="text-right sm:hidden">
-                          <p className="font-bold text-lg text-stone-900">${item?.totalPrice.toLocaleString()}</p>
-                       </div>
-                    </div>
-                    
-                    <div className="flex items-center justify-between mt-3 sm:hidden">
-                       <div className="text-brand-600 font-bold">${item?.unitPrice.toLocaleString()} x {item?.quantity}</div>
-                       <button 
-                          onClick={() => item && removeFromCart(item.cartItemId)}
-                          className="text-red-400 hover:text-red-600 text-sm flex items-center gap-1 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" /> Eliminar
-                        </button>
-                    </div>
-                  </div>
-                  
-                  <div className="text-right hidden sm:block min-w-[120px]">
-                    <p className="font-bold text-lg text-stone-900 mb-1">${item?.totalPrice.toLocaleString()}</p>
-                    <div className="text-stone-500 text-sm mb-2">{item?.quantity} unidad{item?.quantity !== 1 ? 'es' : ''}</div>
-                    <button 
-                      onClick={() => item && removeFromCart(item.cartItemId)}
-                      className="text-red-400 hover:text-red-600 p-2 rounded-full hover:bg-red-50 transition-colors inline-flex"
-                      title="Eliminar"
-                    >
-                      <Trash2 className="h-5 w-5" />
-                    </button>
-                  </div>
-                </li>
-              ))}
-            </ul>
-            <div className="bg-brand-50 p-6 flex justify-between items-center border-t border-brand-100">
-              <span className="text-stone-600 font-medium">Total a pagar:</span>
-              <span className="text-3xl font-bold text-brand-700 font-display animate-pulse">${total.toLocaleString()}</span>
-            </div>
-          </div>
-
-          <div className="flex justify-start gap-4 animate-fade-in-up delay-200">
-            <button 
-              onClick={clearCart}
-              className="px-6 py-3 text-stone-500 font-medium hover:text-stone-700 hover:underline transition-colors"
-            >
-              Vaciar Carrito
-            </button>
-          </div>
-        </div>
-
-        <div className="lg:col-span-1">
-          <form onSubmit={handleSubmit} className="bg-white rounded-2xl p-6 border border-brand-100 shadow-sm sticky top-24">
-            <h2 className="text-xl font-display font-bold text-stone-800 mb-6 flex items-center gap-2">
-              <Send className="w-5 h-5 text-brand-500" />
-              Datos de Entrega
-            </h2>
-
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Tipo de Entrega</label>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({...formData, deliveryType: 'DELIVERY'})}
-                    className={`py-3 rounded-xl text-sm font-bold border transition-all ${formData.deliveryType === 'DELIVERY' ? 'bg-brand-500 text-white border-brand-500 shadow-md' : 'bg-stone-50 text-stone-500 border-stone-100'}`}
-                  >
-                    Delivery
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFormData({...formData, deliveryType: 'PICKUP'})}
-                    className={`py-3 rounded-xl text-sm font-bold border transition-all ${formData.deliveryType === 'PICKUP' ? 'bg-brand-500 text-white border-brand-500 shadow-md' : 'bg-stone-50 text-stone-500 border-stone-100'}`}
-                  >
-                    Retiro Local
-                  </button>
+      {/* Stepper */}
+      <div className="mb-16">
+        <div className="flex items-center justify-center max-w-2xl mx-auto">
+          {[
+            { n: 1, label: 'Carrito' },
+            { n: 2, label: 'Envío' },
+            { n: 3, label: 'Pago' }
+          ].map((s, i) => (
+            <React.Fragment key={s.n}>
+              <div className="flex flex-col items-center relative">
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all duration-500 ${
+                  step >= s.n ? 'bg-naranja text-white shadow-[0_10px_20px_-5px_rgba(242,125,38,0.4)] scale-110' : 'bg-crema text-texto/30'
+                }`}>
+                  {step > s.n ? <CheckCircle className="w-6 h-6" /> : s.n}
                 </div>
+                <span className={`absolute -bottom-8 text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap transition-colors duration-500 ${
+                  step >= s.n ? 'text-naranja' : 'text-texto/30'
+                }`}>
+                  {s.label}
+                </span>
               </div>
-
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Tus Datos</label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                  <input 
-                    required
-                    type="text" 
-                    placeholder="Tu nombre completo"
-                    value={formData.customerName}
-                    onChange={(e) => {
-                      setFormData({...formData, customerName: e.target.value});
-                      if (errors.customerName) setErrors({...errors, customerName: ''});
-                    }}
-                    className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.customerName ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
+              {i < 2 && (
+                <div className="flex-1 h-[2px] mx-6 bg-crema rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-naranja transition-all duration-700 ease-out"
+                    style={{ width: step > s.n ? '100%' : '0%' }}
                   />
-                  {errors.customerName && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.customerName}</p>}
-                </div>
-
-                <div className="relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                  <input 
-                    required
-                    type="tel" 
-                    placeholder="Tu teléfono (cod. área + número)"
-                    value={formData.customerPhone}
-                    onChange={(e) => {
-                      setFormData({...formData, customerPhone: e.target.value});
-                      if (errors.customerPhone) setErrors({...errors, customerPhone: ''});
-                    }}
-                    className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.customerPhone ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                  />
-                  {errors.customerPhone && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.customerPhone}</p>}
-                </div>
-              </div>
-
-              <div className="space-y-2 pt-2">
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Datos de {formData.deliveryType === 'PICKUP' ? 'Retiro' : 'Entrega'}</label>
-                
-                {formData.deliveryType === 'DELIVERY' && (
-                  <div className="flex items-center gap-2 mb-2 p-2 bg-stone-50 rounded-lg border border-stone-100">
-                    <input 
-                      type="checkbox" 
-                      id="isPrivateNeighborhood"
-                      checked={formData.isPrivateNeighborhood}
-                      onChange={(e) => setFormData({...formData, isPrivateNeighborhood: e.target.checked})}
-                      className="w-4 h-4 text-brand-500 rounded border-stone-300 focus:ring-brand-500"
-                    />
-                    <label htmlFor="isPrivateNeighborhood" className="text-xs font-bold text-stone-700 cursor-pointer">
-                      Es un barrio privado
-                    </label>
-                  </div>
-                )}
-
-                {formData.deliveryType === 'DELIVERY' ? (
-                  <>
-                    {!formData.isPrivateNeighborhood ? (
-                      <>
-                        <div className="relative">
-                          <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                          <input 
-                            required
-                            type="text" 
-                            placeholder="Dirección de entrega"
-                            value={formData.deliveryAddress}
-                            onChange={(e) => {
-                              setFormData({...formData, deliveryAddress: e.target.value});
-                              if (errors.deliveryAddress) setErrors({...errors, deliveryAddress: ''});
-                            }}
-                            className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.deliveryAddress ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                          />
-                          {errors.deliveryAddress && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.deliveryAddress}</p>}
-                          
-                          {formData.deliveryAddress && formData.deliveryAddress.length > 5 && (
-                            <div className="mt-3 rounded-xl overflow-hidden border border-stone-200 h-40 w-full shadow-inner bg-stone-100 relative animate-fade-in">
-                              <iframe
-                                title="Map Preview"
-                                width="100%"
-                                height="100%"
-                                frameBorder="0"
-                                scrolling="no"
-                                src={`https://maps.google.com/maps?q=${encodeURIComponent(formData.deliveryAddress + ', Córdoba, Argentina')}&output=embed`}
-                                className="grayscale hover:grayscale-0 transition-all duration-500"
-                              ></iframe>
-                              <div className="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-stone-500 pointer-events-none">
-                                Vista de referencia
-                              </div>
-                            </div>
-                          )}
-                        </div>
-
-                        <div className="relative">
-                          <MessageSquare className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                          <input 
-                            type="text" 
-                            placeholder="Referencia (Piso, Dpto, etc)"
-                            value={formData.reference}
-                            onChange={(e) => setFormData({...formData, reference: e.target.value})}
-                            className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-100 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
-                          />
-                        </div>
-
-                        <div className="relative">
-                          <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                          <input 
-                            type="text" 
-                            placeholder="Barrio"
-                            value={formData.neighborhood}
-                            onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
-                            className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-100 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
-                          />
-                        </div>
-                      </>
-                    ) : (
-                      <div className="space-y-3 animate-fade-in">
-                        <div className="relative">
-                          <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                          <input 
-                            required
-                            type="text" 
-                            placeholder="Nombre del Barrio"
-                            value={formData.neighborhood}
-                            onChange={(e) => {
-                              setFormData({...formData, neighborhood: e.target.value});
-                              if (errors.neighborhood) setErrors({...errors, neighborhood: ''});
-                            }}
-                            className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.neighborhood ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                          />
-                          {errors.neighborhood && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.neighborhood}</p>}
-                        </div>
-
-                        <div className="relative">
-                          <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                          <input 
-                            required
-                            type="text" 
-                            placeholder="Nombre de la familia"
-                            value={formData.familyName}
-                            onChange={(e) => {
-                              setFormData({...formData, familyName: e.target.value});
-                              if (errors.familyName) setErrors({...errors, familyName: ''});
-                            }}
-                            className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.familyName ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                          />
-                          {errors.familyName && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.familyName}</p>}
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-2">
-                          <div className="relative">
-                            <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                            <input 
-                              required
-                              type="text" 
-                              placeholder="Manzana y lote"
-                              value={formData.blockLot}
-                              onChange={(e) => {
-                                setFormData({...formData, blockLot: e.target.value});
-                                if (errors.blockLot) setErrors({...errors, blockLot: ''});
-                              }}
-                              className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.blockLot ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                            />
-                            {errors.blockLot && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.blockLot}</p>}
-                          </div>
-                          <div className="relative">
-                            <Home className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                            <input 
-                              required
-                              type="text" 
-                              placeholder="Casa N⁰"
-                              value={formData.houseNumber}
-                              onChange={(e) => {
-                                setFormData({...formData, houseNumber: e.target.value});
-                                if (errors.houseNumber) setErrors({...errors, houseNumber: ''});
-                              }}
-                              className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.houseNumber ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                            />
-                            {errors.houseNumber && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.houseNumber}</p>}
-                          </div>
-                        </div>
-
-                        {formData.neighborhood && formData.neighborhood.length > 3 && (
-                          <div className="mt-3 rounded-xl overflow-hidden border border-stone-200 h-40 w-full shadow-inner bg-stone-100 relative animate-fade-in">
-                            <iframe
-                              title="Map Preview"
-                              width="100%"
-                              height="100%"
-                              frameBorder="0"
-                              scrolling="no"
-                              src={`https://maps.google.com/maps?q=${encodeURIComponent(formData.neighborhood + ', Córdoba, Argentina')}&output=embed`}
-                              className="grayscale hover:grayscale-0 transition-all duration-500"
-                            ></iframe>
-                            <div className="absolute bottom-2 right-2 bg-white/80 backdrop-blur-sm px-2 py-1 rounded text-[10px] font-bold text-stone-500 pointer-events-none">
-                              Vista de referencia
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="p-4 bg-brand-50 rounded-xl border border-brand-100 flex items-start gap-3">
-                    <MapPin className="w-5 h-5 text-brand-500 shrink-0 mt-0.5" />
-                    <div>
-                      <p className="text-xs font-bold text-brand-700 uppercase mb-1">Punto de Retiro</p>
-                      <p className="text-sm text-stone-700 font-medium">Nicolas Avellaneda 327</p>
-                      <p className="text-[10px] text-stone-500 mt-1">Córdoba Capital, Argentina</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="grid grid-cols-2 gap-2">
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
-                    <input 
-                      required
-                      type="date" 
-                      min={new Date().toISOString().split('T')[0]}
-                      value={formData.deliveryDate}
-                      onChange={(e) => {
-                        setFormData({...formData, deliveryDate: e.target.value});
-                        if (errors.deliveryDate) setErrors({...errors, deliveryDate: ''});
-                      }}
-                      className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.deliveryDate ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                    />
-                  </div>
-                  <div className="relative">
-                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400 pointer-events-none" />
-                    <input 
-                      required
-                      type="time" 
-                      value={formData.deliveryTime}
-                      onChange={(e) => {
-                        setFormData({...formData, deliveryTime: e.target.value});
-                        if (errors.deliveryTime) setErrors({...errors, deliveryTime: ''});
-                      }}
-                      className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.deliveryTime ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                    />
-                  </div>
-                </div>
-                {(errors.deliveryDate || errors.deliveryTime) && (
-                  <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.deliveryDate || errors.deliveryTime}</p>
-                )}
-              </div>
-
-              {formData.deliveryType === 'DELIVERY' && (
-                <div className="space-y-2 pt-2">
-                  <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Quién Recibe</label>
-                  <div className="relative">
-                    <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                    <input 
-                      required
-                      type="text" 
-                      placeholder="Nombre de quién recibe"
-                      value={formData.recipientName}
-                      onChange={(e) => {
-                        setFormData({...formData, recipientName: e.target.value});
-                        if (errors.recipientName) setErrors({...errors, recipientName: ''});
-                      }}
-                      className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.recipientName ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                    />
-                    {errors.recipientName && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.recipientName}</p>}
-                  </div>
-
-                  <div className="relative">
-                    <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                    <input 
-                      required
-                      type="tel" 
-                      placeholder="Teléfono de quién recibe"
-                      value={formData.recipientPhone}
-                      onChange={(e) => {
-                        setFormData({...formData, recipientPhone: e.target.value});
-                        if (errors.recipientPhone) setErrors({...errors, recipientPhone: ''});
-                      }}
-                      className={`w-full pl-10 pr-4 py-3 bg-stone-50 border ${errors.recipientPhone ? 'border-red-500' : 'border-stone-100'} rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm`}
-                    />
-                    {errors.recipientPhone && <p className="text-[10px] text-red-500 mt-1 ml-1">{errors.recipientPhone}</p>}
-                  </div>
                 </div>
               )}
-
-              <div className="space-y-2 pt-2">
-                <label className="text-xs font-bold text-stone-500 uppercase tracking-wider">Pago y Notas</label>
-                <div className="relative">
-                  <CreditCard className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-                  <select 
-                    value={formData.paymentMethod}
-                    onChange={(e) => setFormData({...formData, paymentMethod: e.target.value as PaymentMethod})}
-                    className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-100 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm appearance-none"
-                  >
-                    <option value={PaymentMethod.TRANSFERENCIA_MP}>Mercado Pago (Transferencia)</option>
-                    <option value={PaymentMethod.TARJETA_UALA}>Ualá (Tarjeta) (+15%)</option>
-                    <option value={PaymentMethod.EFECTIVO}>Efectivo (en el local)</option>
-                    <option value={PaymentMethod.PAGOS_INTERNACIONALES}>Pagos Internacionales (PayPal o Western Union)</option>
-                  </select>
-                </div>
-                {formData.paymentMethod === PaymentMethod.TARJETA_UALA && (
-                  <p className="text-[10px] text-brand-600 font-bold px-1">
-                    * Se aplicará un recargo del 15% por pago con tarjeta.
-                  </p>
-                )}
-                {formData.paymentMethod === PaymentMethod.PAGOS_INTERNACIONALES && (
-                  <p className="text-[10px] text-brand-600 font-bold px-1">
-                    * Los datos para el pago internacional se enviarán por WhatsApp.
-                  </p>
-                )}
-
-                <div className="relative">
-                  <MessageSquare className="absolute left-3 top-3 w-4 h-4 text-stone-400" />
-                  <textarea 
-                    placeholder="Tarjeta dedicatoria..."
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    className="w-full pl-10 pr-4 py-3 bg-stone-50 border border-stone-100 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm h-24 resize-none"
-                  />
-                </div>
-              </div>
-
-              <button 
-                type="submit"
-                disabled={isSubmitting}
-                className="w-full bg-brand-600 text-white py-4 rounded-xl font-bold hover:bg-brand-700 transition-all shadow-lg shadow-brand-100 flex items-center justify-center gap-2 mt-4 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSubmitting ? (
-                  <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Procesando...
-                  </>
-                ) : (
-                  'Confirmar y enviar WhatsApp'
-                )}
-              </button>
-              
-              <p className="text-[10px] text-stone-400 text-center mt-4">
-                Al confirmar, serás redirigido a WhatsApp para enviar el resumen de tu pedido.
-              </p>
-            </div>
-          </form>
+            </React.Fragment>
+          ))}
         </div>
       </div>
 
+      <AnimatePresence mode="wait">
+        {step === 1 && (
+          <motion.div 
+            key="step1"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          >
+            <div className="lg:col-span-2 space-y-10">
+              <div className="bg-white rounded-[40px] shadow-sm border border-naranja/5 overflow-hidden">
+                <div className="p-8 border-b border-naranja/5 flex justify-between items-center bg-crema/20">
+                  <h2 className="text-2xl font-display font-bold text-texto uppercase tracking-tight">Tu Carrito</h2>
+                  <span className="text-xs text-texto/40 font-bold uppercase tracking-widest">{cartItems.length} producto(s)</span>
+                </div>
+                <ul className="divide-y divide-naranja/5">
+                  {cartItems.map((item, index) => (
+                    <li key={item.cartItemId} className="p-8 flex flex-col sm:flex-row items-start sm:items-center gap-8">
+                      <img src={item.image} alt={item.name} className="w-28 h-28 rounded-3xl object-cover bg-crema shadow-sm" />
+                      <div className="flex-1 w-full">
+                        <div className="flex justify-between items-start mb-4">
+                          <div>
+                            <h3 className="font-bold text-texto text-xl uppercase tracking-tight">{item.name}</h3>
+                            <p className="text-naranja text-xs font-bold uppercase tracking-widest">{item.category}</p>
+                          </div>
+                          <p className="font-bold text-xl text-texto">${item.totalPrice.toLocaleString()}</p>
+                        </div>
+                        
+                        {item.itemOptionsDetails && item.itemOptionsDetails.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mb-6">
+                            {item.itemOptionsDetails.map((opt, i) => (
+                              <span key={i} className="px-3 py-1 bg-crema/50 text-texto/60 text-[10px] rounded-full border border-naranja/5 font-medium">
+                                {opt}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+ 
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center bg-crema rounded-2xl p-1.5 border border-naranja/5">
+                            <button 
+                              onClick={() => item.quantity > 1 && addToCart(item.id, -1, item.selectedOptions)}
+                              className="p-1.5 hover:bg-white rounded-xl transition-all text-texto/40 hover:text-naranja"
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="w-10 text-center font-bold text-sm text-texto">{item.quantity}</span>
+                            <button 
+                              onClick={() => addToCart(item.id, 1, item.selectedOptions)}
+                              className="p-1.5 hover:bg-white rounded-xl transition-all text-texto/40 hover:text-naranja"
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <button 
+                            onClick={() => removeFromCart(item.cartItemId)}
+                            className="text-texto/30 hover:text-naranja text-xs flex items-center gap-2 transition-all font-bold uppercase tracking-widest"
+                          >
+                            <Trash2 className="h-4 w-4" /> Eliminar
+                          </button>
+                        </div>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+ 
+              {/* Upselling Section */}
+              {groupedComplementos.length > 0 && (
+                <div className="space-y-8">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                    <h3 className="text-xl font-display font-bold text-texto flex items-center gap-3 uppercase tracking-tight">
+                      <Gift className="w-6 h-6 text-naranja" />
+                      ¿Querés sumar algo más?
+                    </h3>
+                    
+                    <div className="flex gap-2 overflow-x-auto pb-2 sm:pb-0 no-scrollbar">
+                      {groupedComplementos.map(cat => (
+                        <button
+                          key={cat.name}
+                          onClick={() => setActiveComplementCategory(cat.name)}
+                          className={`px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${
+                            activeComplementCategory === cat.name 
+                              ? 'bg-naranja text-white border-naranja shadow-lg shadow-naranja/20' 
+                              : 'bg-white text-texto/40 border-naranja/5 hover:border-naranja/20'
+                          }`}
+                        >
+                          {cat.name}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+ 
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
+                    {groupedComplementos.find(c => c.name === activeComplementCategory)?.products.slice(0, 8).map(p => (
+                      <div key={p.id} className="bg-white p-4 rounded-[32px] border border-naranja/5 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+                        <div className="aspect-square rounded-2xl overflow-hidden mb-4 relative">
+                          <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
+                          <button 
+                            onClick={() => addToCart(p.id, 1)}
+                            className="absolute bottom-3 right-3 bg-naranja text-white p-2.5 rounded-xl shadow-xl transform translate-y-4 opacity-0 group-hover:translate-y-0 group-hover:opacity-100 transition-all duration-500"
+                          >
+                            <Plus className="w-5 h-5" />
+                          </button>
+                        </div>
+                        <h4 className="text-[11px] font-bold text-texto uppercase tracking-tight truncate mb-1">{p.name}</h4>
+                        <p className="text-naranja font-bold text-sm">${p.price.toLocaleString()}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-sm sticky top-24 space-y-8">
+                <h3 className="text-xl font-display font-bold text-texto uppercase tracking-tight">Resumen</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-texto/60 text-sm font-medium">
+                    <span>Subtotal</span>
+                    <span>${subtotal.toLocaleString()}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-verde text-sm font-bold">
+                      <span>Descuento ({appliedCoupon?.code})</span>
+                      <span>-${discountAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {formData.deliveryType === 'DELIVERY' && (
+                    <div className="flex justify-between text-texto/60 text-sm font-medium">
+                      <span>Envío {formData.selectedZone ? `(${formData.selectedZone})` : ''}</span>
+                      <span>{isOutOfCoverage ? 'A coordinar' : `$${shippingCost.toLocaleString()}`}</span>
+                    </div>
+                  )}
+                  <div className="pt-6 border-t border-naranja/5 flex justify-between items-center">
+                    <span className="font-bold text-texto uppercase tracking-widest text-xs">Total</span>
+                    <span className="text-3xl font-bold text-naranja font-display tracking-tighter">${total.toLocaleString()}</span>
+                  </div>
+                </div>
+                <button 
+                  onClick={nextStep}
+                  className="w-full bg-naranja text-white py-5 rounded-full font-bold uppercase tracking-[0.2em] text-sm hover:bg-naranja/90 transition-all shadow-xl shadow-naranja/10 flex items-center justify-center gap-3 group"
+                >
+                  {isOutOfCoverage ? 'Consultar por WhatsApp' : 'Continuar'} <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <button 
+                  onClick={clearCart}
+                  className="w-full py-2 text-texto/30 text-[10px] font-bold uppercase tracking-widest hover:text-naranja transition-colors"
+                >
+                  Vaciar carrito
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 2 && (
+          <motion.div 
+            key="step2"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="max-w-2xl mx-auto"
+          >
+            <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-xl shadow-naranja/5 space-y-8">
+              <div className="flex items-center justify-between">
+                <h2 className="text-3xl font-display font-bold text-texto">Datos de Entrega</h2>
+                <button onClick={prevStep} className="text-texto/40 hover:text-naranja flex items-center gap-1 text-sm font-bold transition-colors">
+                  <ChevronLeft className="w-4 h-4" /> Volver
+                </button>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Tus Datos</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="relative">
+                      <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                      <input 
+                        type="text" 
+                        name="customerName"
+                        placeholder="Tu nombre completo"
+                        value={formData.customerName}
+                        onChange={(e) => setFormData({...formData, customerName: e.target.value})}
+                        className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.customerName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                      />
+                      {errors.customerName && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.customerName}</p>}
+                    </div>
+                    <div className="relative">
+                      <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                      <input 
+                        type="tel" 
+                        name="customerPhone"
+                        placeholder="Tu teléfono"
+                        value={formData.customerPhone}
+                        onChange={(e) => setFormData({...formData, customerPhone: e.target.value})}
+                        className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.customerPhone ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                      />
+                      {errors.customerPhone && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.customerPhone}</p>}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Tipo de Entrega</label>
+                  <div className="grid grid-cols-2 gap-4">
+                    <button
+                      onClick={() => setFormData({...formData, deliveryType: 'DELIVERY'})}
+                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex flex-col gap-3 ${formData.deliveryType === 'DELIVERY' ? 'border-naranja bg-naranja/5' : 'border-naranja/5 bg-crema/10 hover:bg-crema/20'}`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.deliveryType === 'DELIVERY' ? 'bg-naranja text-white' : 'bg-white text-naranja/40'}`}>
+                        <MapPin className="w-5 h-5" />
+                      </div>
+                      <span className={`font-bold text-sm tracking-tight ${formData.deliveryType === 'DELIVERY' ? 'text-naranja' : 'text-texto/60'}`}>Envío a domicilio</span>
+                    </button>
+                    <button
+                      onClick={() => setFormData({...formData, deliveryType: 'PICKUP'})}
+                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex flex-col gap-3 ${formData.deliveryType === 'PICKUP' ? 'border-naranja bg-naranja/5' : 'border-naranja/5 bg-crema/10 hover:bg-crema/20'}`}
+                    >
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.deliveryType === 'PICKUP' ? 'bg-naranja text-white' : 'bg-white text-naranja/40'}`}>
+                        <Home className="w-5 h-5" />
+                      </div>
+                      <span className={`font-bold text-sm tracking-tight ${formData.deliveryType === 'PICKUP' ? 'text-naranja' : 'text-texto/60'}`}>Retiro por local</span>
+                    </button>
+                  </div>
+                </div>
+
+                {formData.deliveryType === 'DELIVERY' && (
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="flex items-center gap-3 p-4 bg-crema/30 rounded-2xl border border-naranja/5">
+                      <input 
+                        type="checkbox" 
+                        id="isPrivate"
+                        checked={formData.isPrivateNeighborhood}
+                        onChange={(e) => setFormData({...formData, isPrivateNeighborhood: e.target.checked})}
+                        className="w-5 h-5 text-naranja rounded-lg border-naranja/20 focus:ring-naranja/20 cursor-pointer"
+                      />
+                      <label htmlFor="isPrivate" className="text-sm font-bold text-texto cursor-pointer">Es un barrio privado / country</label>
+                    </div>
+
+                    {formData.isPrivateNeighborhood ? (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <input 
+                            name="neighborhood"
+                            placeholder="Nombre del Barrio"
+                            value={formData.neighborhood}
+                            onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
+                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.neighborhood ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.neighborhood && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.neighborhood}</p>}
+                        </div>
+                        <div className="space-y-1">
+                          <input 
+                            name="familyName"
+                            placeholder="Nombre de la Familia"
+                            value={formData.familyName}
+                            onChange={(e) => setFormData({...formData, familyName: e.target.value})}
+                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.familyName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.familyName && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.familyName}</p>}
+                        </div>
+                        <div className="space-y-1">
+                          <input 
+                            name="blockLot"
+                            placeholder="Manzana y Lote"
+                            value={formData.blockLot}
+                            onChange={(e) => setFormData({...formData, blockLot: e.target.value})}
+                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.blockLot ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.blockLot && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.blockLot}</p>}
+                        </div>
+                        <div className="space-y-1">
+                          <input 
+                            name="houseNumber"
+                            placeholder="Nro de Casa"
+                            value={formData.houseNumber}
+                            onChange={(e) => setFormData({...formData, houseNumber: e.target.value})}
+                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.houseNumber ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.houseNumber && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.houseNumber}</p>}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <div className="relative">
+                          <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                          <input 
+                            name="deliveryAddress"
+                            placeholder="Dirección exacta"
+                            value={formData.deliveryAddress}
+                            onChange={(e) => setFormData({...formData, deliveryAddress: e.target.value})}
+                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.deliveryAddress ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.deliveryAddress && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.deliveryAddress}</p>}
+                        </div>
+                        <input 
+                          placeholder="Referencia (Piso, Dpto, timbre, etc)"
+                          value={formData.reference}
+                          onChange={(e) => setFormData({...formData, reference: e.target.value})}
+                          className="w-full px-5 py-4 bg-crema/20 border border-naranja/5 rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all"
+                        />
+                      </div>
+                    )}
+
+                    {mapUrl && (
+                      <div className="space-y-4">
+                        <div className="rounded-[32px] overflow-hidden border border-naranja/5 shadow-inner aspect-video relative bg-crema/10">
+                          <iframe 
+                            width="100%" 
+                            height="100%" 
+                            frameBorder="0" 
+                            scrolling="no" 
+                            marginHeight={0} 
+                            marginWidth={0} 
+                            src={mapUrl}
+                            className="grayscale-[0.2] contrast-[1.1]"
+                          />
+                        </div>
+                        
+                        <div className="flex flex-col sm:flex-row items-center gap-4">
+                          {isCalculatingDistance ? (
+                            <div className="flex items-center gap-2 px-5 py-3 bg-crema/20 rounded-2xl border border-naranja/5 animate-pulse">
+                              <Loader2 className="w-4 h-4 animate-spin text-naranja/40" />
+                              <span className="text-xs font-bold text-texto/40">Calculando distancia...</span>
+                            </div>
+                          ) : formData.distanceKm > 0 && (
+                            <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
+                              <div className="flex items-center gap-2 px-5 py-3 bg-crema/30 rounded-2xl border border-naranja/5 flex-1 justify-center">
+                                <span className="text-xs font-bold text-texto">Distancia estimada: <span className="text-naranja">{formData.distanceKm} km</span></span>
+                              </div>
+                              {!isOutOfCoverage && (
+                                <div className="flex items-center gap-2 px-5 py-3 bg-verde/10 rounded-2xl border border-verde/20 flex-1 justify-center">
+                                  <span className="text-xs font-bold text-verde">Costo de envío: <span className="text-texto">${shippingCost.toLocaleString()}</span></span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {isOutOfCoverage && (
+                      <div className="p-5 bg-naranja/5 border border-naranja/20 rounded-[32px] flex items-start gap-4 animate-shake">
+                        <div className="w-10 h-10 rounded-full bg-naranja/10 flex items-center justify-center shrink-0">
+                          <AlertCircle className="w-6 h-6 text-naranja" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-texto mb-1">¡El envío está fuera de nuestro rango!</p>
+                          <p className="text-xs text-texto/60 leading-relaxed mb-4">
+                            Tu ubicación se encuentra en la <strong className="text-naranja">Zona 10 (Lejos)</strong>. 
+                            No podemos procesar el pago automático, pero podemos coordinar por Whatsapp para enviarte tu pedido.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">¿Cuándo entregamos?</label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Calendar className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                        <input 
+                          type="date" 
+                          name="deliveryDate"
+                          value={formData.deliveryDate}
+                          onChange={(e) => setFormData({...formData, deliveryDate: e.target.value})}
+                          className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.deliveryDate ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto transition-all`}
+                        />
+                      </div>
+                      {errors.deliveryDate && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.deliveryDate}</p>}
+                      {formData.deliveryDate && new Date(formData.deliveryDate + 'T00:00:00') < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) && (
+                        <div className="flex items-center gap-2 mt-2 p-3 bg-naranja/5 rounded-xl border border-naranja/10">
+                          <AlertCircle className="w-4 h-4 text-naranja" />
+                          <p className="text-[10px] font-bold text-naranja">¡Tu pedido es para un día anterior, verificalo!</p>
+                        </div>
+                      )}
+                    </div>
+                    <div className="space-y-1">
+                      <div className="relative">
+                        <Clock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                        <select 
+                          name="deliveryTime"
+                          value={formData.deliveryTime}
+                          onChange={(e) => setFormData({...formData, deliveryTime: e.target.value})}
+                          className={`w-full pl-12 pr-10 py-4 bg-crema/20 border ${errors.deliveryTime ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto appearance-none transition-all`}
+                        >
+                          <option value="">Seleccionar rango horario</option>
+                          <option value="8 a 9.15hs">8 a 9.15hs</option>
+                          <option value="8.30 a 9.45hs">8.30 a 9.45hs</option>
+                          <option value="9 a 10.15hs">9 a 10.15hs</option>
+                          <option value="9.30 a 10.45hs">9.30 a 10.45hs</option>
+                          <option value="10 a 11.15hs">10 a 11.15hs</option>
+                          <option value="10.30 a 12hs">10.30 a 12hs</option>
+                          <option value="12 a 14hs">12 a 14hs</option>
+                          <option value="16.30 a 19hs">16.30 a 19hs</option>
+                        </select>
+                        <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                          <ChevronRight className="w-4 h-4 text-naranja/40 rotate-90" />
+                        </div>
+                      </div>
+                      {errors.deliveryTime && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.deliveryTime}</p>}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+                <div className="pt-6 border-t border-naranja/5 space-y-3">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-texto/40 font-bold uppercase tracking-wider">Subtotal</span>
+                    <span className="text-texto font-bold">${subtotal.toLocaleString()}</span>
+                  </div>
+                  {formData.deliveryType === 'DELIVERY' && (
+                    <div className="flex justify-between text-sm">
+                      <span className="text-texto/40 font-bold uppercase tracking-wider">Envío</span>
+                      <span className="text-texto font-bold">
+                        {isCalculatingDistance ? 'Calculando...' : 
+                         isOutOfCoverage ? 'A coordinar' : 
+                         shippingCost === 0 ? 'Sin cargo' : `$${shippingCost.toLocaleString()}`}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between text-2xl pt-3 border-t border-naranja/5">
+                    <span className="font-display font-bold text-texto">Total estimado</span>
+                    <span className="font-display font-bold text-naranja">
+                      {isCalculatingDistance ? '...' : 
+                       isOutOfCoverage ? `$${totalAfterDiscount.toLocaleString()} + Envío` : 
+                       `$${(totalAfterDiscount + shippingCost).toLocaleString()}`}
+                    </span>
+                  </div>
+                </div>
+
+                <button 
+                  onClick={isOutOfCoverage ? () => handleSubmit() : nextStep}
+                  disabled={isCalculatingDistance}
+                  className={`w-full py-5 rounded-2xl font-bold transition-all shadow-xl flex items-center justify-center gap-3 ${
+                    isCalculatingDistance
+                      ? 'bg-crema text-texto/20 cursor-not-allowed'
+                      : isOutOfCoverage 
+                        ? 'bg-texto text-crema hover:bg-black shadow-texto/10' 
+                        : 'bg-naranja text-white hover:bg-naranja/90 shadow-naranja/20'
+                  }`}
+                >
+                  {isCalculatingDistance ? (
+                    <>Calculando... <Loader2 className="w-5 h-5 animate-spin" /></>
+                  ) : isOutOfCoverage ? (
+                    <>Consultar por WhatsApp <Send className="w-5 h-5" /></>
+                  ) : (
+                    <>Continuar al Pago <ChevronRight className="w-5 h-5" /></>
+                  )}
+                </button>
+            </div>
+          </motion.div>
+        )}
+
+        {step === 3 && (
+          <motion.div 
+            key="step3"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+            className="grid grid-cols-1 lg:grid-cols-3 gap-8"
+          >
+            <div className="lg:col-span-2 space-y-6">
+              <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-xl shadow-naranja/5 space-y-8">
+                <div className="flex items-center justify-between">
+                  <h2 className="text-3xl font-display font-bold text-texto">Método de Pago</h2>
+                  <button onClick={prevStep} className="text-texto/40 hover:text-naranja flex items-center gap-1 text-sm font-bold transition-colors">
+                    <ChevronLeft className="w-4 h-4" /> Volver
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {[
+                    { id: PaymentMethod.TRANSFERENCIA_MP, label: 'Mercado Pago', sub: 'Transferencia', icon: CreditCard },
+                    { id: PaymentMethod.TARJETA_UALA, label: 'Tarjeta (Ualá)', sub: '+15% recargo', icon: CreditCard },
+                    { id: PaymentMethod.EFECTIVO, label: 'Efectivo', sub: 'En el local', icon: ShoppingBag },
+                    { id: PaymentMethod.PAGOS_INTERNACIONALES, label: 'Internacional', sub: 'PayPal / Western', icon: Send }
+                  ].map(m => (
+                    <button
+                      key={m.id}
+                      onClick={() => setFormData({...formData, paymentMethod: m.id})}
+                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-4 ${formData.paymentMethod === m.id ? 'border-naranja bg-naranja/5' : 'border-naranja/5 bg-crema/10 hover:bg-crema/20'}`}
+                    >
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${formData.paymentMethod === m.id ? 'bg-naranja text-white' : 'bg-white text-naranja/40'}`}>
+                        <m.icon className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <p className={`font-bold text-sm tracking-tight ${formData.paymentMethod === m.id ? 'text-naranja' : 'text-texto'}`}>{m.label}</p>
+                        <p className="text-[10px] text-texto/40 font-bold uppercase tracking-wider">{m.sub}</p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">¿Tenés un cupón de descuento?</label>
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                      <input 
+                        placeholder="Ingresá tu código"
+                        value={couponCode}
+                        onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                        className="w-full pl-12 pr-4 py-4 bg-crema/20 border border-naranja/5 rounded-2xl outline-none text-sm font-mono font-bold text-texto placeholder:text-texto/30 transition-all"
+                      />
+                    </div>
+                    <button 
+                      onClick={handleApplyCoupon}
+                      className="px-8 bg-texto text-crema rounded-2xl font-bold text-sm hover:bg-black transition-all shadow-lg shadow-texto/10"
+                    >
+                      Aplicar
+                    </button>
+                  </div>
+                  {couponError && <p className="text-[10px] text-red-500 font-bold ml-1">{couponError}</p>}
+                  {appliedCoupon && (
+                    <div className="flex items-center justify-between p-4 bg-verde/10 border border-verde/20 rounded-2xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-verde/20 flex items-center justify-center">
+                          <CheckCircle className="w-4 h-4 text-verde" />
+                        </div>
+                        <span className="text-xs font-bold text-texto">Cupón <span className="text-verde">{appliedCoupon.code}</span> aplicado</span>
+                      </div>
+                      <button onClick={removeCoupon} className="text-texto/40 hover:text-red-500 transition-colors">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Tarjeta dedicatoria</label>
+                  <div className="relative">
+                    <MessageSquare className="absolute left-4 top-4 w-4 h-4 text-naranja/40" />
+                    <textarea 
+                      placeholder="Escribí un mensaje especial..."
+                      value={formData.notes}
+                      onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                      className="w-full pl-12 pr-4 py-4 bg-crema/20 border border-naranja/5 rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 h-32 resize-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-xl shadow-naranja/5 sticky top-24 space-y-8">
+                <h3 className="text-2xl font-display font-bold text-texto">Resumen Final</h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-texto/40 text-xs font-bold uppercase tracking-wider">
+                    <span>Subtotal</span>
+                    <span className="text-texto">${subtotal.toLocaleString()}</span>
+                  </div>
+                  {discountAmount > 0 && (
+                    <div className="flex justify-between text-verde text-xs font-bold uppercase tracking-wider">
+                      <span>Descuento ({appliedCoupon?.code})</span>
+                      <span>-${discountAmount.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {surcharge > 0 && (
+                    <div className="flex justify-between text-naranja text-xs font-bold uppercase tracking-wider">
+                      <span>Recargo Tarjeta (15%)</span>
+                      <span>+${surcharge.toLocaleString()}</span>
+                    </div>
+                  )}
+                  {formData.deliveryType === 'DELIVERY' && (
+                    <div className="flex justify-between text-texto/40 text-xs font-bold uppercase tracking-wider">
+                      <span>Envío {isOutOfCoverage ? '(Zona 10 - Lejos)' : ''}</span>
+                      <span className="text-texto">
+                        {isOutOfCoverage ? 'A coordinar' : 
+                         shippingCost === 0 ? 'Sin cargo' : `$${shippingCost.toLocaleString()}`}
+                      </span>
+                    </div>
+                  )}
+                  <div className="pt-6 border-t border-naranja/5 flex justify-between items-center">
+                    <span className="font-display font-bold text-texto text-xl">Total</span>
+                    <span className="text-3xl font-bold text-naranja font-display">
+                      {isOutOfCoverage ? `$${(totalAfterDiscount + surcharge).toLocaleString()} + Envío` : `$${total.toLocaleString()}`}
+                    </span>
+                  </div>
+                </div>
+
+                <div className={`p-5 rounded-[32px] border flex items-start gap-4 ${isOutOfCoverage ? 'bg-naranja/5 border-naranja/20' : 'bg-crema/30 border-naranja/5'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isOutOfCoverage ? 'bg-naranja/10' : 'bg-white'}`}>
+                    <AlertCircle className={`w-6 h-6 ${isOutOfCoverage ? 'text-naranja' : 'text-naranja/40'}`} />
+                  </div>
+                  <p className={`text-[10px] font-medium leading-relaxed ${isOutOfCoverage ? 'text-texto/60' : 'text-texto/60'}`}>
+                    {isOutOfCoverage 
+                      ? 'Al confirmar, se enviará el pedido directamente a WhatsApp para coordinar el envío y el pago manualmente.'
+                      : 'Al confirmar, serás redirigido para completar el pago y luego a WhatsApp para enviarnos el resumen.'}
+                  </p>
+                </div>
+
+                <button 
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className={`w-full py-5 rounded-2xl font-bold transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 ${
+                    isOutOfCoverage 
+                      ? 'bg-texto text-crema hover:bg-black shadow-texto/10' 
+                      : 'bg-naranja text-white hover:bg-naranja/90 shadow-naranja/20'
+                  }`}
+                >
+                  {isSubmitting ? (
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                  ) : isOutOfCoverage ? (
+                    <>
+                      <MessageSquare className="w-5 h-5" />
+                      Consultar por WhatsApp
+                    </>
+                  ) : (
+                    'Confirmar Pedido'
+                  )}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {showRedirectModal && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl p-8 max-w-sm w-full text-center shadow-2xl animate-scale-in">
-            <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 ${
-              redirectType === 'success' ? 'bg-green-100' : 
-              (redirectType === 'failure' || redirectType === 'pending') ? 'bg-amber-100' : 'bg-brand-100'
+        <div className="fixed inset-0 bg-texto/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[40px] p-10 max-w-sm w-full text-center shadow-2xl border border-naranja/5 animate-scale-in">
+            <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 ${
+              redirectType === 'success' ? 'bg-verde/10' : 
+              (redirectType === 'failure' || redirectType === 'pending') ? 'bg-naranja/10' : 'bg-crema'
             }`}>
               {redirectType === 'success' ? (
-                <Send className="w-10 h-10 text-green-600 animate-bounce" />
+                <CheckCircle className="w-12 h-12 text-verde animate-bounce" />
               ) : (redirectType === 'failure' || redirectType === 'pending') ? (
-                <CreditCard className="w-10 h-10 text-amber-600" />
+                <XCircle className="w-12 h-12 text-naranja" />
               ) : (
-                <ShoppingBag className="w-10 h-10 text-brand-600 animate-pulse" />
+                <Loader2 className="w-12 h-12 text-naranja animate-spin" />
               )}
             </div>
             
-            <h2 className="text-2xl font-display font-bold text-stone-900 mb-2">
+            <h2 className="text-3xl font-display font-bold text-texto mb-3">
               {redirectType === 'success' ? '¡Pago Exitoso!' : 
                redirectType === 'failure' ? 'Pago no realizado' :
-               redirectType === 'pending' ? 'Pago pendiente' : '¡Pedido Realizado!'}
+               redirectType === 'pending' ? 'Pago pendiente' : 'Procesando...'}
             </h2>
             
-            <p className="text-stone-600 mb-6">
+            <p className="text-texto/60 text-sm font-medium mb-8 leading-relaxed">
               {redirectType === 'success' 
                 ? 'Tu pago ha sido procesado. Por favor, envíanos el detalle por WhatsApp para coordinar la entrega.'
                 : redirectType === 'failure' || redirectType === 'pending'
                 ? 'Parece que no se completó el pago. ¿Qué te gustaría hacer?'
-                : 'Estamos redirigiéndote para completar tu pedido...'}
+                : 'Estamos preparando todo para tu pedido...'}
             </p>
 
             {redirectType === 'success' && returnedOrder ? (
               <button
                 onClick={() => {
-                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(returnedOrder, products, options)}`;
+                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(returnedOrder, products)}`;
                   window.location.href = whatsappUrl;
                 }}
-                className="w-full bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
+                className="w-full bg-verde text-white py-4 rounded-2xl font-bold hover:bg-verde/90 transition-all shadow-xl shadow-verde/20 flex items-center justify-center gap-3"
               >
                 <MessageSquare className="w-5 h-5" />
                 Enviar WhatsApp
@@ -851,42 +1285,31 @@ const Cart: React.FC = () => {
             ) : (redirectType === 'failure' || redirectType === 'pending') && returnedOrder ? (
               <div className="space-y-3">
                 <button
-                  onClick={() => {
-                    // Retry payment - we need to call the backend again or use the saved paymentUrl if we had it
-                    // For simplicity, we'll re-trigger the submit logic or just redirect to the saved order
-                    // Actually, the easiest is to let them re-submit
-                    setShowRedirectModal(false);
-                  }}
-                  className="w-full bg-brand-600 text-white py-3 rounded-xl font-bold hover:bg-brand-700 transition-colors"
+                  onClick={() => setShowRedirectModal(false)}
+                  className="w-full bg-naranja text-white py-4 rounded-2xl font-bold hover:bg-naranja/90 transition-all shadow-xl shadow-naranja/20"
                 >
                   Reintentar pago
                 </button>
                 <button
                   onClick={() => {
-                    // Change payment method - just close modal and let them change it
+                    setStep(3);
                     setShowRedirectModal(false);
                   }}
-                  className="w-full bg-stone-100 text-stone-600 py-3 rounded-xl font-bold hover:bg-stone-200 transition-colors"
+                  className="w-full bg-crema text-texto py-4 rounded-2xl font-bold hover:bg-crema/80 transition-all"
                 >
                   Cambiar forma de pago
                 </button>
                 <button
                   onClick={() => {
-                    // Cancel - clear order and close
                     localStorage.removeItem('lastOrder');
                     setShowRedirectModal(false);
                   }}
-                  className="w-full text-stone-400 py-2 text-sm hover:text-stone-600 transition-colors"
+                  className="w-full text-texto/40 py-2 text-xs font-bold uppercase tracking-widest hover:text-texto transition-colors mt-4"
                 >
                   Cancelar pedido
                 </button>
               </div>
-            ) : (
-              <div className="flex items-center justify-center gap-2 text-brand-600 font-bold">
-                <Loader2 className="w-5 h-5 animate-spin" />
-                <span>Procesando...</span>
-              </div>
-            )}
+            ) : null}
           </div>
         </div>
       )}

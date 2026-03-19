@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 
 const Testimonials = () => {
   const reviews = [
@@ -47,41 +48,97 @@ const Testimonials = () => {
     }
   ];
 
-  return (
-    <section className="px-6 md:px-20 py-24 bg-crema">
-      <div className="max-w-7xl mx-auto">
-        <p className="text-[10px] uppercase tracking-[2.5px] text-tostado font-bold mb-4">Lo que dice la gente</p>
-        <h2 className="text-4xl md:text-5xl font-display text-cafe leading-[1.15] mb-6">
-          La prueba la da<br /><span className="text-tostado italic">el receptor.</span>
-        </h2>
-        <p className="text-sm md:text-base text-gris-calido leading-relaxed max-w-lg mb-16 font-light">
-          No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
-        </p>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+  const itemVariants = {
+    hidden: { opacity: 0, scale: 0.9, y: 30 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: [0.22, 1, 0.36, 1]
+      }
+    }
+  };
+
+  return (
+    <section className="px-6 md:px-20 py-32 bg-white relative overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="max-w-3xl mb-24"
+        >
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Lo que dice la gente</p>
+          <h2 className="text-5xl md:text-7xl font-display text-texto leading-[0.9] mb-8 uppercase tracking-tighter">
+            La prueba la da<br /><span className="text-naranja italic">el receptor.</span>
+          </h2>
+          <p className="text-base md:text-lg text-texto/60 leading-relaxed max-w-xl font-light">
+            No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
+          </p>
+        </motion.div>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
           {reviews.map((review, i) => (
-            <div 
+            <motion.div 
               key={i} 
-              className={`p-8 rounded-3xl shadow-sm transition-all duration-300 hover:-translate-y-1 ${review.featured ? 'bg-tostado text-white' : 'bg-white text-cafe'}`}
+              variants={itemVariants}
+              whileHover={{ y: -10, scale: 1.02 }}
+              className={`p-10 rounded-[40px] transition-all duration-500 border ${
+                review.featured 
+                ? 'bg-texto text-crema border-texto shadow-[0_30px_60px_-15px_rgba(20,20,20,0.2)]' 
+                : 'bg-crema/30 text-texto border-naranja/5 hover:bg-crema/50'
+              }`}
             >
-              <div className={`text-sm mb-4 tracking-[2px] ${review.featured ? 'text-white/80' : 'text-dorado'}`}>
-                {review.stars}
+              <div className={`flex gap-1 mb-8 ${review.featured ? 'text-naranja' : 'text-naranja/60'}`}>
+                {[...Array(5)].map((_, i) => (
+                  <motion.span 
+                    key={i} 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 + (i * 0.1) }}
+                    className="text-xs"
+                  >
+                    ✦
+                  </motion.span>
+                ))}
               </div>
-              <p className={`text-base font-display italic leading-relaxed mb-8 ${review.featured ? 'text-white' : 'text-cafe'}`}>
+              <p className={`text-lg font-display italic leading-relaxed mb-10 ${review.featured ? 'text-crema' : 'text-texto'}`}>
                 "{review.text}"
               </p>
-              <div className="flex items-center gap-4">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${review.featured ? 'bg-white/20' : 'bg-crema'}`}>
+              <div className="flex items-center gap-5">
+                <motion.div 
+                  whileHover={{ rotate: [0, -10, 10, 0] }}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${review.featured ? 'bg-crema/10' : 'bg-white shadow-sm'}`}
+                >
                   {review.icon}
-                </div>
+                </motion.div>
                 <div>
-                  <div className={`text-sm font-bold ${review.featured ? 'text-white' : 'text-cafe'}`}>{review.author}</div>
-                  <div className={`text-[10px] uppercase tracking-wider ${review.featured ? 'text-white/60' : 'text-gris-calido'}`}>{review.detail}</div>
+                  <div className={`text-sm font-bold uppercase tracking-tight ${review.featured ? 'text-crema' : 'text-texto'}`}>{review.author}</div>
+                  <div className={`text-[10px] uppercase tracking-[0.15em] font-medium ${review.featured ? 'text-crema/40' : 'text-texto/40'}`}>{review.detail}</div>
                 </div>
               </div>
-            </div>
+            </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
