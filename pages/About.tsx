@@ -157,7 +157,7 @@ const About: React.FC = () => {
                <h2 className="text-4xl md:text-5xl font-display text-cafe mb-8">Lo que dicen de <span className="text-tostado italic">nosotros.</span></h2>
                <div className="flex flex-col items-center justify-center gap-6">
                    <div className="bg-white px-8 py-4 rounded-full shadow-2xl shadow-tostado/10 flex items-center gap-4 border border-tostado/5">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png" alt="Google" className="w-6 h-6" />
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png" alt="Logo de Google" className="w-6 h-6" />
                       <div className="flex flex-col items-start">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-cafe text-lg">4.9/5</span>

@@ -99,7 +99,7 @@ app.post("/api/pedidos", async (req, res) => {
     ...orderData,
     id: `ORD-${Date.now()}`,
     createdAt: new Date().toISOString(),
-    status: "Pendiente",
+    status: "Nuevo",
     paymentStatus: "Pendiente de pago",
   };
 

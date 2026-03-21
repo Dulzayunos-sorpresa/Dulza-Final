@@ -57,7 +57,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {user ? (
             <div className="hidden md:flex items-center gap-3 bg-crema/50 px-3 py-1.5 rounded-full border border-naranja/10">
               {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || ''} className="w-6 h-6 rounded-full border border-naranja/20" />
+                <img src={user.photoURL} alt={user.displayName || 'Foto de perfil'} className="w-6 h-6 rounded-full border border-naranja/20" />
               ) : (
                 <User className="w-4 h-4 text-naranja" />
               )}
@@ -126,7 +126,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 {user ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      {user.photoURL && <img src={user.photoURL} alt="" className="w-8 h-8 rounded-full" />}
+                      {user.photoURL && <img src={user.photoURL} alt="Foto de perfil del usuario" className="w-8 h-8 rounded-full" />}
                       <span className="font-bold text-texto">{user.displayName}</span>
                     </div>
                     <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="text-naranja font-bold text-sm uppercase tracking-widest">Salir</button>

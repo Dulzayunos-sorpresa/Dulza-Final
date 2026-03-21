@@ -14,14 +14,14 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [step, setStep] = useState<'info' | 'options'>('info');
+  const [step, setStep] = useState<number>(-1);
 
   useEffect(() => {
     if (isOpen) {
       setQuantity(1);
       setSelectedOptions({});
       setCurrentImageIndex(0);
-      setStep('info');
+      setStep(-1);
       document.body.style.overflow = 'hidden';
     } else {
       document.body.style.overflow = 'unset';
@@ -146,7 +146,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             <div className="w-full md:w-1/2 flex flex-col bg-crema">
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar">
                 <AnimatePresence mode="wait">
-                  {step === 'info' ? (
+                  {step === -1 ? (
                     <motion.div
                       key="info"
                       initial={{ opacity: 0, x: 20 }}
@@ -200,47 +200,47 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                     </motion.div>
                   ) : (
                     <motion.div
-                      key="options"
+                      key={`option-${step}`}
                       initial={{ opacity: 0, x: 20 }}
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -20 }}
                       className="space-y-8"
                     >
                       <button 
-                        onClick={() => setStep('info')}
+                        onClick={() => setStep(step - 1)}
                         className="flex items-center gap-2 text-texto/60 hover:text-naranja transition-colors text-xs font-bold uppercase tracking-widest group"
                       >
                         <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
-                        Volver a detalles
+                        {step === 0 ? 'Volver a detalles' : 'Anterior'}
                       </button>
 
                       <div className="space-y-2">
                         <h2 className="text-2xl font-bold text-texto">Personalizá tu pedido</h2>
-                        <p className="text-texto/60 text-sm">Elegí los adicionales para hacer este regalo aún más especial.</p>
+                        <p className="text-texto/60 text-sm">Paso {step + 1} de {product.options?.length || 0}</p>
                       </div>
 
                       <div className="space-y-10">
-                        {product.options?.map((option) => (
-                          <div key={option.name} className="space-y-5">
+                        {product.options && product.options[step] && (
+                          <div key={product.options[step].name} className="space-y-5">
                             <div className="flex items-center justify-between">
                               <div className="space-y-1">
                                 <h3 className="font-bold text-texto flex items-center gap-2">
-                                  {option.name}
-                                  {option.required && <span className="text-naranja text-[10px] uppercase tracking-widest bg-naranja/10 px-2 py-0.5 rounded-full">Obligatorio</span>}
+                                  {product.options[step].name}
+                                  {product.options[step].required && <span className="text-naranja text-[10px] uppercase tracking-widest bg-naranja/10 px-2 py-0.5 rounded-full">Obligatorio</span>}
                                 </h3>
                                 <p className="text-xs text-texto/50">
-                                  {option.multi ? 'Podés elegir varios' : 'Elegí una opción'}
+                                  {product.options[step].multi ? 'Podés elegir varios' : 'Elegí una opción'}
                                 </p>
                               </div>
                             </div>
                             <div className="grid grid-cols-1 gap-3">
-                              {option.values.map((val) => {
+                              {product.options[step].values.map((val) => {
                                 const valId = val.id || val.name;
-                                const isSelected = selectedOptions[option.name]?.includes(valId);
+                                const isSelected = selectedOptions[product.options![step].name]?.includes(valId);
                                 return (
                                   <button
                                     key={valId}
-                                    onClick={() => handleOptionToggle(option.name, valId, option.multi || false)}
+                                    onClick={() => handleOptionToggle(product.options![step].name, valId, product.options![step].multi || false)}
                                     className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left group ${
                                       isSelected 
                                         ? 'border-naranja bg-naranja/5 shadow-lg shadow-naranja/5' 
@@ -267,7 +267,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                               })}
                             </div>
                           </div>
-                        ))}
+                        )}
                       </div>
                     </motion.div>
                   )}
@@ -283,7 +283,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                   </div>
                 )}
                 <div className="flex items-center gap-4 w-full">
-                  {step === 'info' ? (
+                  {step === -1 ? (
                     <>
                       <div className="flex items-center bg-crema rounded-full overflow-hidden h-14 shrink-0">
                         <button 
@@ -302,7 +302,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       </div>
                       {hasOptions ? (
                         <button 
-                          onClick={() => setStep('options')}
+                          onClick={() => setStep(0)}
                           className="flex-1 bg-texto text-crema h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-texto/90 transition-all shadow-2xl shadow-texto/20 active:scale-95 flex items-center justify-center gap-3"
                         >
                           <span>Elegir adicionales</span>
@@ -311,22 +311,43 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       ) : (
                         <button 
                           onClick={handleAddToCart}
-                          disabled={isMissingRequired}
-                          className={`flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 ${isMissingRequired ? 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none' : 'bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30'}`}
+                          className="flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30"
                         >
                           <ShoppingCart className="h-4 w-4" />
-                          <span>{isMissingRequired ? 'Completá las opciones obligatorias' : `Agregar al Carrito · $${(product.price * quantity).toLocaleString()}`}</span>
+                          <span>Agregar al Carrito · ${(product.price * quantity).toLocaleString()}</span>
                         </button>
                       )}
                     </>
                   ) : (
                     <button 
-                      onClick={handleAddToCart}
-                      disabled={isMissingRequired}
-                      className={`flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 ${isMissingRequired ? 'bg-stone-200 text-stone-400 cursor-not-allowed shadow-none' : 'bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30'}`}
+                      onClick={() => {
+                        const currentOption = product.options![step];
+                        const isCurrentMissing = currentOption.required && (!selectedOptions[currentOption.name] || selectedOptions[currentOption.name].length === 0);
+                        
+                        if (isCurrentMissing) {
+                          alert('Por favor, completá esta opción obligatoria para continuar.');
+                          return;
+                        }
+
+                        if (step < product.options!.length - 1) {
+                          setStep(step + 1);
+                        } else {
+                          handleAddToCart();
+                        }
+                      }}
+                      className={`flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30`}
                     >
-                      <ShoppingCart className="h-4 w-4" />
-                      <span>{isMissingRequired ? 'Completá las opciones obligatorias' : `Confirmar y Agregar · $${(currentPrice * quantity).toLocaleString()}`}</span>
+                      {step < product.options!.length - 1 ? (
+                        <>
+                          <span>Siguiente paso</span>
+                          <ChevronRight className="h-4 w-4" />
+                        </>
+                      ) : (
+                        <>
+                          <ShoppingCart className="h-4 w-4" />
+                          <span>Confirmar y Agregar · ${(currentPrice * quantity).toLocaleString()}</span>
+                        </>
+                      )}
                     </button>
                   )}
                 </div>

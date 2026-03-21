@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, ProductCategory, Coupon, ShippingSettings } from '../types';
+import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, ProductCategory, Coupon, ShippingSettings, Category, ProductOptionValue } from '../types';
 import { COMMON_OPTIONS } from '../data/options';
 import { MOCK_PRODUCTS } from '../data/products/allProducts';
 import axios from 'axios';
@@ -10,6 +10,11 @@ import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut 
 import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
 
 export interface StoreContextType {
+  categories: Category[];
+  addCategory: (category: Category) => void;
+  updateCategory: (category: Category) => void;
+  deleteCategory: (categoryId: string) => void;
+  reorderCategories: (categories: Category[]) => void;
   products: Product[];
   cart: CartItem[];
   orders: Order[];
@@ -18,6 +23,7 @@ export interface StoreContextType {
   addToCart: (productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => void;
   removeFromCart: (cartItemId: string) => void;
   clearCart: () => void;
+  addProduct: (product: Product) => void;
   updateProduct: (updatedProduct: Product) => void;
   getProduct: (id: string) => Product | undefined;
   addOrder: (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => Promise<{ order: Order; paymentUrl: string | null }>;
@@ -39,7 +45,6 @@ export interface StoreContextType {
   updateCoupon: (coupon: Coupon) => void;
   deleteCoupon: (couponId: string) => void;
   validateCoupon: (code: string) => Coupon | undefined;
-  shippingSettings: ShippingSettings;
   user: User | null;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -48,6 +53,7 @@ export interface StoreContextType {
 export const StoreContext = createContext<StoreContextType | undefined>(undefined);
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
+  const [categories, setCategories] = useState<Category[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -219,9 +225,18 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     });
 
+    const unsubscribeCategories = onSnapshot(query(collection(db, 'categories'), orderBy('order', 'asc')), (snapshot) => {
+      const cats: Category[] = [];
+      snapshot.forEach(doc => cats.push(doc.data() as Category));
+      setCategories(cats);
+    }, (error) => {
+      console.error('Firestore Error (categories):', error);
+    });
+
     setIsInitialized(true);
 
     return () => {
+      unsubscribeCategories();
       unsubscribeProducts();
       unsubscribeOptions();
       unsubscribeSubobjects();
@@ -230,6 +245,39 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       unsubscribeShipping();
     };
   }, [isInitialized, user]);
+
+  const addCategory = async (category: Category) => {
+    try {
+      await setDoc(doc(db, 'categories', category.id), category);
+    } catch (error) {
+      console.error('Error adding category:', error);
+    }
+  };
+
+  const updateCategory = async (category: Category) => {
+    try {
+      await updateDoc(doc(db, 'categories', category.id), { ...category });
+    } catch (error) {
+      console.error('Error updating category:', error);
+    }
+  };
+
+  const deleteCategory = async (categoryId: string) => {
+    try {
+      await deleteDoc(doc(db, 'categories', categoryId));
+    } catch (error) {
+      console.error('Error deleting category:', error);
+    }
+  };
+
+  const reorderCategories = async (newCategories: Category[]) => {
+    try {
+      const batch = newCategories.map(cat => updateDoc(doc(db, 'categories', cat.id), { order: cat.order }));
+      await Promise.all(batch);
+    } catch (error) {
+      console.error('Error reordering categories:', error);
+    }
+  };
 
   const addToCart = (productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => {
     const product = products.find(p => p.id === productId);
@@ -270,6 +318,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   };
 
   const clearCart = () => setCart([]);
+
+  const addProduct = async (product: Product) => {
+    try {
+      await setDoc(doc(db, 'products', product.id), product);
+    } catch (error) {
+      console.error('Error adding product:', error);
+    }
+  };
 
   const updateProduct = async (updatedProduct: Product) => {
     try {
@@ -531,6 +587,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   return (
     <StoreContext.Provider value={{
+      categories,
+      addCategory,
+      updateCategory,
+      deleteCategory,
+      reorderCategories,
       products,
       cart,
       orders,
@@ -538,6 +599,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       addToCart,
       removeFromCart,
       clearCart,
+      addProduct,
       updateProduct,
       getProduct,
       addOrder,

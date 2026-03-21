@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://dulzayunos.com/sitemap.xml

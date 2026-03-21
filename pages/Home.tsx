@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Heart, ChevronRight, Eye, Share2, Sparkles, AlertCircle } from 'lucide-react';
+import { Heart, ChevronRight, Eye, Share2, Sparkles, AlertCircle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../context/store';
 import { ProductCategory, Product } from '../types';
@@ -30,10 +30,11 @@ const itemVariants = {
 };
 
 export default function Home() {
-  const { products, addToCart } = useStore();
+  const { products, addToCart, categories } = useStore();
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('Todos');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [showToast, setShowToast] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
   const location = useLocation();
 
@@ -41,15 +42,20 @@ export default function Home() {
 
   const valentineCategory = ProductCategory.VALENTINE;
 
-  const standardCategories = [
-    ProductCategory.BREAKFAST,
-    ProductCategory.CAKES_AND_SWEETS,
-    ProductCategory.BOARD,
-    ProductCategory.KIDS,
-    ProductCategory.FOOTBALL
-  ];
+  const dynamicCategories = useMemo(() => {
+    if (categories && categories.length > 0) {
+      return categories.map(c => c.name);
+    }
+    const cats = new Set<string>();
+    products.forEach(p => {
+      if (p.category !== ProductCategory.VALENTINE && p.category !== ProductCategory.CUSTOM_BOX) {
+        cats.add(p.category);
+      }
+    });
+    return Array.from(cats);
+  }, [products, categories]);
 
-  const allNavCategories = [valentineCategory, ...standardCategories];
+  const allNavCategories = [valentineCategory, ...dynamicCategories];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -362,8 +368,25 @@ export default function Home() {
             };
           });
           addToCart(product.id, quantity, formattedOptions);
+          setShowToast(true);
+          setTimeout(() => setShowToast(false), 3000);
         }}
       />
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {showToast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-naranja text-white px-6 py-3 rounded-full shadow-2xl shadow-naranja/30 font-bold text-sm tracking-wider flex items-center gap-2"
+          >
+            <Check size={16} />
+            ¡Pedido añadido al carrito!
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

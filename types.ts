@@ -1,4 +1,10 @@
 
+export interface Category {
+  id: string;
+  name: string;
+  order: number;
+}
+
 export enum ProductCategory {
   // Full Catalog Categories
   CUSTOM_BOX = 'Personalizados',
@@ -38,7 +44,7 @@ export interface Product {
   description: string;
   price: number;
   oldPrice?: number;
-  category: ProductCategory;
+  category: string;
   image: string;
   galleryImages?: string[];
   videoUrl?: string;
@@ -49,10 +55,11 @@ export interface Product {
 }
 
 export enum OrderStatus {
-  PENDING = 'Pendiente',
-  PREPARING = 'En Preparación',
-  DELIVERED = 'Entregado',
-  CANCELLED = 'Cancelado'
+  NUEVO = 'Nuevo',
+  PENDIENTE = 'Pendiente',
+  PAGADO = 'Pagado',
+  ENTREGADO = 'Entregado',
+  CANCELADO = 'Cancelado'
 }
 
 export enum PaymentStatus {
