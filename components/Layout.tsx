@@ -10,9 +10,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
 
-  const cartCount = cart.reduce((acc, item) => acc + item.quantity, 0);
+  const cartCount = React.useMemo(() => cart.reduce((acc, item) => acc + item.quantity, 0), [cart]);
 
-  const handleScrollToCategory = (e: React.MouseEvent, categoryId: string) => {
+  const handleScrollToCategory = React.useCallback((e: React.MouseEvent, categoryId: string) => {
     e.preventDefault();
     setIsMobileMenuOpen(false);
     if (location.pathname !== '/') {
@@ -29,7 +29,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         });
       }
     }
-  };
+  }, [location.pathname, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-crema">

@@ -61,8 +61,10 @@ const AnimatedRoutes = () => {
 const App = () => {
   useEffect(() => {
     const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
-    if (apiKey && !(window as any).google) {
+    const scriptId = 'google-maps-script';
+    if (apiKey && !document.getElementById(scriptId) && !(window as any).google) {
       const script = document.createElement('script');
+      script.id = scriptId;
       script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}&libraries=places`;
       script.async = true;
       script.defer = true;

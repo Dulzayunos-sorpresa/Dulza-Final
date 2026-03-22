@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import { motion } from 'framer-motion';
 import { AlertCircle } from 'lucide-react';
 import { Product } from '../types';
@@ -9,7 +9,7 @@ interface ProductCardProps {
   onProductClick: (product: Product) => void;
 }
 
-const ProductCard: React.FC<ProductCardProps> = ({ 
+const ProductCard: React.FC<ProductCardProps> = memo(({ 
   product, 
   index, 
   onProductClick 
@@ -75,6 +75,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
       </div>
     </motion.div>
   );
-};
+});
+
+ProductCard.displayName = 'ProductCard';
 
 export default ProductCard;

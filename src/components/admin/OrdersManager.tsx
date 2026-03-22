@@ -35,22 +35,22 @@ const OrdersManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'TODOS'>('TODOS');
 
-  const SHIPPING_ZONES = [
+  const SHIPPING_ZONES = React.useMemo(() => [
     { name: 'Zona 1 (Cerca)', cost: 2000 },
     { name: 'Zona 2 (Media)', cost: 4000 },
     { name: 'Zona 3 (Lejos)', cost: 6000 },
     { name: 'Zona 4 (Muy Lejos)', cost: 8000 },
     { name: 'Envío Gratis', cost: 0 }
-  ];
+  ], []);
 
-  const hasFreeDelivery = (order: Order) => {
+  const hasFreeDelivery = React.useCallback((order: Order) => {
     return order.items.some(item => {
       const p = products.find(prod => prod.id === item.productId);
       return p?.tags?.includes('ENVÍO GRATIS') || p?.freeDelivery;
     });
-  };
+  }, [products]);
 
-  const getGoogleMapsLink = (order: Order) => {
+  const getGoogleMapsLink = React.useCallback((order: Order) => {
     const origin = encodeURIComponent("Nicolas Avellaneda 327");
     let destination = "";
     if (order.isPrivateNeighborhood) {
@@ -59,13 +59,21 @@ const OrdersManager: React.FC = () => {
       destination = encodeURIComponent(order.deliveryAddress || "");
     }
     return `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&travelmode=driving`;
-  };
+  }, []);
 
-  const filteredOrders = orders.filter(o => {
+  const filteredOrders = React.useMemo(() => orders.filter(o => {
     const matchesSearch = o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = filterStatus === 'TODOS' || o.status === filterStatus;
     return matchesSearch && matchesStatus;
-  });
+  }), [orders, searchTerm, filterStatus]);
+
+  const ordersByStatus = React.useMemo(() => {
+    const result: Record<string, Order[]> = {};
+    Object.values(OrderStatus).forEach(status => {
+      result[status] = filteredOrders.filter(o => o.status === status);
+    });
+    return result;
+  }, [filteredOrders]);
 
   return (
     <motion.div 
@@ -111,11 +119,7 @@ const OrdersManager: React.FC = () => {
       ) : (
         <div className="flex overflow-x-auto gap-6 pb-4 snap-x">
           {Object.values(OrderStatus).map(statusColumn => {
-            const columnOrders = orders.filter(o => {
-              const matchesSearch = o.customerName.toLowerCase().includes(searchTerm.toLowerCase()) || o.id.toLowerCase().includes(searchTerm.toLowerCase());
-              const matchesStatus = filterStatus === 'TODOS' || o.status === filterStatus;
-              return matchesSearch && matchesStatus && o.status === statusColumn;
-            });
+            const columnOrders = ordersByStatus[statusColumn] || [];
 
             if (filterStatus !== 'TODOS' && filterStatus !== statusColumn) return null;
 

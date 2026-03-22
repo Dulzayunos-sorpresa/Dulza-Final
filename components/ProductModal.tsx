@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, ShoppingCart, ChevronRight, ChevronLeft, Check, AlertCircle, Clock, Star, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Product, ProductOption } from '../types';
@@ -56,9 +56,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
     }
   }, [isOpen]);
 
-  if (!product) return null;
-
-  const handleOptionToggle = (optionName: string, valueId: string, multi: boolean) => {
+  const handleOptionToggle = useCallback((optionName: string, valueId: string, multi: boolean) => {
     setSelectedOptions(prev => {
       const current = prev[optionName] || [];
       if (multi) {
@@ -74,12 +72,16 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
         [optionName]: [valueId]
       };
     });
-  };
+  }, []);
 
-  const handleAddToCart = () => {
-    onAddToCart(product, quantity, selectedOptions);
-    onClose();
-  };
+  const handleAddToCart = useCallback(() => {
+    if (product) {
+      onAddToCart(product, quantity, selectedOptions);
+      onClose();
+    }
+  }, [product, quantity, selectedOptions, onAddToCart, onClose]);
+
+  if (!product) return null;
 
   const hasOptions = product.options && product.options.length > 0;
 

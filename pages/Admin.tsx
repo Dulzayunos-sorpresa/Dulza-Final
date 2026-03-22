@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense, lazy } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { 
@@ -15,17 +15,27 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
-// Modular Components
-import AdminLogin from '@/src/components/admin/AdminLogin';
-import Dashboard from '@/src/components/admin/Dashboard';
-import OrdersManager from '@/src/components/admin/OrdersManager';
-import ProductsManager from '@/src/components/admin/ProductsManager';
-import CategoriesManager from '@/src/components/admin/CategoriesManager';
-import OptionsManager from '@/src/components/admin/OptionsManager';
-import SubobjectsManager from '@/src/components/admin/SubobjectsManager';
-import CouponsManager from '@/src/components/admin/CouponsManager';
-import ShippingManager from '@/src/components/admin/ShippingManager';
-import NewOrderManager from '@/src/components/admin/NewOrderManager';
+// Modular Components - Lazy Loaded
+const AdminLogin = lazy(() => import('@/src/components/admin/AdminLogin'));
+const Dashboard = lazy(() => import('@/src/components/admin/Dashboard'));
+const OrdersManager = lazy(() => import('@/src/components/admin/OrdersManager'));
+const ProductsManager = lazy(() => import('@/src/components/admin/ProductsManager'));
+const CategoriesManager = lazy(() => import('@/src/components/admin/CategoriesManager'));
+const OptionsManager = lazy(() => import('@/src/components/admin/OptionsManager'));
+const SubobjectsManager = lazy(() => import('@/src/components/admin/SubobjectsManager'));
+const CouponsManager = lazy(() => import('@/src/components/admin/CouponsManager'));
+const ShippingManager = lazy(() => import('@/src/components/admin/ShippingManager'));
+const NewOrderManager = lazy(() => import('@/src/components/admin/NewOrderManager'));
+
+const AdminLoading = () => (
+  <div className="flex items-center justify-center p-20">
+    <motion.div 
+      animate={{ rotate: 360 }}
+      transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+      className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full"
+    />
+  </div>
+);
 
 const Admin = () => {
   const [user, setUser] = useState<User | null>(null);
@@ -44,19 +54,15 @@ const Admin = () => {
   }, []);
 
   if (authLoading) {
-    return (
-      <div className="min-h-screen bg-stone-50 flex items-center justify-center">
-        <motion.div 
-          animate={{ rotate: 360 }}
-          transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-          className="w-12 h-12 border-4 border-brand-500 border-t-transparent rounded-full"
-        />
-      </div>
-    );
+    return <AdminLoading />;
   }
 
   if (!isPasswordCorrect || !user) {
-    return <AdminLogin onAuthenticated={() => setIsPasswordCorrect(true)} />;
+    return (
+      <Suspense fallback={<AdminLoading />}>
+        <AdminLogin onAuthenticated={() => setIsPasswordCorrect(true)} />
+      </Suspense>
+    );
   }
 
   const tabs = [
@@ -133,17 +139,19 @@ const Admin = () => {
 
       {/* Main Content */}
       <main className="flex-1 p-4 lg:p-10 overflow-y-auto">
-        <AnimatePresence mode="wait">
-          {activeTab === 'dashboard' && <Dashboard key="dashboard" />}
-          {activeTab === 'orders' && <OrdersManager key="orders" />}
-          {activeTab === 'new-order' && <NewOrderManager key="new-order" onOrderCreated={() => setActiveTab('orders')} />}
-          {activeTab === 'stock' && <ProductsManager key="stock" />}
-          {activeTab === 'categories' && <CategoriesManager key="categories" />}
-          {activeTab === 'options' && <OptionsManager key="options" />}
-          {activeTab === 'subobjects' && <SubobjectsManager key="subobjects" />}
-          {activeTab === 'coupons' && <CouponsManager key="coupons" />}
-          {activeTab === 'shipping' && <ShippingManager key="shipping" />}
-        </AnimatePresence>
+        <Suspense fallback={<AdminLoading />}>
+          <AnimatePresence mode="wait">
+            {activeTab === 'dashboard' && <Dashboard key="dashboard" />}
+            {activeTab === 'orders' && <OrdersManager key="orders" />}
+            {activeTab === 'new-order' && <NewOrderManager key="new-order" onOrderCreated={() => setActiveTab('orders')} />}
+            {activeTab === 'stock' && <ProductsManager key="stock" />}
+            {activeTab === 'categories' && <CategoriesManager key="categories" />}
+            {activeTab === 'options' && <OptionsManager key="options" />}
+            {activeTab === 'subobjects' && <SubobjectsManager key="subobjects" />}
+            {activeTab === 'coupons' && <CouponsManager key="coupons" />}
+            {activeTab === 'shipping' && <ShippingManager key="shipping" />}
+          </AnimatePresence>
+        </Suspense>
       </main>
     </div>
   );

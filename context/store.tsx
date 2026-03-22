@@ -1,5 +1,5 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, ProductCategory, Coupon, ShippingSettings, Category, ProductOptionValue } from '../types';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, Coupon, ShippingSettings, Category, ProductOptionValue } from '../types';
 import { COMMON_OPTIONS } from '../data/options';
 import { NEW_OPTIONS } from '../src/data/newOptions';
 import { NEW_OPTIONS_PART2 } from '../src/data/newOptionsPart2';
@@ -24,9 +24,8 @@ import { EXCEL_ITEMS_PRODUCTS_PART7 } from '../src/data/excelItemsProductsPart7'
 import { EXCEL_ITEMS_PRODUCTS_PART8 } from '../src/data/excelItemsProductsPart8';
 import { MOCK_PRODUCTS } from '../data/products/allProducts';
 import axios from 'axios';
-import { db } from '../firebase';
-import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy, getDocs, where, getDoc } from 'firebase/firestore';
-import { auth } from '../firebase';
+import { db, auth } from '../firebase';
+import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
 
@@ -339,40 +338,40 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
   }, [isInitialized, user]);
 
-  const addCategory = async (category: Category) => {
+  const addCategory = useCallback(async (category: Category) => {
     try {
       await setDoc(doc(db, 'categories', category.id), category);
     } catch (error) {
       console.error('Error adding category:', error);
     }
-  };
+  }, []);
 
-  const updateCategory = async (category: Category) => {
+  const updateCategory = useCallback(async (category: Category) => {
     try {
       await updateDoc(doc(db, 'categories', category.id), { ...category });
     } catch (error) {
       console.error('Error updating category:', error);
     }
-  };
+  }, []);
 
-  const deleteCategory = async (categoryId: string) => {
+  const deleteCategory = useCallback(async (categoryId: string) => {
     try {
       await deleteDoc(doc(db, 'categories', categoryId));
     } catch (error) {
       console.error('Error deleting category:', error);
     }
-  };
+  }, []);
 
-  const reorderCategories = async (newCategories: Category[]) => {
+  const reorderCategories = useCallback(async (newCategories: Category[]) => {
     try {
       const batch = newCategories.map(cat => updateDoc(doc(db, 'categories', cat.id), { order: cat.order }));
       await Promise.all(batch);
     } catch (error) {
       console.error('Error reordering categories:', error);
     }
-  };
+  }, []);
 
-  const addToCart = (productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => {
+  const addToCart = useCallback((productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => {
     const product = products.find(p => p.id === productId);
     if (!product || (product.stock !== undefined && product.stock < quantity)) {
       alert('No hay stock suficiente');
@@ -394,9 +393,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       price: product.price,
       currency: 'ARS'
     });
-  };
+  }, [products]);
 
-  const removeFromCart = (cartItemId: string) => {
+  const removeFromCart = useCallback((cartItemId: string) => {
     const itemToRemove = cart.find(item => item.id === cartItemId);
     if (itemToRemove) {
       const product = products.find(p => p.id === itemToRemove.productId);
@@ -408,37 +407,37 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     }
     setCart(prev => prev.filter(item => item.id !== cartItemId));
-  };
+  }, [cart, products]);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
-  const addProduct = async (product: Product) => {
+  const addProduct = useCallback(async (product: Product) => {
     try {
       await setDoc(doc(db, 'products', product.id), product);
     } catch (error) {
       console.error('Error adding product:', error);
     }
-  };
+  }, []);
 
-  const updateProduct = async (updatedProduct: Product) => {
+  const updateProduct = useCallback(async (updatedProduct: Product) => {
     try {
       await setDoc(doc(db, 'products', updatedProduct.id), updatedProduct);
     } catch (error) {
       console.error('Error updating product:', error);
     }
-  };
+  }, []);
 
-  const updateStock = async (productId: string, newStock: number) => {
+  const updateStock = useCallback(async (productId: string, newStock: number) => {
     try {
       await updateDoc(doc(db, 'products', productId), { stock: newStock });
     } catch (error) {
       console.error('Error updating stock:', error);
     }
-  };
+  }, []);
 
-  const getProduct = (id: string) => products.find(p => p.id === id);
+  const getProduct = useCallback((id: string) => products.find(p => p.id === id), [products]);
 
-  const addOrder = async (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => {
+  const addOrder = useCallback(async (orderData: Omit<Order, 'id' | 'createdAt' | 'status' | 'paymentStatus'>) => {
     try {
       console.log('Iniciando proceso de pedido...', orderData);
       const baseUrl = window.location.origin;
@@ -498,25 +497,25 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
       throw error;
     }
-  };
+  }, [cart, products, clearCart]);
 
-  const updateOrderStatus = async (orderId: string, status: OrderStatus) => {
+  const updateOrderStatus = useCallback(async (orderId: string, status: OrderStatus) => {
     try {
       await updateDoc(doc(db, 'orders', orderId), { status });
     } catch (error) {
       console.error('Error updating order status:', error);
     }
-  };
+  }, []);
 
-  const updateOrderPaymentStatus = async (orderId: string, paymentStatus: PaymentStatus) => {
+  const updateOrderPaymentStatus = useCallback(async (orderId: string, paymentStatus: PaymentStatus) => {
     try {
       await updateDoc(doc(db, 'orders', orderId), { paymentStatus });
     } catch (error) {
       console.error('Error updating payment status:', error);
     }
-  };
+  }, []);
 
-  const updateOrderShipping = async (orderId: string, cost: number, zone: string, distance?: number) => {
+  const updateOrderShipping = useCallback(async (orderId: string, cost: number, zone: string, distance?: number) => {
     try {
       const orderRef = doc(db, 'orders', orderId);
       const order = orders.find(o => o.id === orderId);
@@ -533,41 +532,41 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       console.error('Error updating shipping:', error);
     }
-  };
+  }, [orders]);
 
-  const deleteOrder = async (orderId: string) => {
+  const deleteOrder = useCallback(async (orderId: string) => {
     try {
       await deleteDoc(doc(db, 'orders', orderId));
     } catch (error) {
       console.error('Error deleting order:', error);
     }
-  };
+  }, []);
 
-  const updateShippingSettings = async (settings: ShippingSettings) => {
+  const updateShippingSettings = useCallback(async (settings: ShippingSettings) => {
     try {
       await setDoc(doc(db, 'settings', 'shipping'), settings);
     } catch (error) {
       console.error('Error updating shipping settings:', error);
     }
-  };
+  }, []);
 
-  const addOption = async (option: ProductOption) => {
+  const addOption = useCallback(async (option: ProductOption) => {
     try {
       await setDoc(doc(db, 'options', option.id), option);
     } catch (error) {
       console.error('Error adding option:', error);
     }
-  };
+  }, []);
 
-  const addSubobject = async (subobject: ProductOptionValue) => {
+  const addSubobject = useCallback(async (subobject: ProductOptionValue) => {
     try {
       await setDoc(doc(db, 'subobjects', subobject.id), subobject);
     } catch (error) {
       console.error('Error adding subobject:', error);
     }
-  };
+  }, []);
 
-  const updateSubobject = async (subobject: ProductOptionValue) => {
+  const updateSubobject = useCallback(async (subobject: ProductOptionValue) => {
     try {
       await setDoc(doc(db, 'subobjects', subobject.id), subobject);
       // Update options that use this subobject
@@ -579,9 +578,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       console.error('Error updating subobject:', error);
     }
-  };
+  }, [options]);
 
-  const deleteSubobject = async (subobjectId: string) => {
+  const deleteSubobject = useCallback(async (subobjectId: string) => {
     try {
       await deleteDoc(doc(db, 'subobjects', subobjectId));
       // Remove from options
@@ -593,9 +592,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       console.error('Error deleting subobject:', error);
     }
-  };
+  }, [options]);
 
-  const updateOption = async (updatedOption: ProductOption) => {
+  const updateOption = useCallback(async (updatedOption: ProductOption) => {
     try {
       await setDoc(doc(db, 'options', updatedOption.id), updatedOption);
       // Update products that use this option
@@ -607,9 +606,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       console.error('Error updating option:', error);
     }
-  };
+  }, [products]);
 
-  const deleteOption = async (optionId: string) => {
+  const deleteOption = useCallback(async (optionId: string) => {
     try {
       await deleteDoc(doc(db, 'options', optionId));
       // Remove from products
@@ -621,42 +620,42 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     } catch (error) {
       console.error('Error deleting option:', error);
     }
-  };
+  }, [products]);
 
-  const updateProductOptions = async (productId: string, optionIds: string[]) => {
+  const updateProductOptions = useCallback(async (productId: string, optionIds: string[]) => {
     try {
       const selectedOptions = options.filter(o => optionIds.includes(o.id));
       await updateDoc(doc(db, 'products', productId), { options: selectedOptions });
     } catch (error) {
       console.error('Error updating product options:', error);
     }
-  };
+  }, [options]);
 
-  const addCoupon = async (coupon: Coupon) => {
+  const addCoupon = useCallback(async (coupon: Coupon) => {
     try {
       await setDoc(doc(db, 'coupons', coupon.id), coupon);
     } catch (error) {
       console.error('Error adding coupon:', error);
     }
-  };
+  }, []);
 
-  const updateCoupon = async (coupon: Coupon) => {
+  const updateCoupon = useCallback(async (coupon: Coupon) => {
     try {
       await updateDoc(doc(db, 'coupons', coupon.id), { ...coupon });
     } catch (error) {
       console.error('Error updating coupon:', error);
     }
-  };
+  }, []);
 
-  const deleteCoupon = async (couponId: string) => {
+  const deleteCoupon = useCallback(async (couponId: string) => {
     try {
       await deleteDoc(doc(db, 'coupons', couponId));
     } catch (error) {
       console.error('Error deleting coupon:', error);
     }
-  };
+  }, []);
 
-  const validateCoupon = (code: string) => {
+  const validateCoupon = useCallback((code: string) => {
     const coupon = coupons.find(c => c.code.toUpperCase() === code.toUpperCase() && c.isActive);
     if (!coupon) return undefined;
     
@@ -667,67 +666,78 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
     
     return coupon;
-  };
+  }, [coupons]);
 
-  const loginWithGoogle = async () => {
+  const loginWithGoogle = useCallback(async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
     } catch (error) {
       console.error('Error signing in with Google:', error);
     }
-  };
+  }, []);
 
-  const logout = async () => {
+  const logout = useCallback(async () => {
     try {
       await signOut(auth);
     } catch (error) {
       console.error('Error signing out:', error);
     }
-  };
+  }, []);
+
+  const contextValue = useMemo(() => ({
+    categories,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    reorderCategories,
+    products,
+    cart,
+    orders,
+    coupons,
+    addToCart,
+    removeFromCart,
+    clearCart,
+    addProduct,
+    updateProduct,
+    getProduct,
+    addOrder,
+    updateOrderStatus,
+    updateOrderPaymentStatus,
+    updateOrderShipping,
+    deleteOrder,
+    updateShippingSettings,
+    updateStock,
+    options,
+    addOption,
+    updateOption,
+    deleteOption,
+    updateProductOptions,
+    subobjects,
+    addSubobject,
+    updateSubobject,
+    deleteSubobject,
+    addCoupon,
+    updateCoupon,
+    deleteCoupon,
+    validateCoupon,
+    shippingSettings,
+    user,
+    loginWithGoogle,
+    logout
+  }), [
+    categories, addCategory, updateCategory, deleteCategory, reorderCategories,
+    products, cart, orders, coupons, addToCart, removeFromCart, clearCart,
+    addProduct, updateProduct, getProduct, addOrder, updateOrderStatus,
+    updateOrderPaymentStatus, updateOrderShipping, deleteOrder,
+    updateShippingSettings, updateStock, options, addOption, updateOption,
+    deleteOption, updateProductOptions, subobjects, addSubobject,
+    updateSubobject, deleteSubobject, addCoupon, updateCoupon, deleteCoupon,
+    validateCoupon, shippingSettings, user, loginWithGoogle, logout
+  ]);
 
   return (
-    <StoreContext.Provider value={{
-      categories,
-      addCategory,
-      updateCategory,
-      deleteCategory,
-      reorderCategories,
-      products,
-      cart,
-      orders,
-      coupons,
-      addToCart,
-      removeFromCart,
-      clearCart,
-      addProduct,
-      updateProduct,
-      getProduct,
-      addOrder,
-      updateOrderStatus,
-      updateOrderPaymentStatus,
-      updateOrderShipping,
-      deleteOrder,
-      updateShippingSettings,
-      updateStock,
-      options,
-      addOption,
-      updateOption,
-      deleteOption,
-      updateProductOptions,
-      subobjects,
-      addSubobject,
-      updateSubobject,
-      deleteSubobject,
-      addCoupon,
-      updateCoupon,
-      deleteCoupon,
-      validateCoupon,
-      shippingSettings,
-      user,
-      loginWithGoogle,
-      logout
-    }}>
+    <StoreContext.Provider value={contextValue}>
       {children}
     </StoreContext.Provider>
   );

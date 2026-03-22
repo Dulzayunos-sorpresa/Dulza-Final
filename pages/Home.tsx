@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Heart, ChevronRight, Eye, Share2, Sparkles, AlertCircle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,7 +115,7 @@ export default function Home() {
     return () => observer.disconnect();
   }, [allNavCategories, products]);
 
-  const scrollToCategory = (category: string) => {
+  const scrollToCategory = useCallback((category: string) => {
     const element = document.getElementById(category);
     if (element) {
       const headerOffset = 160;
@@ -127,11 +127,40 @@ export default function Home() {
       });
       setActiveCategory(category);
     }
-  };
+  }, []);
 
-  const handleProductClick = (product: Product) => {
+  const handleProductClick = useCallback((product: Product) => {
     setSelectedProduct(product);
-  };
+  }, []);
+
+  const handleAddToCart = useCallback((product: Product, quantity: number, options: Record<string, string[]>) => {
+    // Convert Record<string, string[]> to { optionId: string; values: string[] }[]
+    const formattedOptions = Object.entries(options).map(([optionName, values]) => {
+      const option = product.options?.find(o => o.name === optionName);
+      return {
+        optionId: option?.id || optionName,
+        values: values
+      };
+    });
+    addToCart(product.id, quantity, formattedOptions);
+    setShowToast(true);
+    setTimeout(() => setShowToast(false), 3000);
+  }, [addToCart]);
+
+  const filteredCatalog = useMemo(() => {
+    return allNavCategories
+      .filter(category => activeFilter === 'Todos' || activeFilter === category)
+      .map((category) => {
+        const categoryProducts = products.filter(p => 
+          (p.category === category) && 
+          !p.isHidden && 
+          (p.stock === undefined || p.stock > 0) &&
+          (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase()))
+        );
+        return { category, products: categoryProducts };
+      })
+      .filter(item => item.products.length > 0);
+  }, [allNavCategories, activeFilter, products, searchQuery]);
 
   return (
     <div className="pb-16 relative bg-crema">
@@ -338,41 +367,29 @@ export default function Home() {
 
         {/* Standard Categories */}
         <div className="space-y-40">
-          {useMemo(() => allNavCategories
-            .filter(category => activeFilter === 'Todos' || activeFilter === category)
-            .map((category, catIndex) => {
-            const categoryProducts = products.filter(p => 
-              (p.category === category) && 
-              !p.isHidden && 
-              (p.stock === undefined || p.stock > 0) &&
-              (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase()))
-            );
-            if (categoryProducts.length === 0) return null;
-
-            return (
-              <div 
-                key={category} 
-                id={category} 
-                className="scroll-mt-32" 
-              >
-                <div className="flex items-center gap-8 mb-16">
-                  <h3 className="text-4xl font-display text-texto font-bold uppercase tracking-tighter">{category}</h3>
-                  <div className="h-px bg-naranja/10 flex-1"></div>
-                </div>
-                
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
-                  {categoryProducts.map((product, prodIndex) => (
-                    <ProductCard 
-                      key={product.id} 
-                      product={product} 
-                      index={prodIndex}
-                      onProductClick={handleProductClick}
-                    />
-                  ))}
-                </div>
+          {filteredCatalog.map((item) => (
+            <div 
+              key={item.category} 
+              id={item.category} 
+              className="scroll-mt-32" 
+            >
+              <div className="flex items-center gap-8 mb-16">
+                <h3 className="text-4xl font-display text-texto font-bold uppercase tracking-tighter">{item.category}</h3>
+                <div className="h-px bg-naranja/10 flex-1"></div>
               </div>
-            );
-          }), [allNavCategories, activeFilter, products, searchQuery])}
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
+                {item.products.map((product, prodIndex) => (
+                  <ProductCard 
+                    key={product.id} 
+                    product={product} 
+                    index={prodIndex}
+                    onProductClick={handleProductClick}
+                  />
+                ))}
+              </div>
+            </div>
+          ))}
         </div>
       </div>
 
@@ -384,19 +401,7 @@ export default function Home() {
         product={selectedProduct} 
         isOpen={!!selectedProduct}
         onClose={() => setSelectedProduct(null)} 
-        onAddToCart={(product, quantity, options) => {
-          // Convert Record<string, string[]> to { optionId: string; values: string[] }[]
-          const formattedOptions = Object.entries(options).map(([optionName, values]) => {
-            const option = product.options?.find(o => o.name === optionName);
-            return {
-              optionId: option?.id || optionName,
-              values: values
-            };
-          });
-          addToCart(product.id, quantity, formattedOptions);
-          setShowToast(true);
-          setTimeout(() => setShowToast(false), 3000);
-        }}
+        onAddToCart={handleAddToCart}
       />
 
       {/* Toast Notification */}

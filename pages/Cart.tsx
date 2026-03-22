@@ -203,52 +203,52 @@ const Cart: React.FC = () => {
   }, [groupedComplementos]);
 
   // Calculate cart items with details
-  const cartItems = cart.map(item => {
-    const product = products.find(p => p.id === item.productId);
-    if (!product) return null;
-    
-    // Calculate price per item including options
-    let optionsPrice = 0;
-    const itemOptionsDetails: string[] = [];
+  const cartItems = React.useMemo(() => {
+    return cart.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      if (!product) return null;
+      
+      let optionsPrice = 0;
+      const itemOptionsDetails: string[] = [];
 
-    if (item.selectedOptions && product.options) {
-      item.selectedOptions.forEach(selectedOpt => {
-        const option = product.options?.find(o => o.id === selectedOpt.optionId || o.name === selectedOpt.optionId);
-        if (option) {
-          selectedOpt.values.forEach(valIdOrName => {
-            const val = option.values.find(v => v.id === valIdOrName || v.name === valIdOrName);
-            if (val) {
-              if (val.price) optionsPrice += val.price;
-              itemOptionsDetails.push(`${option.name}: ${val.name}${val.price ? ` (+$${val.price.toLocaleString()})` : ''}`);
-            }
-          });
-        }
-      });
-    }
+      if (item.selectedOptions && product.options) {
+        item.selectedOptions.forEach(selectedOpt => {
+          const option = product.options?.find(o => o.id === selectedOpt.optionId || o.name === selectedOpt.optionId);
+          if (option) {
+            selectedOpt.values.forEach(valIdOrName => {
+              const val = option.values.find(v => v.id === valIdOrName || v.name === valIdOrName);
+              if (val) {
+                if (val.price) optionsPrice += val.price;
+                itemOptionsDetails.push(`${option.name}: ${val.name}${val.price ? ` (+$${val.price.toLocaleString()})` : ''}`);
+              }
+            });
+          }
+        });
+      }
 
-    const unitPrice = product.price + optionsPrice;
-    const totalPrice = unitPrice * item.quantity;
+      const unitPrice = product.price + optionsPrice;
+      const totalPrice = unitPrice * item.quantity;
 
-    return { 
-      ...product, 
-      cartItemId: item.id,
-      quantity: item.quantity,
-      unitPrice,
-      totalPrice,
-      itemOptionsDetails,
-      selectedOptions: item.selectedOptions
-    };
-  }).filter(Boolean);
+      return { 
+        ...product, 
+        cartItemId: item.id,
+        quantity: item.quantity,
+        unitPrice,
+        totalPrice,
+        itemOptionsDetails,
+        selectedOptions: item.selectedOptions
+      };
+    }).filter(Boolean);
+  }, [cart, products]);
 
-  const subtotal = cartItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0);
+  const subtotal = React.useMemo(() => cartItems.reduce((sum, item) => sum + (item?.totalPrice || 0), 0), [cartItems]);
   
-  const isOutOfCoverage = formData.deliveryType === 'DELIVERY' && formData.distanceKm > shippingSettings.maxKmForAutoPayment;
+  const isOutOfCoverage = React.useMemo(() => formData.deliveryType === 'DELIVERY' && formData.distanceKm > shippingSettings.maxKmForAutoPayment, [formData.deliveryType, formData.distanceKm, shippingSettings.maxKmForAutoPayment]);
 
-  const calculateShippingCost = () => {
+  const calculateShippingCost = React.useCallback(() => {
     if (formData.deliveryType === 'PICKUP') return 0;
-    if (isOutOfCoverage) return 0; // Manual coordination
+    if (isOutOfCoverage) return 0; 
     
-    // Check for free delivery items
     const hasFreeDelivery = cartItems.some(item => {
       const p = products.find(prod => prod.id === item.id);
       return p?.tags?.includes('ENVÍO GRATIS') || p?.freeDelivery;
@@ -260,18 +260,18 @@ const Cart: React.FC = () => {
 
     const cost = shippingSettings.baseCost + (formData.distanceKm * shippingSettings.pricePerKm);
     return Math.ceil(cost / 100) * 100;
-  };
+  }, [formData.deliveryType, isOutOfCoverage, cartItems, products, formData.distanceKm, shippingSettings]);
 
-  const shippingCost = calculateShippingCost();
-  const discountAmount = appliedCoupon 
+  const shippingCost = React.useMemo(() => calculateShippingCost(), [calculateShippingCost]);
+  const discountAmount = React.useMemo(() => appliedCoupon 
     ? (appliedCoupon.type === 'percentage' ? (subtotal * appliedCoupon.discount / 100) : appliedCoupon.discount)
-    : 0;
+    : 0, [appliedCoupon, subtotal]);
 
-  const totalAfterDiscount = Math.max(0, subtotal - discountAmount);
-  const surcharge = formData.paymentMethod === PaymentMethod.TARJETA_UALA ? totalAfterDiscount * 0.15 : 0;
-  const total = totalAfterDiscount + surcharge;
+  const totalAfterDiscount = React.useMemo(() => Math.max(0, subtotal - discountAmount), [subtotal, discountAmount]);
+  const surcharge = React.useMemo(() => formData.paymentMethod === PaymentMethod.TARJETA_UALA ? totalAfterDiscount * 0.15 : 0, [formData.paymentMethod, totalAfterDiscount]);
+  const total = React.useMemo(() => totalAfterDiscount + surcharge, [totalAfterDiscount, surcharge]);
 
-  const handleApplyCoupon = () => {
+  const handleApplyCoupon = React.useCallback(() => {
     setCouponError('');
     const coupon = validateCoupon(couponCode);
     if (coupon) {
@@ -290,42 +290,11 @@ const Cart: React.FC = () => {
     } else {
       setCouponError('Cupón inválido o expirado');
     }
-  };
+  }, [couponCode, validateCoupon, subtotal]);
 
-  const removeCoupon = () => {
+  const removeCoupon = React.useCallback(() => {
     setAppliedCoupon(null);
-  };
-
-  const nextStep = () => {
-    if (step === 1 && cart.length === 0) return;
-    
-    trackEvent(AnalyticsEvents.CHECKOUT_PROGRESS, {
-      step: step,
-      step_name: step === 1 ? 'Cart' : step === 2 ? 'Delivery' : 'Payment'
-    });
-
-    if (step === 2) {
-      if (isOutOfCoverage) {
-        handleSubmit();
-        return;
-      }
-      const newErrors = validateForm();
-      if (Object.keys(newErrors).length > 0) {
-        // Scroll to first error
-        const firstErrorField = Object.keys(newErrors)[0];
-        const element = document.getElementsByName(firstErrorField)[0];
-        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
-        return;
-      }
-    }
-    setStep(step + 1);
-    window.scrollTo(0, 0);
-  };
-
-  const prevStep = () => {
-    setStep(step - 1);
-    window.scrollTo(0, 0);
-  };
+  }, []);
 
   const [returnedOrder, setReturnedOrder] = useState<Order | null>(null);
   const { cart: currentCart, clearCart: clearStoreCart } = useStore();
@@ -394,9 +363,9 @@ const Cart: React.FC = () => {
         window.history.replaceState({}, '', window.location.pathname);
       }
     }
-  }, [orders]);
+  }, [orders, currentCart.length, addToCart]);
 
-  const validateForm = () => {
+  const validateForm = React.useCallback(() => {
     const newErrors: Record<string, string> = {};
     
     if (!formData.customerName.trim()) newErrors.customerName = 'El nombre es obligatorio';
@@ -426,7 +395,6 @@ const Cart: React.FC = () => {
       }
     }
 
-    // Date and Time Validation
     if (!formData.deliveryDate.trim()) {
       newErrors.deliveryDate = 'La fecha es obligatoria';
     } else {
@@ -437,9 +405,7 @@ const Cart: React.FC = () => {
       if (selectedDate < today) {
         newErrors.deliveryDate = 'La fecha no puede ser anterior a hoy';
       } else if (selectedDate.getTime() === today.getTime()) {
-        // If it's today, check the time
         if (formData.deliveryTime) {
-          // Extract start time from range (e.g., "8.30 a 9.45hs" -> 8:30)
           const firstPart = formData.deliveryTime.split(' ')[0];
           let hours = 0;
           let minutes = 0;
@@ -453,7 +419,6 @@ const Cart: React.FC = () => {
           const selectedTime = new Date();
           selectedTime.setHours(hours, minutes, 0, 0);
           
-          // Add 1 hour buffer for preparation
           const minTime = new Date();
           minTime.setHours(now.getHours() + 1, now.getMinutes(), 0, 0);
           
@@ -468,9 +433,9 @@ const Cart: React.FC = () => {
 
     setErrors(newErrors);
     return newErrors;
-  };
+  }, [formData]);
 
-  const handleSubmit = async (e?: React.FormEvent) => {
+  const handleSubmit = React.useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     
     const newErrors = validateForm();
@@ -487,7 +452,6 @@ const Cart: React.FC = () => {
     }
 
     if (isOutOfCoverage) {
-      // Handle out of coverage: Send to WhatsApp directly
       trackEvent(AnalyticsEvents.OUT_OF_COVERAGE, {
         distance: formData.distanceKm,
         customer_name: formData.customerName
@@ -511,7 +475,7 @@ const Cart: React.FC = () => {
         paymentMethod: formData.paymentMethod as PaymentMethod,
         notes: formData.notes,
         items: cart,
-        total: subtotal - discountAmount, // Shipping cost not included yet
+        total: subtotal - discountAmount,
         shippingCost: 0,
         shippingZone: 'Zona 10 (Fuera de Rango)',
         distanceKm: formData.distanceKm,
@@ -530,7 +494,7 @@ const Cart: React.FC = () => {
       const whatsappMsg = `${text}\n\n*Método de Pago Preferido:* ${paymentMethodNames[formData.paymentMethod as PaymentMethod]}\n\n*Nota:* ¡El envío está fuera de nuestro rango! Pero podemos coordinar por Whatsapp.`;
       
       window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
-      clearStoreCart();
+      clearCart();
       navigate('/');
       return;
     }
@@ -570,18 +534,12 @@ const Cart: React.FC = () => {
       const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(order, products))}`;
       
       if (paymentUrl) {
-        console.log('Redirecting to payment gateway:', paymentUrl);
-        // Save order to localStorage for when they return
         localStorage.setItem('lastOrder', JSON.stringify(order));
-        // Redirect to payment gateway
         window.location.href = paymentUrl;
       } else if (formData.paymentMethod === PaymentMethod.TRANSFERENCIA_MP || formData.paymentMethod === PaymentMethod.TARJETA_UALA) {
-        console.warn('Payment link expected but not received, falling back to WhatsApp');
         alert('No pudimos generar el link de pago automáticamente, pero tu pedido fue registrado. Serás redirigido a WhatsApp para coordinar el pago.');
         window.location.href = whatsappUrl;
       } else {
-        console.log('Manual payment method, redirecting to WhatsApp');
-        // Redirect directly to WhatsApp
         window.location.href = whatsappUrl;
       }
     } catch (error: any) {
@@ -590,7 +548,37 @@ const Cart: React.FC = () => {
     } finally {
       setIsSubmitting(false);
     }
-  };
+  }, [validateForm, isOutOfCoverage, formData, cart, subtotal, discountAmount, products, clearCart, navigate, addOrder, total, appliedCoupon]);
+
+  const nextStep = React.useCallback(() => {
+    if (step === 1 && cart.length === 0) return;
+    
+    trackEvent(AnalyticsEvents.CHECKOUT_PROGRESS, {
+      step: step,
+      step_name: step === 1 ? 'Cart' : step === 2 ? 'Delivery' : 'Payment'
+    });
+
+    if (step === 2) {
+      if (isOutOfCoverage) {
+        handleSubmit();
+        return;
+      }
+      const newErrors = validateForm();
+      if (Object.keys(newErrors).length > 0) {
+        const firstErrorField = Object.keys(newErrors)[0];
+        const element = document.getElementsByName(firstErrorField)[0];
+        if (element) element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return;
+      }
+    }
+    setStep(step + 1);
+    window.scrollTo(0, 0);
+  }, [step, cart.length, isOutOfCoverage, handleSubmit, validateForm]);
+
+  const prevStep = React.useCallback(() => {
+    setStep(step - 1);
+    window.scrollTo(0, 0);
+  }, [step]);
 
   if (cartItems.length === 0) {
     return (

@@ -29,7 +29,7 @@ import { OrderStatus, PaymentStatus } from '@/types';
 const Dashboard: React.FC = () => {
   const { products, orders } = useStore();
 
-  const stats = {
+  const stats = React.useMemo(() => ({
     totalRevenue: orders.filter(o => o.paymentStatus === PaymentStatus.PAID).reduce((sum, o) => sum + o.total, 0),
     orderCount: orders.length,
     pendingOrders: orders.filter(o => o.status === OrderStatus.NUEVO).length,
@@ -66,7 +66,7 @@ const Dashboard: React.FC = () => {
       }
       return acc;
     }, [])
-  };
+  }), [products, orders]);
 
   const COLORS = ['#D4A373', '#A98467', '#6B705C', '#B7B7A4', '#FFE8D6'];
 
