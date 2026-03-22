@@ -23,11 +23,13 @@
     "motion": "^12.38.0",
     "react": "^19.2.3",
     "react-dom": "^19.2.3",
+    "react-google-places-autocomplete": "^4.1.0",
     "react-router-dom": "^7.12.0",
     "recharts": "^3.8.0",
     "tailwindcss": "^4.2.1",
     "tsx": "^4.21.0",
-    "vite": "^6.2.0"
+    "vite": "^6.2.0",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@types/compression": "^1.8.1",

@@ -18,7 +18,7 @@ export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
     message += `*Descuento:* -$${order.discountAmount.toLocaleString()}\n`;
   }
   
-  message += `*Total:* $${order.total.toLocaleString()}\n\n`;
+  message += `*Total:* $${(order.total || 0).toLocaleString()}\n\n`;
 
   if (order.paymentMethod === PaymentMethod.TRANSFERENCIA_MP) {
     message += `► _El cbu se envía una vez recibido el pedido_\n\n`;
@@ -68,10 +68,10 @@ export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
       const itemOptionsDetails: string[] = [];
       if (item.selectedOptions && product.options) {
         item.selectedOptions.forEach(selectedOpt => {
-          const option = product.options?.find(o => o.id === selectedOpt.optionId);
+          const option = product.options?.find(o => o.id === selectedOpt.optionId || o.name === selectedOpt.optionId);
           if (option) {
-            selectedOpt.values.forEach(valName => {
-              const val = option.values.find(v => v.name === valName);
+            selectedOpt.values.forEach(valIdOrName => {
+              const val = option.values.find(v => v.id === valIdOrName || v.name === valIdOrName);
               if (val) {
                 itemOptionsDetails.push(`${option.name}: ${val.name}${val.price ? ` (+$${val.price.toLocaleString()})` : ''}`);
               }
@@ -89,8 +89,8 @@ export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
     }
   });
   
-  message += `\n*TOTAL:* *$${order.total.toLocaleString()}*\n\n`;
+  message += `\n*TOTAL:* *$${(order.total || 0).toLocaleString()}*\n\n`;
   message += `_Espero tu respuesta para confirmar mi pedido_`;
   
-  return encodeURIComponent(message);
+  return message;
 };

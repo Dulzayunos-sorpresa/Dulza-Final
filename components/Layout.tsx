@@ -72,15 +72,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
-          ) : (
-            <button 
-              onClick={() => loginWithGoogle()}
-              className="hidden md:flex items-center gap-2 text-[10px] font-bold text-texto/60 uppercase tracking-widest hover:text-naranja transition-colors"
-            >
-              <User className="w-4 h-4" />
-              Ingresar
-            </button>
-          )}
+          ) : null}
 
           <Link to="/carrito" className="relative p-2 text-texto hover:bg-rosa-suave rounded-full transition-colors group">
             <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
@@ -131,9 +123,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                     </div>
                     <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="text-naranja font-bold text-sm uppercase tracking-widest">Salir</button>
                   </div>
-                ) : (
-                  <button onClick={() => { loginWithGoogle(); setIsMobileMenuOpen(false); }} className="w-full bg-naranja text-white py-3 rounded-xl font-bold uppercase tracking-widest text-xs">Ingresar con Google</button>
-                )}
+                ) : null}
               </div>
             </motion.div>
           )}

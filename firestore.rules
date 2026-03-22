@@ -91,6 +91,20 @@ service cloud.firestore {
       allow create, update, delete: if isAdmin();
     }
 
+    match /categories/{categoryId} {
+      // Anyone can read categories
+      allow read: if true;
+      // Only admins can create, update, delete categories
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /subobjects/{subobjectId} {
+      // Anyone can read subobjects
+      allow read: if true;
+      // Only admins can create, update, delete subobjects
+      allow create, update, delete: if isAdmin();
+    }
+
     match /settings/{settingId} {
       // Anyone can read settings (like shipping costs)
       allow read: if true;

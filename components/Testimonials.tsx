@@ -58,7 +58,7 @@ const Testimonials = () => {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: any = {
     hidden: { opacity: 0, scale: 0.9, y: 30 },
     visible: {
       opacity: 1,

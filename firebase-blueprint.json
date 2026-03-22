@@ -16,7 +16,8 @@
         "category": { "type": "string" },
         "tags": { "type": "array", "items": { "type": "string" } },
         "stock": { "type": "number" },
-        "options": { "type": "array" }
+        "options": { "type": "array" },
+        "isHidden": { "type": "boolean" }
       },
       "required": ["name", "description", "price", "image", "category"]
     },
@@ -64,6 +65,30 @@
         "values": { "type": "array" }
       },
       "required": ["name", "type", "values"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "A product category.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "order": { "type": "number" }
+      },
+      "required": ["name", "order"]
+    },
+    "ProductOptionValue": {
+      "title": "ProductOptionValue",
+      "description": "A value for a product option.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "price": { "type": "number" },
+        "image": { "type": "string" },
+        "category": { "type": "string" }
+      },
+      "required": ["name"]
     }
   },
   "firestore": {
@@ -78,6 +103,14 @@
     "/options/{optionId}": {
       "schema": { "$ref": "#/entities/Option" },
       "description": "Stores all product options."
+    },
+    "/categories/{categoryId}": {
+      "schema": { "$ref": "#/entities/Category" },
+      "description": "Stores all product categories."
+    },
+    "/subobjects/{subobjectId}": {
+      "schema": { "$ref": "#/entities/ProductOptionValue" },
+      "description": "Stores all product option values (subobjects)."
     }
   }
 }

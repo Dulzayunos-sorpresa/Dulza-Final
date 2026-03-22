@@ -1,6 +1,27 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, ProductCategory, Coupon, ShippingSettings, Category, ProductOptionValue } from '../types';
 import { COMMON_OPTIONS } from '../data/options';
+import { NEW_OPTIONS } from '../src/data/newOptions';
+import { NEW_OPTIONS_PART2 } from '../src/data/newOptionsPart2';
+import { NEW_OPTIONS_PART3 } from '../src/data/newOptionsPart3';
+import { NEW_OPTIONS_PART4 } from '../src/data/newOptionsPart4';
+import { NEW_OPTIONS_PART5 } from '../src/data/newOptionsPart5';
+import { NEW_OPTIONS_PART6 } from '../src/data/newOptionsPart6';
+import { NEW_OPTIONS_PART7 } from '../src/data/newOptionsPart7';
+import { NEW_OPTIONS_PART8 } from '../src/data/newOptionsPart8';
+import { NEW_CATEGORIES } from '../src/data/newCategories';
+import { NEW_PRODUCTS } from '../src/data/newProducts';
+import { EXCEL_CATEGORIES } from '../src/data/excelCategories';
+import { EXCEL_PRODUCTS_PART1, EXCEL_PRODUCTS_PART2 } from '../src/data/excelProducts';
+import { EXCEL_ITEMS_CATEGORIES } from '../src/data/excelItemsCategories';
+import { EXCEL_ITEMS_PRODUCTS_PART1 } from '../src/data/excelItemsProductsPart1';
+import { EXCEL_ITEMS_PRODUCTS_PART2 } from '../src/data/excelItemsProductsPart2';
+import { EXCEL_ITEMS_PRODUCTS_PART3 } from '../src/data/excelItemsProductsPart3';
+import { EXCEL_ITEMS_PRODUCTS_PART4 } from '../src/data/excelItemsProductsPart4';
+import { EXCEL_ITEMS_PRODUCTS_PART5 } from '../src/data/excelItemsProductsPart5';
+import { EXCEL_ITEMS_PRODUCTS_PART6 } from '../src/data/excelItemsProductsPart6';
+import { EXCEL_ITEMS_PRODUCTS_PART7 } from '../src/data/excelItemsProductsPart7';
+import { EXCEL_ITEMS_PRODUCTS_PART8 } from '../src/data/excelItemsProductsPart8';
 import { MOCK_PRODUCTS } from '../data/products/allProducts';
 import axios from 'axios';
 import { db } from '../firebase';
@@ -30,6 +51,7 @@ export interface StoreContextType {
   updateOrderStatus: (orderId: string, status: OrderStatus) => void;
   updateOrderPaymentStatus: (orderId: string, status: PaymentStatus) => void;
   updateOrderShipping: (orderId: string, cost: number, zone: string, distance?: number) => Promise<void>;
+  deleteOrder: (orderId: string) => Promise<void>;
   updateShippingSettings: (settings: ShippingSettings) => Promise<void>;
   updateStock: (productId: string, newStock: number) => void;
   options: ProductOption[];
@@ -76,34 +98,46 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   useEffect(() => {
-    const unsubscribeProducts = onSnapshot(collection(db, 'products'), async (snapshot) => {
+    const seedProducts = async (productsToSeed: Product[]) => {
+      try {
+        const batch = productsToSeed.map(product => 
+          setDoc(doc(db, 'products', product.id), product)
+        );
+        await Promise.all(batch);
+      } catch (error) {
+        console.warn('Could not seed products to Firestore (likely not admin). Using local mock data.');
+      }
+    };
+
+    const unsubscribeProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
       if (snapshot.empty) {
         // Set mock products immediately so the UI isn't empty
-        const mockProductsWithStock = MOCK_PRODUCTS.map(p => {
+        const allInitialProducts = [
+          ...MOCK_PRODUCTS, 
+          ...NEW_PRODUCTS, 
+          ...EXCEL_PRODUCTS_PART1, 
+          ...EXCEL_PRODUCTS_PART2,
+          ...EXCEL_ITEMS_PRODUCTS_PART1,
+          ...EXCEL_ITEMS_PRODUCTS_PART2,
+          ...EXCEL_ITEMS_PRODUCTS_PART3,
+          ...EXCEL_ITEMS_PRODUCTS_PART4,
+          ...EXCEL_ITEMS_PRODUCTS_PART5,
+          ...EXCEL_ITEMS_PRODUCTS_PART6,
+          ...EXCEL_ITEMS_PRODUCTS_PART7,
+          ...EXCEL_ITEMS_PRODUCTS_PART8
+        ];
+        const mockProductsWithStock = allInitialProducts.map(p => {
           const product = { ...p, stock: p.stock ?? 50 };
-          if (p.category === ProductCategory.CUSTOM_BOX || p.category === ProductCategory.BREAKFAST) {
-            product.options = [
-              COMMON_OPTIONS.PRESENTATION,
-              COMMON_OPTIONS.CAKES,
-              COMMON_OPTIONS.CUPS,
-              COMMON_OPTIONS.DRINKS,
-              COMMON_OPTIONS.SWEETS
-            ];
+          // Ensure isHidden is set based on stock if not explicitly provided
+          if (product.isHidden === undefined) {
+            product.isHidden = product.stock === 0;
           }
           return product;
         });
         setProducts(mockProductsWithStock);
 
         if (!isInitialized) {
-          // Try to seed products to Firestore (will fail if not admin, which is fine)
-          try {
-            const batch = mockProductsWithStock.map(product => 
-              setDoc(doc(db, 'products', product.id), product)
-            );
-            await Promise.all(batch);
-          } catch (error) {
-            console.warn('Could not seed products to Firestore (likely not admin). Using local mock data.');
-          }
+          seedProducts(mockProductsWithStock);
         }
       } else {
         const prods: Product[] = [];
@@ -113,13 +147,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }, (error) => {
       console.error('Firestore Error (products):', error);
       // Fallback to mock products on error
-      setProducts(MOCK_PRODUCTS);
+      setProducts([...MOCK_PRODUCTS, ...NEW_PRODUCTS]);
     });
 
     const unsubscribeOptions = onSnapshot(collection(db, 'options'), async (snapshot) => {
       if (snapshot.empty) {
         // Set mock options immediately
-        const mockOptions = Object.values(COMMON_OPTIONS);
+        const mockOptions = [
+          ...Object.values(COMMON_OPTIONS),
+          ...NEW_OPTIONS,
+          ...NEW_OPTIONS_PART2,
+          ...NEW_OPTIONS_PART3,
+          ...NEW_OPTIONS_PART4,
+          ...NEW_OPTIONS_PART5,
+          ...NEW_OPTIONS_PART6,
+          ...NEW_OPTIONS_PART7,
+          ...NEW_OPTIONS_PART8
+        ];
         setOptions(mockOptions);
 
         if (!isInitialized) {
@@ -138,14 +182,35 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }, (error) => {
       console.error('Firestore Error (options):', error);
-      setOptions(Object.values(COMMON_OPTIONS));
+      setOptions([
+        ...Object.values(COMMON_OPTIONS),
+        ...NEW_OPTIONS,
+        ...NEW_OPTIONS_PART2,
+        ...NEW_OPTIONS_PART3,
+        ...NEW_OPTIONS_PART4,
+        ...NEW_OPTIONS_PART5,
+        ...NEW_OPTIONS_PART6,
+        ...NEW_OPTIONS_PART7,
+        ...NEW_OPTIONS_PART8
+      ]);
     });
 
     const unsubscribeSubobjects = onSnapshot(collection(db, 'subobjects'), (snapshot) => {
       if (snapshot.empty) {
-        // Extract all unique values from COMMON_OPTIONS to seed subobjects
+        // Extract all unique values from all options to seed subobjects
+        const allInitialOptions = [
+          ...Object.values(COMMON_OPTIONS),
+          ...NEW_OPTIONS,
+          ...NEW_OPTIONS_PART2,
+          ...NEW_OPTIONS_PART3,
+          ...NEW_OPTIONS_PART4,
+          ...NEW_OPTIONS_PART5,
+          ...NEW_OPTIONS_PART6,
+          ...NEW_OPTIONS_PART7,
+          ...NEW_OPTIONS_PART8
+        ];
         const allValues: ProductOptionValue[] = [];
-        Object.values(COMMON_OPTIONS).forEach(opt => {
+        allInitialOptions.forEach(opt => {
           opt.values.forEach(val => {
             if (!allValues.find(v => v.id === val.id)) {
               allValues.push({ ...val, category: opt.name });
@@ -226,11 +291,39 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     });
 
     const unsubscribeCategories = onSnapshot(query(collection(db, 'categories'), orderBy('order', 'asc')), (snapshot) => {
-      const cats: Category[] = [];
-      snapshot.forEach(doc => cats.push(doc.data() as Category));
-      setCategories(cats);
+      if (snapshot.empty) {
+        const allInitialCategories = [
+          ...NEW_CATEGORIES,
+          ...EXCEL_CATEGORIES,
+          ...EXCEL_ITEMS_CATEGORIES
+        ];
+        
+        // Ensure unique category names
+        const uniqueCategories: Category[] = [];
+        const seenNames = new Set<string>();
+        allInitialCategories.forEach(cat => {
+          if (!seenNames.has(cat.name)) {
+            uniqueCategories.push(cat);
+            seenNames.add(cat.name);
+          }
+        });
+
+        const initialCategories = uniqueCategories.map((cat, index) => ({ ...cat, order: index }));
+        setCategories(initialCategories);
+        if (!isInitialized) {
+          try {
+            const batch = initialCategories.map(cat => setDoc(doc(db, 'categories', cat.id), cat));
+            Promise.all(batch).catch(console.warn);
+          } catch (e) {}
+        }
+      } else {
+        const cats: Category[] = [];
+        snapshot.forEach(doc => cats.push(doc.data() as Category));
+        setCategories(cats);
+      }
     }, (error) => {
       console.error('Firestore Error (categories):', error);
+      setCategories(NEW_CATEGORIES.map((cat, index) => ({ ...cat, order: index })));
     });
 
     setIsInitialized(true);
@@ -429,7 +522,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const order = orders.find(o => o.id === orderId);
       if (!order) return;
 
-      const newTotal = order.items.reduce((sum, item) => sum + item.totalPrice, 0) - (order.discountAmount || 0) + cost;
+      const newTotal = (order.total - (order.shippingCost || 0)) + cost;
 
       await updateDoc(orderRef, {
         shippingCost: cost,
@@ -439,6 +532,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       });
     } catch (error) {
       console.error('Error updating shipping:', error);
+    }
+  };
+
+  const deleteOrder = async (orderId: string) => {
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+    } catch (error) {
+      console.error('Error deleting order:', error);
     }
   };
 
@@ -606,6 +707,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       updateOrderStatus,
       updateOrderPaymentStatus,
       updateOrderShipping,
+      deleteOrder,
       updateShippingSettings,
       updateStock,
       options,

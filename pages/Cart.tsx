@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Trash2, ShoppingBag, Send, MapPin, Phone, User, Calendar, MessageSquare, CreditCard, Home, Loader2, ChevronRight, ChevronLeft, CheckCircle, XCircle, AlertCircle, Gift, Tag, Plus, Minus, Clock } from 'lucide-react';
 import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
@@ -44,6 +44,33 @@ const Cart: React.FC = () => {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isCalculatingDistance, setIsCalculatingDistance] = useState(false);
   const [mapUrl, setMapUrl] = useState('');
+  const addressInputRef = useRef<HTMLInputElement>(null);
+
+  // Google Places Autocomplete setup
+  useEffect(() => {
+    if (formData.deliveryType === 'DELIVERY' && !formData.isPrivateNeighborhood) {
+      const initAutocomplete = () => {
+        if ((window as any).google && addressInputRef.current) {
+          const autocomplete = new (window as any).google.maps.places.Autocomplete(addressInputRef.current, {
+            types: ['address'],
+            componentRestrictions: { country: 'ar' },
+            fields: ['formatted_address', 'geometry']
+          });
+
+          autocomplete.addListener('place_changed', () => {
+            const place = autocomplete.getPlace();
+            if (place.formatted_address) {
+              setFormData(prev => ({ ...prev, deliveryAddress: place.formatted_address }));
+            }
+          });
+        } else {
+          // Retry if script not loaded yet
+          setTimeout(initAutocomplete, 500);
+        }
+      };
+      initAutocomplete();
+    }
+  }, [formData.deliveryType, formData.isPrivateNeighborhood, step]);
 
   // Automatic distance calculation with debounce
   useEffect(() => {
@@ -147,9 +174,11 @@ const Cart: React.FC = () => {
 
   // Complementos (Upselling) categorized
   const allComplementos = products.filter(p => 
-    p.category === 'Complementos' || 
-    p.tags?.includes('complemento') ||
-    ['Globo', 'Peluche', 'Vino', 'Bombones', 'Taza', 'Mate', 'Champaña', 'Cerveza', 'Whisky'].some(keyword => p.name.includes(keyword))
+    !p.isHidden && (
+      p.category === 'Complementos' || 
+      p.tags?.includes('complemento') ||
+      ['Globo', 'Peluche', 'Vino', 'Bombones', 'Taza', 'Mate', 'Champaña', 'Cerveza', 'Whisky'].some(keyword => p.name.includes(keyword))
+    )
   );
 
   const complementosCategories = [
@@ -184,10 +213,10 @@ const Cart: React.FC = () => {
 
     if (item.selectedOptions && product.options) {
       item.selectedOptions.forEach(selectedOpt => {
-        const option = product.options?.find(o => o.id === selectedOpt.optionId);
+        const option = product.options?.find(o => o.id === selectedOpt.optionId || o.name === selectedOpt.optionId);
         if (option) {
-          selectedOpt.values.forEach(valName => {
-            const val = option.values.find(v => v.name === valName);
+          selectedOpt.values.forEach(valIdOrName => {
+            const val = option.values.find(v => v.id === valIdOrName || v.name === valIdOrName);
             if (val) {
               if (val.price) optionsPrice += val.price;
               itemOptionsDetails.push(`${option.name}: ${val.name}${val.price ? ` (+$${val.price.toLocaleString()})` : ''}`);
@@ -240,7 +269,7 @@ const Cart: React.FC = () => {
 
   const totalAfterDiscount = Math.max(0, subtotal - discountAmount);
   const surcharge = formData.paymentMethod === PaymentMethod.TARJETA_UALA ? totalAfterDiscount * 0.15 : 0;
-  const total = totalAfterDiscount + surcharge + shippingCost;
+  const total = totalAfterDiscount + surcharge;
 
   const handleApplyCoupon = () => {
     setCouponError('');
@@ -527,8 +556,8 @@ const Cart: React.FC = () => {
         paymentMethod: formData.paymentMethod as PaymentMethod,
         notes: formData.notes,
         items: cart,
-        total,
-        shippingCost,
+        total: total,
+        shippingCost: 0,
         shippingZone: formData.selectedZone,
         distanceKm: formData.distanceKm,
         couponCode: appliedCoupon?.code,
@@ -538,7 +567,7 @@ const Cart: React.FC = () => {
       setRedirectType('processing');
       setShowRedirectModal(true);
 
-      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(order, products)}`;
+      const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(order, products))}`;
       
       if (paymentUrl) {
         console.log('Redirecting to payment gateway:', paymentUrl);
@@ -644,7 +673,7 @@ const Cart: React.FC = () => {
                             <h3 className="font-bold text-texto text-xl uppercase tracking-tight">{item.name}</h3>
                             <p className="text-naranja text-xs font-bold uppercase tracking-widest">{item.category}</p>
                           </div>
-                          <p className="font-bold text-xl text-texto">${item.totalPrice.toLocaleString()}</p>
+                          <p className="font-bold text-xl text-texto">${(item.totalPrice || 0).toLocaleString()}</p>
                         </div>
                         
                         {item.itemOptionsDetails && item.itemOptionsDetails.length > 0 && (
@@ -725,7 +754,7 @@ const Cart: React.FC = () => {
                           </button>
                         </div>
                         <h4 className="text-[11px] font-bold text-texto uppercase tracking-tight truncate mb-1">{p.name}</h4>
-                        <p className="text-naranja font-bold text-sm">${p.price.toLocaleString()}</p>
+                        <p className="text-naranja font-bold text-sm">${(p.price || 0).toLocaleString()}</p>
                       </div>
                     ))}
                   </div>
@@ -739,23 +768,18 @@ const Cart: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between text-texto/60 text-sm font-medium">
                     <span>Subtotal</span>
-                    <span>${subtotal.toLocaleString()}</span>
+                    <span>${(subtotal || 0).toLocaleString()}</span>
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-verde text-sm font-bold">
                       <span>Descuento ({appliedCoupon?.code})</span>
-                      <span>-${discountAmount.toLocaleString()}</span>
+                      <span>-${(discountAmount || 0).toLocaleString()}</span>
                     </div>
                   )}
-                  {formData.deliveryType === 'DELIVERY' && (
-                    <div className="flex justify-between text-texto/60 text-sm font-medium">
-                      <span>Envío {formData.selectedZone ? `(${formData.selectedZone})` : ''}</span>
-                      <span>{isOutOfCoverage ? 'A coordinar' : `$${shippingCost.toLocaleString()}`}</span>
-                    </div>
-                  )}
+                  {/* Shipping line removed as per user request */}
                   <div className="pt-6 border-t border-naranja/5 flex justify-between items-center">
                     <span className="font-bold text-texto uppercase tracking-widest text-xs">Total</span>
-                    <span className="text-3xl font-bold text-naranja font-display tracking-tighter">${total.toLocaleString()}</span>
+                    <span className="text-3xl font-bold text-naranja font-display tracking-tighter">${(total || 0).toLocaleString()}</span>
                   </div>
                 </div>
                 <button 
@@ -801,6 +825,7 @@ const Cart: React.FC = () => {
                         type="text" 
                         name="customerName"
                         placeholder="Tu nombre completo"
+                        autoComplete="name"
                         value={formData.customerName}
                         onChange={(e) => setFormData({...formData, customerName: e.target.value})}
                         className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.customerName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
@@ -813,6 +838,7 @@ const Cart: React.FC = () => {
                         type="tel" 
                         name="customerPhone"
                         placeholder="Tu teléfono"
+                        autoComplete="tel"
                         value={formData.customerPhone}
                         onChange={(e) => setFormData({...formData, customerPhone: e.target.value})}
                         className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.customerPhone ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
@@ -907,8 +933,10 @@ const Cart: React.FC = () => {
                         <div className="relative">
                           <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
                           <input 
+                            ref={addressInputRef}
                             name="deliveryAddress"
                             placeholder="Dirección exacta"
+                            autoComplete="street-address"
                             value={formData.deliveryAddress}
                             onChange={(e) => setFormData({...formData, deliveryAddress: e.target.value})}
                             className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.deliveryAddress ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
@@ -952,7 +980,7 @@ const Cart: React.FC = () => {
                               </div>
                               {!isOutOfCoverage && (
                                 <div className="flex items-center gap-2 px-5 py-3 bg-verde/10 rounded-2xl border border-verde/20 flex-1 justify-center">
-                                  <span className="text-xs font-bold text-verde">Costo de envío: <span className="text-texto">${shippingCost.toLocaleString()}</span></span>
+                                  <span className="text-xs font-bold text-verde">Costo de envío: <span className="text-texto">${(shippingCost || 0).toLocaleString()}</span></span>
                                 </div>
                               )}
                             </div>
@@ -975,6 +1003,38 @@ const Cart: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    <div className="space-y-3">
+                      <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Datos de quien recibe</label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="relative">
+                          <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                          <input 
+                            type="text" 
+                            name="recipientName"
+                            placeholder="Nombre de quien recibe"
+                            autoComplete="name"
+                            value={formData.recipientName}
+                            onChange={(e) => setFormData({...formData, recipientName: e.target.value})}
+                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.recipientName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.recipientName && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.recipientName}</p>}
+                        </div>
+                        <div className="relative">
+                          <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
+                          <input 
+                            type="tel" 
+                            name="recipientPhone"
+                            placeholder="Teléfono de quien recibe"
+                            autoComplete="tel"
+                            value={formData.recipientPhone}
+                            onChange={(e) => setFormData({...formData, recipientPhone: e.target.value})}
+                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.recipientPhone ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                          />
+                          {errors.recipientPhone && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.recipientPhone}</p>}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
@@ -1032,7 +1092,7 @@ const Cart: React.FC = () => {
                 <div className="pt-6 border-t border-naranja/5 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-texto/40 font-bold uppercase tracking-wider">Subtotal</span>
-                    <span className="text-texto font-bold">${subtotal.toLocaleString()}</span>
+                    <span className="text-texto font-bold">${(subtotal || 0).toLocaleString()}</span>
                   </div>
                   {formData.deliveryType === 'DELIVERY' && (
                     <div className="flex justify-between text-sm">
@@ -1040,7 +1100,7 @@ const Cart: React.FC = () => {
                       <span className="text-texto font-bold">
                         {isCalculatingDistance ? 'Calculando...' : 
                          isOutOfCoverage ? 'A coordinar' : 
-                         shippingCost === 0 ? 'Sin cargo' : `$${shippingCost.toLocaleString()}`}
+                         shippingCost === 0 ? 'Sin cargo' : `$${(shippingCost || 0).toLocaleString()}`}
                       </span>
                     </div>
                   )}
@@ -1048,8 +1108,8 @@ const Cart: React.FC = () => {
                     <span className="font-display font-bold text-texto">Total estimado</span>
                     <span className="font-display font-bold text-naranja">
                       {isCalculatingDistance ? '...' : 
-                       isOutOfCoverage ? `$${totalAfterDiscount.toLocaleString()} + Envío` : 
-                       `$${(totalAfterDiscount + shippingCost).toLocaleString()}`}
+                       isOutOfCoverage ? `$${(totalAfterDiscount || 0).toLocaleString()} + Envío` : 
+                       `$${((totalAfterDiscount || 0) + (shippingCost || 0)).toLocaleString()}`}
                     </span>
                   </div>
                 </div>
@@ -1173,18 +1233,18 @@ const Cart: React.FC = () => {
                 <div className="space-y-4">
                   <div className="flex justify-between text-texto/40 text-xs font-bold uppercase tracking-wider">
                     <span>Subtotal</span>
-                    <span className="text-texto">${subtotal.toLocaleString()}</span>
+                    <span className="text-texto">${(subtotal || 0).toLocaleString()}</span>
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-verde text-xs font-bold uppercase tracking-wider">
                       <span>Descuento ({appliedCoupon?.code})</span>
-                      <span>-${discountAmount.toLocaleString()}</span>
+                      <span>-${(discountAmount || 0).toLocaleString()}</span>
                     </div>
                   )}
                   {surcharge > 0 && (
                     <div className="flex justify-between text-naranja text-xs font-bold uppercase tracking-wider">
                       <span>Recargo Tarjeta (15%)</span>
-                      <span>+${surcharge.toLocaleString()}</span>
+                      <span>+${(surcharge || 0).toLocaleString()}</span>
                     </div>
                   )}
                   {formData.deliveryType === 'DELIVERY' && (
@@ -1192,14 +1252,14 @@ const Cart: React.FC = () => {
                       <span>Envío {isOutOfCoverage ? '(Zona 10 - Lejos)' : ''}</span>
                       <span className="text-texto">
                         {isOutOfCoverage ? 'A coordinar' : 
-                         shippingCost === 0 ? 'Sin cargo' : `$${shippingCost.toLocaleString()}`}
+                         shippingCost === 0 ? 'Sin cargo' : `$${(shippingCost || 0).toLocaleString()}`}
                       </span>
                     </div>
                   )}
                   <div className="pt-6 border-t border-naranja/5 flex justify-between items-center">
                     <span className="font-display font-bold text-texto text-xl">Total</span>
                     <span className="text-3xl font-bold text-naranja font-display">
-                      {isOutOfCoverage ? `$${(totalAfterDiscount + surcharge).toLocaleString()} + Envío` : `$${total.toLocaleString()}`}
+                      {isOutOfCoverage ? `$${((totalAfterDiscount || 0) + (surcharge || 0)).toLocaleString()} + Envío` : `$${(total || 0).toLocaleString()}`}
                     </span>
                   </div>
                 </div>
@@ -1274,7 +1334,7 @@ const Cart: React.FC = () => {
             {redirectType === 'success' && returnedOrder ? (
               <button
                 onClick={() => {
-                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${formatOrderToWhatsApp(returnedOrder, products)}`;
+                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(returnedOrder, products))}`;
                   window.location.href = whatsappUrl;
                 }}
                 className="w-full bg-verde text-white py-4 rounded-2xl font-bold hover:bg-verde/90 transition-all shadow-xl shadow-verde/20 flex items-center justify-center gap-3"

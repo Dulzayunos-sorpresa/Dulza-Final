@@ -1,0 +1,30 @@
+import { Category } from '../../types';
+
+export const EXCEL_ITEMS_CATEGORIES: Category[] = [
+  { id: 'cat-tazas', name: 'TAZAS', order: 100 },
+  { id: 'cat-vasos-termicos', name: 'VASOS TÉRMICOS', order: 101 },
+  { id: 'cat-botellas', name: 'BOTELLAS', order: 102 },
+  { id: 'cat-mates', name: 'MATES', order: 103 },
+  { id: 'cat-dulces', name: 'DULCES', order: 104 },
+  { id: 'cat-peluches', name: 'PELUCHES', order: 105 },
+  { id: 'cat-globos', name: 'GLOBOS', order: 106 },
+  { id: 'cat-salados', name: 'SALADOS', order: 107 },
+  { id: 'cat-cookies', name: 'COOKIES', order: 108 },
+  { id: 'cat-bombones', name: 'BOMBONES', order: 109 },
+  { id: 'cat-tes-cafes', name: 'TÉS Y CAFÉS', order: 110 },
+  { id: 'cat-llaveros', name: 'LLAVEROS', order: 111 },
+  { id: 'cat-bebidas', name: 'BEBIDAS', order: 112 },
+  { id: 'cat-tortas-tartas', name: 'TORTAS Y TARTAS', order: 113 },
+  { id: 'cat-bandejas', name: 'BANDEJAS', order: 114 },
+  { id: 'cat-frases', name: 'FRASES', order: 115 },
+  { id: 'cat-flores', name: 'FLORES', order: 116 },
+  { id: 'cat-joyas-dijes', name: 'JOYAS-DIJES', order: 117 },
+  { id: 'cat-fotos', name: 'FOTOS', order: 118 },
+  { id: 'cat-varios', name: 'VARIOS', order: 119 },
+  { id: 'cat-juguetes', name: 'JUGUETES', order: 120 },
+  { id: 'cat-deco', name: 'DECO', order: 121 },
+  { id: 'cat-saludables', name: 'SALUDABLES', order: 122 },
+  { id: 'cat-chocolates', name: 'CHOCOLATES', order: 123 },
+  { id: 'cat-colores', name: 'COLORES', order: 124 },
+  { id: 'cat-elegibles-personalizado', name: 'ELEGIBLES EN PERSONALIZADO', order: 125 }
+];

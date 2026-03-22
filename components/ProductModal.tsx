@@ -16,6 +16,34 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [step, setStep] = useState<number>(-1);
 
+  const productImages = useMemo(() => {
+    if (!product) return [];
+    return [product.image, ...(product.galleryImages || [])];
+  }, [product]);
+
+  const isNew = product?.tags?.includes('NUEVO');
+  const isPopular = product?.tags?.includes('PREMIUM') || product?.tags?.includes('MÁS VENDIDO');
+
+  const currentPrice = useMemo(() => {
+    if (!product) return 0;
+    let price = product.price;
+    product.options?.forEach(option => {
+      const selectedIds = selectedOptions[option.name] || [];
+      selectedIds.forEach(valId => {
+        const choice = option.values.find(v => v.id === valId || v.name === valId);
+        if (choice?.price) price += choice.price;
+      });
+    });
+    return price;
+  }, [product, selectedOptions]);
+
+  const isMissingRequired = useMemo(() => {
+    if (!product) return false;
+    return product.options?.some(option => 
+      option.isRequired && (!selectedOptions[option.name] || selectedOptions[option.name].length === 0)
+    );
+  }, [product, selectedOptions]);
+
   useEffect(() => {
     if (isOpen) {
       setQuantity(1);
@@ -47,24 +75,6 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
       };
     });
   };
-
-  const currentPrice = useMemo(() => {
-    let price = product.price;
-    product.options?.forEach(option => {
-      const selectedIds = selectedOptions[option.name] || [];
-      selectedIds.forEach(valId => {
-        const choice = option.values.find(v => v.id === valId || v.name === valId);
-        if (choice?.price) price += choice.price;
-      });
-    });
-    return price;
-  }, [product, selectedOptions]);
-
-  const isMissingRequired = useMemo(() => {
-    return product.options?.some(option => 
-      option.required && (!selectedOptions[option.name] || selectedOptions[option.name].length === 0)
-    );
-  }, [product, selectedOptions]);
 
   const handleAddToCart = () => {
     onAddToCart(product, quantity, selectedOptions);
@@ -107,15 +117,16 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
-                  src={product.images[currentImageIndex]}
+                  src={productImages[currentImageIndex]}
                   alt={product.name}
+                  referrerPolicy="no-referrer"
                   className="w-full h-full object-cover"
                 />
               </AnimatePresence>
               
-              {product.images.length > 1 && (
+              {productImages.length > 1 && (
                 <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex gap-2 px-3 py-2 bg-black/20 backdrop-blur-md rounded-full">
-                  {product.images.map((_, idx) => (
+                  {productImages.map((_, idx) => (
                     <button
                       key={idx}
                       onClick={() => setCurrentImageIndex(idx)}
@@ -129,12 +140,12 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
 
               {/* Badges */}
               <div className="absolute top-6 left-6 flex flex-col gap-2">
-                {product.isNew && (
+                {isNew && (
                   <span className="bg-dorado text-texto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
                     Nuevo
-                  </span >
+                  </span>
                 )}
-                {product.isPopular && (
+                {isPopular && (
                   <span className="bg-naranja text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
                     Más Vendido
                   </span>
@@ -143,8 +154,8 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             </div>
 
             {/* Right Side: Content */}
-            <div className="w-full md:w-1/2 flex flex-col bg-crema">
-              <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar">
+            <div className="w-full md:w-1/2 flex flex-col bg-crema min-h-0">
+              <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar max-h-full">
                 <AnimatePresence mode="wait">
                   {step === -1 ? (
                     <motion.div
@@ -155,13 +166,15 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       className="space-y-8"
                     >
                       <div className="space-y-4">
-                        <div className="flex items-center gap-2 text-dorado">
-                          <Star size={14} fill="currentColor" />
-                          <span className="text-xs font-bold uppercase tracking-widest">Producto Premium</span>
-                        </div>
+                        {product.subtitle && (
+                          <div className="flex items-center gap-2 text-dorado">
+                            <Star size={14} fill="currentColor" />
+                            <span className="text-xs font-bold uppercase tracking-widest">{product.subtitle}</span>
+                          </div>
+                        )}
                         <h2 className="text-3xl sm:text-4xl font-bold text-texto leading-tight">{product.name}</h2>
                         <div className="flex items-baseline gap-3">
-                          <span className="text-3xl font-bold text-naranja">${product.price.toLocaleString()}</span>
+                          <span className="text-3xl font-bold text-naranja">${(product.price || 0).toLocaleString()}</span>
                           {product.oldPrice && (
                             <span className="text-lg text-texto/40 line-through">${product.oldPrice.toLocaleString()}</span>
                           )}
@@ -169,7 +182,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       </div>
 
                       <div className="p-6 bg-white/50 rounded-2xl border border-naranja/10 space-y-4">
-                        <p className="text-texto/70 leading-relaxed text-sm sm:text-base">
+                        <p className="text-texto/70 leading-relaxed text-sm sm:text-base whitespace-pre-line">
                           {product.description}
                         </p>
                         <div className="flex flex-wrap gap-4 pt-2">
@@ -184,19 +197,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                         </div>
                       </div>
 
-                      <div className="space-y-4">
-                        <h3 className="text-xs font-bold text-texto uppercase tracking-[0.2em]">¿Qué incluye?</h3>
-                        <ul className="grid grid-cols-1 gap-3">
-                          {product.features.map((feature, idx) => (
-                            <li key={idx} className="flex items-center gap-3 text-texto/80 text-sm bg-white/30 p-3 rounded-xl border border-naranja/5">
-                              <div className="w-5 h-5 rounded-full bg-verde/10 flex items-center justify-center shrink-0">
-                                <Check size={12} className="text-verde" />
-                              </div>
-                              {feature}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
+                      {/* Features section removed as it's not in the data model */}
                     </motion.div>
                   ) : (
                     <motion.div
@@ -226,10 +227,10 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                               <div className="space-y-1">
                                 <h3 className="font-bold text-texto flex items-center gap-2">
                                   {product.options[step].name}
-                                  {product.options[step].required && <span className="text-naranja text-[10px] uppercase tracking-widest bg-naranja/10 px-2 py-0.5 rounded-full">Obligatorio</span>}
+                                  {product.options[step].isRequired && <span className="text-naranja text-[10px] uppercase tracking-widest bg-naranja/10 px-2 py-0.5 rounded-full">Obligatorio</span>}
                                 </h3>
                                 <p className="text-xs text-texto/50">
-                                  {product.options[step].multi ? 'Podés elegir varios' : 'Elegí una opción'}
+                                  {product.options[step].type === 'multi-select' ? 'Podés elegir varios' : 'Elegí una opción'}
                                 </p>
                               </div>
                             </div>
@@ -240,7 +241,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                                 return (
                                   <button
                                     key={valId}
-                                    onClick={() => handleOptionToggle(product.options![step].name, valId, product.options![step].multi || false)}
+                                    onClick={() => handleOptionToggle(product.options![step].name, valId, product.options![step].type === 'multi-select')}
                                     className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left group ${
                                       isSelected 
                                         ? 'border-naranja bg-naranja/5 shadow-lg shadow-naranja/5' 
@@ -314,7 +315,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                           className="flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30"
                         >
                           <ShoppingCart className="h-4 w-4" />
-                          <span>Agregar al Carrito · ${(product.price * quantity).toLocaleString()}</span>
+                          <span>Agregar al Carrito · ${((product.price || 0) * quantity).toLocaleString()}</span>
                         </button>
                       )}
                     </>
@@ -322,7 +323,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                     <button 
                       onClick={() => {
                         const currentOption = product.options![step];
-                        const isCurrentMissing = currentOption.required && (!selectedOptions[currentOption.name] || selectedOptions[currentOption.name].length === 0);
+                        const isCurrentMissing = currentOption.isRequired && (!selectedOptions[currentOption.name] || selectedOptions[currentOption.name].length === 0);
                         
                         if (isCurrentMissing) {
                           alert('Por favor, completá esta opción obligatoria para continuar.');
@@ -345,7 +346,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       ) : (
                         <>
                           <ShoppingCart className="h-4 w-4" />
-                          <span>Confirmar y Agregar · ${(currentPrice * quantity).toLocaleString()}</span>
+                          <span>Confirmar y Agregar · ${((currentPrice || 0) * quantity).toLocaleString()}</span>
                         </>
                       )}
                     </button>

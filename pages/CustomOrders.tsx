@@ -10,7 +10,7 @@ const CustomOrders: React.FC = () => {
 
   // Filter only Custom Box products and sort by price
   const customProducts = products
-    .filter(p => p.category === ProductCategory.CUSTOM_BOX)
+    .filter(p => p.category === ProductCategory.CUSTOM_BOX && !p.isHidden)
     .sort((a, b) => a.price - b.price);
 
   return (

@@ -88,6 +88,17 @@ export class PrinterService {
     return ticket;
   }
 
+  static async printOrder(order: Order, products: Product[]) {
+    const ticket = this.formatOrder(order, products);
+    try {
+      // Try Bluetooth first, then USB
+      await this.printViaBluetooth(ticket);
+    } catch (err) {
+      console.warn('Bluetooth print failed, trying USB...');
+      await this.printViaUSB(ticket);
+    }
+  }
+
   static async printViaBluetooth(content: string) {
     try {
       // @ts-ignore

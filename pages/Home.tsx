@@ -13,7 +13,7 @@ import Testimonials from '../components/Testimonials';
 import Urgency from '../components/Urgency';
 import FAQ from '../components/FAQ';
 
-const containerVariants = {
+const containerVariants: any = {
   hidden: { opacity: 0 },
   visible: {
     opacity: 1,
@@ -24,7 +24,7 @@ const containerVariants = {
   }
 };
 
-const itemVariants = {
+const itemVariants: any = {
   hidden: { opacity: 0, y: 20 },
   visible: { opacity: 1, y: 0, transition: { duration: 0.6, ease: "easeOut" } }
 };
@@ -33,6 +33,7 @@ export default function Home() {
   const { products, addToCart, categories } = useStore();
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('Todos');
+  const [searchQuery, setSearchQuery] = useState('');
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [showToast, setShowToast] = useState(false);
   const [wordIndex, setWordIndex] = useState(0);
@@ -43,19 +44,25 @@ export default function Home() {
   const valentineCategory = ProductCategory.VALENTINE;
 
   const dynamicCategories = useMemo(() => {
-    if (categories && categories.length > 0) {
-      return categories.map(c => c.name);
-    }
     const cats = new Set<string>();
-    products.forEach(p => {
-      if (p.category !== ProductCategory.VALENTINE && p.category !== ProductCategory.CUSTOM_BOX) {
-        cats.add(p.category);
-      }
-    });
+    if (categories && categories.length > 0) {
+      categories.forEach(c => cats.add(c.name));
+    } else {
+      products.forEach(p => {
+        if (p.category !== ProductCategory.VALENTINE && p.category !== ProductCategory.CUSTOM_BOX) {
+          cats.add(p.category);
+        }
+      });
+    }
     return Array.from(cats);
   }, [products, categories]);
 
-  const allNavCategories = [valentineCategory, ...dynamicCategories];
+  const allNavCategories = useMemo(() => {
+    const cats = new Set<string>();
+    cats.add(valentineCategory);
+    dynamicCategories.forEach(cat => cats.add(cat));
+    return Array.from(cats);
+  }, [valentineCategory, dynamicCategories]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -288,39 +295,58 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Categories Navigation */}
-        <div className="flex gap-4 overflow-x-auto pb-10 hide-scrollbar mb-16 justify-start md:justify-center">
-          <button
-            onClick={() => setActiveFilter('Todos')}
-            className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
-              activeFilter === 'Todos' 
-                ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
-                : 'bg-white text-texto/50 hover:bg-crema hover:text-naranja'
-            }`}
-          >
-            Todos
-          </button>
-          {allNavCategories.map((category) => (
+        {/* Search and Categories Navigation */}
+        <div className="flex flex-col gap-8 mb-16 items-center">
+          {/* Search Bar */}
+          <div className="w-full max-w-md">
+            <input
+              type="text"
+              placeholder="Buscar desayuno..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full px-6 py-3 rounded-full border border-stone-200 focus:ring-2 focus:ring-naranja outline-none"
+            />
+          </div>
+
+          {/* Categories Navigation */}
+          <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar w-full justify-start md:justify-center">
             <button
-              key={category}
-              onClick={() => setActiveFilter(category)}
+              onClick={() => setActiveFilter('Todos')}
               className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
-                activeFilter === category 
+                activeFilter === 'Todos' 
                   ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
                   : 'bg-white text-texto/50 hover:bg-crema hover:text-naranja'
               }`}
             >
-              {category}
+              Todos
             </button>
-          ))}
+            {allNavCategories.map((category) => (
+              <button
+                key={category}
+                onClick={() => setActiveFilter(category)}
+                className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+                  activeFilter === category 
+                    ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
+                    : 'bg-white text-texto/50 hover:bg-crema hover:text-naranja'
+                }`}
+              >
+                {category}
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Standard Categories */}
         <div className="space-y-40">
-          {allNavCategories
+          {useMemo(() => allNavCategories
             .filter(category => activeFilter === 'Todos' || activeFilter === category)
             .map((category, catIndex) => {
-            const categoryProducts = products.filter(p => p.category === category);
+            const categoryProducts = products.filter(p => 
+              (p.category === category) && 
+              !p.isHidden && 
+              (p.stock === undefined || p.stock > 0) &&
+              (p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.description.toLowerCase().includes(searchQuery.toLowerCase()))
+            );
             if (categoryProducts.length === 0) return null;
 
             return (
@@ -346,7 +372,7 @@ export default function Home() {
                 </div>
               </div>
             );
-          })}
+          }), [allNavCategories, activeFilter, products, searchQuery])}
         </div>
       </div>
 

@@ -3,6 +3,7 @@ export interface Category {
   id: string;
   name: string;
   order: number;
+  parentId?: string;
 }
 
 export enum ProductCategory {
@@ -25,6 +26,8 @@ export interface ProductOptionValue {
   price?: number;
   stock?: number;
   category?: string;
+  image?: string;
+  description?: string;
 }
 
 export interface ProductOption {
@@ -52,6 +55,7 @@ export interface Product {
   stock?: number;
   options?: ProductOption[];
   freeDelivery?: boolean;
+  isHidden?: boolean;
 }
 
 export enum OrderStatus {

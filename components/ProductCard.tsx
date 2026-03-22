@@ -33,6 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           src={product.image} 
           alt={product.name} 
           loading="lazy"
+          referrerPolicy="no-referrer"
           className="object-cover w-full h-full"
         />
         {product.tags?.includes('NUEVO') && (
@@ -53,7 +54,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <div className="mt-auto">
           <div className="flex items-baseline gap-2 mb-6">
             <span className="text-[10px] font-bold uppercase tracking-widest text-texto/30">Desde</span>
-            <span className="text-3xl font-display text-naranja font-bold tracking-tighter">${product.price.toLocaleString()}</span>
+            <span className="text-3xl font-display text-naranja font-bold tracking-tighter">${(product.price || 0).toLocaleString()}</span>
           </div>
           
           {isLowStock && (
