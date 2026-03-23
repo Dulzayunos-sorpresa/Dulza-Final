@@ -28,6 +28,7 @@ import { db, auth } from '../firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { trackEvent, AnalyticsEvents } from '../src/utils/analytics';
+import { NotificationService } from '../services/NotificationService';
 
 export interface StoreContextType {
   categories: Category[];
@@ -251,10 +252,22 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
     let unsubscribeOrders = () => {};
     if (isAdmin) {
+      let isFirstLoad = true;
       unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snapshot) => {
         const ords: Order[] = [];
         snapshot.forEach(doc => ords.push(doc.data() as Order));
+        
+        // Only play sound for new orders added AFTER the initial load
+        if (!isFirstLoad) {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              NotificationService.playNewOrderSound();
+            }
+          });
+        }
+        
         setOrders(ords);
+        isFirstLoad = false;
       }, (error) => {
         console.error('Firestore Error (orders):', error);
       });

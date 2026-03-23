@@ -15,13 +15,16 @@ import {
   CheckCircle, 
   Clock, 
   XCircle, 
-  Send 
+  Send,
+  Volume2,
+  VolumeX
 } from 'lucide-react';
 import { useStore } from '@/context/store';
 import { OrderStatus, PaymentStatus, Order } from '@/types';
 import { formatOrderToWhatsApp } from '@/src/utils/orderUtils';
 import { trackEvent, AnalyticsEvents } from '@/src/utils/analytics';
 import { PrinterService } from '@/services/PrinterService';
+import { NotificationService } from '@/services/NotificationService';
 
 interface OrderCardProps {
   order: Order;
@@ -302,6 +305,17 @@ const OrdersManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'TODOS'>('TODOS');
 
+  const [isSoundEnabled, setIsSoundEnabled] = useState(() => NotificationService.getEnabled());
+
+  const toggleSound = () => {
+    const newState = !isSoundEnabled;
+    setIsSoundEnabled(newState);
+    NotificationService.setEnabled(newState);
+    if (newState) {
+      NotificationService.playNewOrderSound(); // Test sound
+    }
+  };
+
   const SHIPPING_ZONES = React.useMemo(() => [
     { name: 'Zona 1 (Cerca)', cost: 2000 },
     { name: 'Zona 2 (Media)', cost: 4000 },
@@ -361,7 +375,25 @@ const OrdersManager: React.FC = () => {
             className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
           />
         </div>
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto">
+        <div className="flex flex-wrap gap-2 w-full lg:w-auto items-center">
+          <button
+            onClick={toggleSound}
+            className={`p-2 rounded-xl transition-all border relative ${
+              isSoundEnabled 
+                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
+                : 'bg-stone-50 text-stone-400 border-stone-200 hover:bg-stone-100'
+            }`}
+            title={isSoundEnabled ? "Sonido activado" : "Sonido desactivado"}
+          >
+            {isSoundEnabled && (
+              <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+              </span>
+            )}
+            {isSoundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+          </button>
+          <div className="h-8 w-px bg-stone-100 mx-1 hidden lg:block" />
           {['TODOS', ...Object.values(OrderStatus)].map(status => (
             <button
               key={status}
