@@ -11,7 +11,8 @@ import {
   Tag, 
   Gift, 
   Plus,
-  LogOut
+  LogOut,
+  Printer
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -26,6 +27,7 @@ const SubobjectsManager = lazy(() => import('@/src/components/admin/SubobjectsMa
 const CouponsManager = lazy(() => import('@/src/components/admin/CouponsManager'));
 const ShippingManager = lazy(() => import('@/src/components/admin/ShippingManager'));
 const NewOrderManager = lazy(() => import('@/src/components/admin/NewOrderManager'));
+const PrinterSettings = lazy(() => import('@/src/components/admin/PrinterSettings'));
 
 const AdminLoading = React.memo(() => (
   <div className="flex items-center justify-center p-20">
@@ -58,6 +60,7 @@ const Sidebar = React.memo(({
     { id: 'subobjects', label: 'Subobjetos', icon: Users },
     { id: 'coupons', label: 'Cupones', icon: Gift },
     { id: 'shipping', label: 'Envíos', icon: Truck },
+    { id: 'printer', label: 'Impresora', icon: Printer },
   ] as const;
 
   return (
@@ -120,7 +123,7 @@ const Admin = () => {
   const [isPasswordCorrect, setIsPasswordCorrect] = useState(() => {
     return sessionStorage.getItem('adminAuth') === 'true';
   });
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stock' | 'new-order' | 'options' | 'subobjects' | 'coupons' | 'shipping' | 'categories'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stock' | 'new-order' | 'options' | 'subobjects' | 'coupons' | 'shipping' | 'categories' | 'printer'>('dashboard');
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
@@ -173,6 +176,7 @@ const Admin = () => {
             {activeTab === 'subobjects' && <SubobjectsManager key="subobjects" />}
             {activeTab === 'coupons' && <CouponsManager key="coupons" />}
             {activeTab === 'shipping' && <ShippingManager key="shipping" />}
+            {activeTab === 'printer' && <PrinterSettings key="printer" />}
           </AnimatePresence>
         </Suspense>
       </main>

@@ -1,7 +1,119 @@
 import { Order, Product, PaymentMethod } from '../types';
 
+export interface PrinterConfig {
+  vendorId: number;
+  productId: number;
+  paperSize: '58mm' | '80mm';
+}
+
 export class PrinterService {
+  private static readonly CONFIG_KEY = 'thermal_printer_config';
+
+  static getStoredConfig(): PrinterConfig | null {
+    const stored = localStorage.getItem(this.CONFIG_KEY);
+    return stored ? JSON.parse(stored) : null;
+  }
+
+  static setStoredConfig(config: PrinterConfig) {
+    localStorage.setItem(this.CONFIG_KEY, JSON.stringify(config));
+  }
+
   static async printOrder(order: Order, products: Product[]) {
+    const config = this.getStoredConfig();
+    
+    // If USB config exists, try USB printing first
+    if (config && config.vendorId && config.productId) {
+      try {
+        await this.printViaUSB(order, products, config);
+        return;
+      } catch (error) {
+        console.error('USB Printing failed, falling back to browser print:', error);
+      }
+    }
+
+    // Fallback to browser print if USB fails or is not configured
+    this.printViaBrowser(order, products);
+  }
+
+  private static async printViaUSB(order: Order, products: Product[], config: PrinterConfig) {
+    let device: USBDevice | undefined;
+    
+    // Try to find an already authorized device
+    const devices = await navigator.usb.getDevices();
+    device = devices.find(d => d.vendorId === config.vendorId && d.productId === config.productId);
+
+    // If not found, request it (this will show the picker)
+    if (!device) {
+      device = await navigator.usb.requestDevice({
+        filters: [{ vendorId: config.vendorId, productId: config.productId }]
+      });
+    }
+
+    if (!device) throw new Error('No device selected');
+
+    await device.open();
+    await device.selectConfiguration(1);
+    await device.claimInterface(0);
+
+    const encoder = new TextEncoder();
+    const esc = '\x1B';
+    const gs = '\x1D';
+    
+    // ESC/POS Commands
+    const init = esc + '@';
+    const center = esc + 'a' + '\x01';
+    const left = esc + 'a' + '\x00';
+    const boldOn = esc + 'E' + '\x01';
+    const boldOff = esc + 'E' + '\x00';
+    const doubleSize = gs + '!' + '\x11';
+    const normalSize = gs + '!' + '\x00';
+    const cut = esc + 'i';
+
+    let data = init;
+    
+    // Header
+    data += center + boldOn + doubleSize + "DULZAYUNOS\n" + normalSize + boldOff;
+    data += "Pedido #" + order.id.slice(-6) + "\n";
+    data += new Date(order.createdAt).toLocaleString('es-AR') + "\n\n";
+    
+    // Customer Info
+    data += left + boldOn + "CLIENTE:\n" + boldOff;
+    data += order.customerName + "\n";
+    data += order.customerPhone + "\n";
+    data += "Pago: " + order.paymentMethod + "\n\n";
+
+    // Delivery Info
+    data += boldOn + "ENTREGA:\n" + boldOff;
+    data += (order.deliveryType === 'PICKUP' ? 'Retiro en Local' : 'Delivery') + "\n";
+    data += (order.deliveryAddress || 'No especificada') + "\n";
+    data += "Fecha: " + order.deliveryDate + "\n";
+    data += "Hora: " + (order.deliveryTime || 'N/A') + "\n\n";
+
+    if (order.notes) {
+      data += boldOn + "DEDICATORIA:\n" + boldOff;
+      data += "\"" + order.notes + "\"\n\n";
+    }
+
+    data += boldOn + "DETALLE:\n" + boldOff;
+    order.items.forEach(item => {
+      const p = products.find(prod => prod.id === item.productId);
+      data += item.quantity + "x " + (p?.name || 'Producto') + "\n";
+      if (item.selectedOptions) {
+        item.selectedOptions.forEach(opt => {
+          data += "  - " + opt.values.join(', ') + "\n";
+        });
+      }
+    });
+
+    data += "\n" + boldOn + "TOTAL: $" + order.total.toLocaleString('es-AR') + boldOff + "\n";
+    data += "\n\n\n\n" + cut;
+
+    const bytes = encoder.encode(data);
+    await device.transferOut(1, bytes);
+    await device.close();
+  }
+
+  private static printViaBrowser(order: Order, products: Product[]) {
     const printWindow = document.createElement('iframe');
     printWindow.style.position = 'absolute';
     printWindow.style.top = '-1000px';
@@ -35,14 +147,13 @@ export class PrinterService {
               font-size: 12px;
               line-height: 1.3;
               width: 100%;
-              max-width: 72mm; /* Standard for 80mm, will shrink for 58mm */
+              max-width: 72mm;
               margin: 0 auto;
               padding: 3mm;
               color: #000;
               background: #fff;
             }
             .text-center { text-align: center; }
-            .text-right { text-align: right; }
             .bold { font-weight: bold; }
             .hr { border-top: 1px dashed #000; margin: 6px 0; }
             .item { margin-bottom: 6px; }
@@ -166,12 +277,9 @@ export class PrinterService {
     doc.write(content);
     doc.close();
 
-    // Wait for images and fonts to load
     setTimeout(() => {
       printWindow.contentWindow?.focus();
       printWindow.contentWindow?.print();
-      
-      // Cleanup
       setTimeout(() => {
         document.body.removeChild(printWindow);
       }, 1000);

@@ -12,7 +12,8 @@
     "skipLibCheck": true,
     "types": [
       "node",
-      "vite/client"
+      "vite/client",
+      "w3c-web-usb"
     ],
     "moduleResolution": "bundler",
     "baseUrl": ".",
