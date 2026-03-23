@@ -52,16 +52,13 @@ export class PrinterService {
 
       await device.open();
       
-      // Try to select configuration and claim interface
       if (device.configuration === null) {
         await device.selectConfiguration(1);
       }
       
-      // Find the interface that supports ESC/POS (usually the first one)
       const interfaceNum = 0; 
       await device.claimInterface(interfaceNum);
 
-      // Find the bulk out endpoint
       const endpoint = device.configuration?.interfaces[interfaceNum].alternate.endpoints.find(
         e => e.direction === 'out' && e.type === 'bulk'
       );
@@ -83,6 +80,13 @@ export class PrinterService {
       const normalSize = gs + '!' + '\x00';
       const cut = esc + 'i';
 
+      // Calculations
+      const subtotal = order.items.reduce((acc, item) => {
+        const p = products.find(prod => prod.id === item.productId);
+        return acc + (p?.price || 0) * item.quantity;
+      }, 0);
+      const surcharge = order.paymentMethod === PaymentMethod.TARJETA_UALA ? Math.round(subtotal * 0.15) : 0;
+
       let data = init;
       
       // Header
@@ -103,6 +107,12 @@ export class PrinterService {
       data += "Fecha: " + order.deliveryDate + "\n";
       data += "Hora: " + (order.deliveryTime || 'N/A') + "\n\n";
 
+      if (order.recipientName) {
+        data += boldOn + "RECIBE:\n" + boldOff;
+        data += order.recipientName + "\n";
+        data += "Tel: " + (order.recipientPhone || 'N/A') + "\n\n";
+      }
+
       if (order.notes) {
         data += boldOn + "DEDICATORIA:\n" + boldOff;
         data += "\"" + order.notes + "\"\n\n";
@@ -119,7 +129,19 @@ export class PrinterService {
         }
       });
 
-      data += "\n" + boldOn + "TOTAL: $" + order.total.toLocaleString('es-AR') + boldOff + "\n";
+      // Totals
+      data += "\n" + left;
+      data += "Subtotal: $" + subtotal.toLocaleString('es-AR') + "\n";
+      if (order.discountAmount) {
+        data += "Descuento: -$" + order.discountAmount.toLocaleString('es-AR') + "\n";
+      }
+      if (order.shippingCost) {
+        data += "Envio: +$" + order.shippingCost.toLocaleString('es-AR') + "\n";
+      }
+      if (surcharge > 0) {
+        data += "Recargo: +$" + surcharge.toLocaleString('es-AR') + "\n";
+      }
+      data += boldOn + "TOTAL: $" + order.total.toLocaleString('es-AR') + boldOff + "\n";
       data += "\n\n\n\n" + cut;
 
       const bytes = encoder.encode(data);
