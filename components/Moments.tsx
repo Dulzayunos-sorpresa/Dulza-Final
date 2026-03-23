@@ -57,7 +57,7 @@ const Moments = () => {
   };
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-crema relative overflow-hidden">
+    <section className="px-6 md:px-20 py-32 bg-crema dark:bg-dark-bg relative overflow-hidden">
       {/* Decorative elements */}
       <div className="absolute top-0 right-0 w-64 h-64 bg-rosa-suave/20 rounded-full blur-3xl -mr-32 -mt-32" />
       <div className="absolute bottom-0 left-0 w-96 h-96 bg-naranja/5 rounded-full blur-3xl -ml-48 -mb-48" />
@@ -72,10 +72,10 @@ const Moments = () => {
             className="max-w-2xl"
           >
             <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Para cada momento</p>
-            <h2 className="text-5xl md:text-7xl font-display text-texto leading-[0.9] mb-8 uppercase tracking-tighter">
+            <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
               Hay un Dulzayunos<br />para <span className="text-naranja italic">eso.</span>
             </h2>
-            <p className="text-base md:text-lg text-texto/70 leading-relaxed max-w-xl font-light">
+            <p className="text-base md:text-lg text-texto/70 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
               Sin importar la razón — o sin razón alguna — hay una forma de hacer que mañana a la mañana alguien se sienta la persona más querida del mundo.
             </p>
           </motion.div>
@@ -102,20 +102,20 @@ const Moments = () => {
               key={i} 
               variants={itemVariants}
               whileHover={{ y: -10, boxShadow: "0 30px 60px -15px rgba(242,125,38,0.1)" }}
-              className="group relative bg-white rounded-[40px] p-10 transition-all duration-500 border border-naranja/5"
+              className="group relative bg-white dark:bg-dark-surface rounded-[40px] p-10 transition-all duration-500 border border-naranja/5 dark:border-white/5"
             >
               <motion.div 
                 whileHover={{ scale: 1.1, rotate: 5 }}
-                className="w-16 h-16 bg-crema rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform duration-500"
+                className="w-16 h-16 bg-crema dark:bg-dark-bg rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform duration-500"
               >
                 {moment.icon}
               </motion.div>
-              <h3 className="text-2xl font-display text-texto mb-4 uppercase tracking-tight">{moment.title}</h3>
+              <h3 className="text-2xl font-display text-texto dark:text-dark-text mb-4 uppercase tracking-tight">{moment.title}</h3>
               <div className="space-y-6">
-                <p className="text-sm text-texto/60 italic leading-relaxed border-l-2 border-naranja/30 pl-6 py-1">
+                <p className="text-sm text-texto/60 dark:text-dark-text-muted/60 italic leading-relaxed border-l-2 border-naranja/30 pl-6 py-1">
                   "{moment.quote}"
                 </p>
-                <p className="text-sm text-texto font-bold leading-relaxed flex items-start gap-3">
+                <p className="text-sm text-texto dark:text-dark-text font-bold leading-relaxed flex items-start gap-3">
                   <span className="text-naranja mt-1">→</span>
                   {moment.hook}
                 </p>

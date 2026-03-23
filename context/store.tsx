@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
 import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, Coupon, ShippingSettings, Category, ProductOptionValue } from '../types';
 import { COMMON_OPTIONS } from '../data/options';
 import { NEW_OPTIONS } from '../src/data/newOptions';
@@ -88,6 +88,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   });
   const [isInitialized, setIsInitialized] = useState(false);
   const [user, setUser] = useState<User | null>(null);
+  const isInitializedRef = useRef(false);
+  const hasSeededRef = useRef(false);
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (u) => {
@@ -97,61 +99,67 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   }, []);
 
   useEffect(() => {
-    const seedProducts = async (productsToSeed: Product[]) => {
+    const adminEmails = ['audisiofausto@gmail.com', 'uateventos@gmail.com'];
+    const isAdmin = user && adminEmails.includes(user.email || '');
+
+    const seedData = async (collectionName: string, data: any[]) => {
+      if (!isAdmin || hasSeededRef.current) return;
       try {
-        const batch = productsToSeed.map(product => 
-          setDoc(doc(db, 'products', product.id), product)
-        );
+        const batch = data.map(item => setDoc(doc(db, collectionName, item.id), item));
         await Promise.all(batch);
       } catch (error) {
-        console.warn('Could not seed products to Firestore (likely not admin). Using local mock data.');
+        console.warn(`Could not seed ${collectionName} to Firestore:`, error);
       }
     };
 
-    const unsubscribeProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
-      if (snapshot.empty) {
-        // Set mock products immediately so the UI isn't empty
-        const allInitialProducts = [
-          ...MOCK_PRODUCTS, 
-          ...NEW_PRODUCTS, 
-          ...EXCEL_PRODUCTS_PART1, 
-          ...EXCEL_PRODUCTS_PART2,
-          ...EXCEL_ITEMS_PRODUCTS_PART1,
-          ...EXCEL_ITEMS_PRODUCTS_PART2,
-          ...EXCEL_ITEMS_PRODUCTS_PART3,
-          ...EXCEL_ITEMS_PRODUCTS_PART4,
-          ...EXCEL_ITEMS_PRODUCTS_PART5,
-          ...EXCEL_ITEMS_PRODUCTS_PART6,
-          ...EXCEL_ITEMS_PRODUCTS_PART7,
-          ...EXCEL_ITEMS_PRODUCTS_PART8
-        ];
-        const mockProductsWithStock = allInitialProducts.map(p => {
-          const product = { ...p, stock: p.stock ?? 50 };
-          // Ensure isHidden is set based on stock if not explicitly provided
-          if (product.isHidden === undefined) {
-            product.isHidden = product.stock === 0;
-          }
-          return product;
-        });
-        setProducts(mockProductsWithStock);
+    const allInitialProducts = [
+      ...MOCK_PRODUCTS, 
+      ...NEW_PRODUCTS, 
+      ...EXCEL_PRODUCTS_PART1, 
+      ...EXCEL_PRODUCTS_PART2,
+      ...EXCEL_ITEMS_PRODUCTS_PART1,
+      ...EXCEL_ITEMS_PRODUCTS_PART2,
+      ...EXCEL_ITEMS_PRODUCTS_PART3,
+      ...EXCEL_ITEMS_PRODUCTS_PART4,
+      ...EXCEL_ITEMS_PRODUCTS_PART5,
+      ...EXCEL_ITEMS_PRODUCTS_PART6,
+      ...EXCEL_ITEMS_PRODUCTS_PART7,
+      ...EXCEL_ITEMS_PRODUCTS_PART8
+    ];
 
-        if (!isInitialized) {
-          seedProducts(mockProductsWithStock);
+    const unsubscribeProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
+      // If Firestore is empty or has very few products (likely a broken state), use mock data as fallback
+      if (snapshot.empty || snapshot.size < 5) {
+        const mockProductsWithStock = allInitialProducts.map(p => ({
+          ...p,
+          stock: p.stock ?? 50,
+          isHidden: false // Ensure they are visible
+        }));
+        setProducts(mockProductsWithStock);
+        if (isAdmin && !hasSeededRef.current) {
+          seedData('products', mockProductsWithStock);
+          hasSeededRef.current = true;
         }
       } else {
         const prods: Product[] = [];
-        snapshot.forEach(doc => prods.push(doc.data() as Product));
+        snapshot.forEach(doc => {
+          const data = doc.data() as Product;
+          // Ensure products from Firestore have reasonable defaults if missing
+          prods.push({
+            ...data,
+            stock: data.stock ?? 50,
+            isHidden: data.isHidden ?? false
+          });
+        });
         setProducts(prods);
       }
     }, (error) => {
       console.error('Firestore Error (products):', error);
-      // Fallback to mock products on error
-      setProducts([...MOCK_PRODUCTS, ...NEW_PRODUCTS]);
+      setProducts(allInitialProducts);
     });
 
-    const unsubscribeOptions = onSnapshot(collection(db, 'options'), async (snapshot) => {
+    const unsubscribeOptions = onSnapshot(collection(db, 'options'), (snapshot) => {
       if (snapshot.empty) {
-        // Set mock options immediately
         const mockOptions = [
           ...Object.values(COMMON_OPTIONS),
           ...NEW_OPTIONS,
@@ -164,15 +172,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...NEW_OPTIONS_PART8
         ];
         setOptions(mockOptions);
-
-        if (!isInitialized) {
-          // Try to seed options
-          try {
-            const batch = mockOptions.map(o => setDoc(doc(db, 'options', o.id), o));
-            await Promise.all(batch);
-          } catch (error) {
-            console.warn('Could not seed options to Firestore. Using local mock data.');
-          }
+        if (isAdmin && !hasSeededRef.current) {
+          seedData('options', mockOptions);
         }
       } else {
         const opts: ProductOption[] = [];
@@ -181,22 +182,11 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }
     }, (error) => {
       console.error('Firestore Error (options):', error);
-      setOptions([
-        ...Object.values(COMMON_OPTIONS),
-        ...NEW_OPTIONS,
-        ...NEW_OPTIONS_PART2,
-        ...NEW_OPTIONS_PART3,
-        ...NEW_OPTIONS_PART4,
-        ...NEW_OPTIONS_PART5,
-        ...NEW_OPTIONS_PART6,
-        ...NEW_OPTIONS_PART7,
-        ...NEW_OPTIONS_PART8
-      ]);
+      setOptions(Object.values(COMMON_OPTIONS));
     });
 
     const unsubscribeSubobjects = onSnapshot(collection(db, 'subobjects'), (snapshot) => {
       if (snapshot.empty) {
-        // Extract all unique values from all options to seed subobjects
         const allInitialOptions = [
           ...Object.values(COMMON_OPTIONS),
           ...NEW_OPTIONS,
@@ -217,12 +207,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           });
         });
         setSubobjects(allValues);
-
-        if (!isInitialized) {
-          try {
-            const batch = allValues.map(v => setDoc(doc(db, 'subobjects', v.id), v));
-            Promise.all(batch).catch(console.warn);
-          } catch (e) {}
+        if (isAdmin && !hasSeededRef.current) {
+          seedData('subobjects', allValues);
         }
       } else {
         const subs: ProductOptionValue[] = [];
@@ -233,62 +219,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Firestore Error (subobjects):', error);
     });
 
-    const adminEmails = ['audisiofausto@gmail.com', 'uateventos@gmail.com'];
-    const isAdmin = user && adminEmails.includes(user.email || '');
-
-    let unsubscribeOrders = () => {};
-    if (isAdmin) {
-      unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), async (snapshot) => {
-        if (snapshot.empty && !isInitialized) {
-          // Try to migrate from backend
-          try {
-            const baseUrl = window.location.origin;
-            const response = await axios.get(`${baseUrl}/api/pedidos`);
-            const oldOrders: Order[] = response.data;
-            if (oldOrders && oldOrders.length > 0) {
-              const batch = oldOrders.map(o => setDoc(doc(db, 'orders', o.id), o));
-              await Promise.all(batch);
-            }
-          } catch (e) {
-            console.warn("Migration error or no orders to migrate");
-          }
-        } else {
-          const ords: Order[] = [];
-          snapshot.forEach(doc => ords.push(doc.data() as Order));
-          setOrders(ords);
-        }
-      }, (error) => {
-        console.error('Firestore Error (orders):', error);
-      });
-    }
-
-    const unsubscribeCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
-      const cups: Coupon[] = [];
-      snapshot.forEach(doc => cups.push(doc.data() as Coupon));
-      setCoupons(cups);
-    }, (error) => {
-      if (error.code !== 'permission-denied') {
-        console.error('Firestore Error (coupons):', error);
-      }
-    });
-
-    const unsubscribeShipping = onSnapshot(doc(db, 'settings', 'shipping'), (snapshot) => {
-      if (snapshot.exists()) {
-        setShippingSettings(snapshot.data() as ShippingSettings);
-      } else if (isAdmin) {
-        // Initialize if not exists and is admin
-        setDoc(doc(db, 'settings', 'shipping'), {
-          baseCost: 3000,
-          pricePerKm: 1350,
-          maxKmForAutoPayment: 25
-        }).catch(console.error);
-      }
-    }, (error) => {
-      if (error.code !== 'permission-denied') {
-        console.error('Firestore Error (shipping):', error);
-      }
-    });
-
     const unsubscribeCategories = onSnapshot(query(collection(db, 'categories'), orderBy('order', 'asc')), (snapshot) => {
       if (snapshot.empty) {
         const allInitialCategories = [
@@ -296,8 +226,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           ...EXCEL_CATEGORIES,
           ...EXCEL_ITEMS_CATEGORIES
         ];
-        
-        // Ensure unique category names
         const uniqueCategories: Category[] = [];
         const seenNames = new Set<string>();
         allInitialCategories.forEach(cat => {
@@ -306,14 +234,10 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             seenNames.add(cat.name);
           }
         });
-
         const initialCategories = uniqueCategories.map((cat, index) => ({ ...cat, order: index }));
         setCategories(initialCategories);
-        if (!isInitialized) {
-          try {
-            const batch = initialCategories.map(cat => setDoc(doc(db, 'categories', cat.id), cat));
-            Promise.all(batch).catch(console.warn);
-          } catch (e) {}
+        if (isAdmin && !hasSeededRef.current) {
+          seedData('categories', initialCategories);
         }
       } else {
         const cats: Category[] = [];
@@ -325,6 +249,40 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setCategories(NEW_CATEGORIES.map((cat, index) => ({ ...cat, order: index })));
     });
 
+    let unsubscribeOrders = () => {};
+    if (isAdmin) {
+      unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snapshot) => {
+        const ords: Order[] = [];
+        snapshot.forEach(doc => ords.push(doc.data() as Order));
+        setOrders(ords);
+      }, (error) => {
+        console.error('Firestore Error (orders):', error);
+      });
+    }
+
+    const unsubscribeCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+      const cups: Coupon[] = [];
+      snapshot.forEach(doc => cups.push(doc.data() as Coupon));
+      setCoupons(cups);
+    }, (error) => {
+      if (error.code !== 'permission-denied') console.error('Firestore Error (coupons):', error);
+    });
+
+    const unsubscribeShipping = onSnapshot(doc(db, 'settings', 'shipping'), (snapshot) => {
+      if (snapshot.exists()) {
+        setShippingSettings(snapshot.data() as ShippingSettings);
+      } else if (isAdmin) {
+        setDoc(doc(db, 'settings', 'shipping'), {
+          baseCost: 3000,
+          pricePerKm: 1350,
+          maxKmForAutoPayment: 25
+        }).catch(console.error);
+      }
+    }, (error) => {
+      if (error.code !== 'permission-denied') console.error('Firestore Error (shipping):', error);
+    });
+
+    // Mark as initialized after setting up listeners
     setIsInitialized(true);
 
     return () => {
@@ -336,7 +294,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       unsubscribeCoupons();
       unsubscribeShipping();
     };
-  }, [isInitialized, user]);
+  }, [user]);
 
   const addCategory = useCallback(async (category: Category) => {
     try {

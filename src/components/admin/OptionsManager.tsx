@@ -13,21 +13,101 @@ import {
 import { useStore } from '@/context/store';
 import { ProductOption, ProductOptionValue } from '@/types';
 
+interface OptionCardProps {
+  option: ProductOption;
+  idx: number;
+  setEditingOption: (option: ProductOption) => void;
+  deleteOption: (id: string) => void;
+}
+
+const OptionCard: React.FC<OptionCardProps> = React.memo(({ 
+  option, 
+  idx, 
+  setEditingOption, 
+  deleteOption 
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: idx * 0.05 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex flex-col justify-between"
+    >
+      <div>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-2">
+            <div className="p-2 bg-brand-50 text-brand-600 rounded-lg">
+              <Settings2 className="w-4 h-4" />
+            </div>
+            <h3 className="font-bold text-stone-900">{option.name}</h3>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={() => setEditingOption(option)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
+              <Edit className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => {
+                if(confirm('¿Estás seguro de eliminar este grupo de opciones?')) {
+                  deleteOption(option.id);
+                }
+              }} 
+              className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        <p className="text-xs text-stone-500 mb-4">{option.description || 'Sin descripción'}</p>
+        
+        <div className="space-y-2">
+          <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase tracking-wider">
+            <span>Valores</span>
+            <span>Extra ($)</span>
+          </div>
+          {option.values.map((v, i) => (
+            <div key={i} className="flex justify-between items-center py-1.5 border-b border-stone-50 last:border-0">
+              <span className="text-xs text-stone-700">{v.name}</span>
+              <span className="text-xs font-bold text-stone-900">${(v.price || 0).toLocaleString()}</span>
+            </div>
+          ))}
+          {option.values.length === 0 && (
+            <p className="text-xs text-stone-400 italic py-2">Sin valores definidos</p>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-stone-50 flex items-center justify-between">
+        <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+          option.type === 'select' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
+        }`}>
+          {option.type === 'select' ? 'Selección Única' : 'Selección Múltiple'}
+        </span>
+        {option.isRequired && (
+          <span className="text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-full">
+            Obligatorio
+          </span>
+        )}
+      </div>
+    </motion.div>
+  );
+});
+
 const OptionsManager: React.FC = () => {
   const { options, addOption, updateOption, deleteOption } = useStore();
   const [isAddingOption, setIsAddingOption] = useState(false);
   const [editingOption, setEditingOption] = useState<ProductOption | null>(null);
 
-  const handleSave = () => {
+  const handleSave = React.useCallback(() => {
     if (editingOption) {
       updateOption(editingOption);
       setEditingOption(null);
     } else {
       setIsAddingOption(false);
     }
-  };
+  }, [editingOption, updateOption]);
 
-  const handleAddOption = () => {
+  const handleAddOption = React.useCallback(() => {
     const newOption: ProductOption = {
       id: Math.random().toString(36).substr(2, 9),
       name: 'Nueva Categoría de Opción',
@@ -38,7 +118,7 @@ const OptionsManager: React.FC = () => {
     };
     addOption(newOption);
     setEditingOption(newOption);
-  };
+  }, [addOption]);
 
   return (
     <motion.div 
@@ -66,70 +146,13 @@ const OptionsManager: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {options.map((option, idx) => (
-          <motion.div 
+          <OptionCard 
             key={option.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.05 }}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
-                  <div className="p-2 bg-brand-50 text-brand-600 rounded-lg">
-                    <Settings2 className="w-4 h-4" />
-                  </div>
-                  <h3 className="font-bold text-stone-900">{option.name}</h3>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => setEditingOption(option)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if(confirm('¿Estás seguro de eliminar este grupo de opciones?')) {
-                        deleteOption(option.id);
-                      }
-                    }} 
-                    className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <p className="text-xs text-stone-500 mb-4">{option.description || 'Sin descripción'}</p>
-              
-              <div className="space-y-2">
-                <div className="flex justify-between text-[10px] font-bold text-stone-400 uppercase tracking-wider">
-                  <span>Valores</span>
-                  <span>Extra ($)</span>
-                </div>
-                {option.values.map((v, i) => (
-                  <div key={i} className="flex justify-between items-center py-1.5 border-b border-stone-50 last:border-0">
-                    <span className="text-xs text-stone-700">{v.name}</span>
-                    <span className="text-xs font-bold text-stone-900">${(v.price || 0).toLocaleString()}</span>
-                  </div>
-                ))}
-                {option.values.length === 0 && (
-                  <p className="text-xs text-stone-400 italic py-2">Sin valores definidos</p>
-                )}
-              </div>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-stone-50 flex items-center justify-between">
-              <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                option.type === 'select' ? 'bg-blue-50 text-blue-600' : 'bg-purple-50 text-purple-600'
-              }`}>
-                {option.type === 'select' ? 'Selección Única' : 'Selección Múltiple'}
-              </span>
-              {option.isRequired && (
-                <span className="text-[10px] font-bold bg-red-50 text-red-600 px-2 py-1 rounded-full">
-                  Obligatorio
-                </span>
-              )}
-            </div>
-          </motion.div>
+            option={option}
+            idx={idx}
+            setEditingOption={setEditingOption}
+            deleteOption={deleteOption}
+          />
         ))}
       </div>
 

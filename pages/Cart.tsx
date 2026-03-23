@@ -104,7 +104,7 @@ const Cart: React.FC = () => {
   }, [formData.deliveryAddress, formData.neighborhood, formData.isPrivateNeighborhood]);
 
   // Real distance calculation using Nominatim + Haversine
-  const calculateDistance = async (address: string) => {
+  const calculateDistance = React.useCallback(async (address: string) => {
     if (!address) return;
     
     setIsCalculatingDistance(true);
@@ -170,29 +170,29 @@ const Cart: React.FC = () => {
     } finally {
       setIsCalculatingDistance(false);
     }
-  };
+  }, []);
 
   // Complementos (Upselling) categorized
-  const allComplementos = products.filter(p => 
+  const allComplementos = React.useMemo(() => products.filter(p => 
     !p.isHidden && (
       p.category === 'Complementos' || 
       p.tags?.includes('complemento') ||
       ['Globo', 'Peluche', 'Vino', 'Bombones', 'Taza', 'Mate', 'Champaña', 'Cerveza', 'Whisky'].some(keyword => p.name.includes(keyword))
     )
-  );
+  ), [products]);
 
-  const complementosCategories = [
+  const complementosCategories = React.useMemo(() => [
     { name: 'Globos', keywords: ['Globo'] },
     { name: 'Peluches', keywords: ['Peluche'] },
     { name: 'Bebidas', keywords: ['Vino', 'Champaña', 'Cerveza', 'Whisky'] },
     { name: 'Dulces', keywords: ['Bombones', 'Chocolate', 'Alfajor'] },
     { name: 'Tazas y Mates', keywords: ['Taza', 'Mate'] }
-  ];
+  ], []);
 
-  const groupedComplementos = complementosCategories.map(cat => ({
+  const groupedComplementos = React.useMemo(() => complementosCategories.map(cat => ({
     ...cat,
     products: allComplementos.filter(p => cat.keywords.some(k => p.name.includes(k)))
-  })).filter(cat => cat.products.length > 0);
+  })).filter(cat => cat.products.length > 0), [allComplementos, complementosCategories]);
 
   const [activeComplementCategory, setActiveComplementCategory] = useState(groupedComplementos[0]?.name || '');
 
@@ -446,7 +446,10 @@ const Cart: React.FC = () => {
         element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else {
         const firstError = Object.values(newErrors)[0];
-        if (firstError) alert(firstError);
+        if (firstError) {
+          setRedirectType('failure');
+          setShowRedirectModal(true);
+        }
       }
       return;
     }
@@ -493,7 +496,7 @@ const Cart: React.FC = () => {
       const text = formatOrderToWhatsApp(orderData as any, products);
       const whatsappMsg = `${text}\n\n*Método de Pago Preferido:* ${paymentMethodNames[formData.paymentMethod as PaymentMethod]}\n\n*Nota:* ¡El envío está fuera de nuestro rango! Pero podemos coordinar por Whatsapp.`;
       
-      window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMsg)}`, '_blank');
+      window.location.href = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(whatsappMsg)}`;
       clearCart();
       navigate('/');
       return;
@@ -537,14 +540,16 @@ const Cart: React.FC = () => {
         localStorage.setItem('lastOrder', JSON.stringify(order));
         window.location.href = paymentUrl;
       } else if (formData.paymentMethod === PaymentMethod.TRANSFERENCIA_MP || formData.paymentMethod === PaymentMethod.TARJETA_UALA) {
-        alert('No pudimos generar el link de pago automáticamente, pero tu pedido fue registrado. Serás redirigido a WhatsApp para coordinar el pago.');
-        window.location.href = whatsappUrl;
+        setRedirectType('pending');
+        setShowRedirectModal(true);
+        // We'll let the modal handle the WhatsApp redirect for pending/failure
       } else {
         window.location.href = whatsappUrl;
       }
     } catch (error: any) {
       console.error('Error submitting order:', error);
-      alert(error.message || 'Hubo un error al procesar tu pedido. Por favor intenta nuevamente.');
+      setRedirectType('failure');
+      setShowRedirectModal(true);
     } finally {
       setIsSubmitting(false);
     }
@@ -583,11 +588,11 @@ const Cart: React.FC = () => {
   if (cartItems.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] text-center px-4 animate-fade-in-up">
-        <div className="bg-crema p-8 rounded-[40px] mb-8 animate-pulse">
+        <div className="bg-crema dark:bg-dark-surface p-8 rounded-[40px] mb-8 animate-pulse">
           <ShoppingBag className="h-16 w-16 text-naranja" />
         </div>
-        <h2 className="text-4xl font-display font-bold text-texto mb-4 uppercase tracking-tighter">Tu carrito está vacío</h2>
-        <p className="text-texto/60 mb-10 max-w-md font-light">
+        <h2 className="text-4xl font-display font-bold text-texto dark:text-dark-text mb-4 uppercase tracking-tighter">Tu carrito está vacío</h2>
+        <p className="text-texto/60 dark:text-dark-text-muted mb-10 max-w-md font-light">
           Parece que aún no has agregado ninguna caja de desayuno. ¡Elige tu regalo perfecto!
         </p>
         <Link 
@@ -613,18 +618,18 @@ const Cart: React.FC = () => {
             <React.Fragment key={s.n}>
               <div className="flex flex-col items-center relative">
                 <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold transition-all duration-500 ${
-                  step >= s.n ? 'bg-naranja text-white shadow-[0_10px_20px_-5px_rgba(242,125,38,0.4)] scale-110' : 'bg-crema text-texto/30'
+                  step >= s.n ? 'bg-naranja text-white shadow-[0_10px_20px_-5px_rgba(242,125,38,0.4)] scale-110' : 'bg-crema dark:bg-dark-surface text-texto/30 dark:text-dark-text-muted/30'
                 }`}>
                   {step > s.n ? <CheckCircle className="w-6 h-6" /> : s.n}
                 </div>
                 <span className={`absolute -bottom-8 text-[10px] font-bold uppercase tracking-[0.2em] whitespace-nowrap transition-colors duration-500 ${
-                  step >= s.n ? 'text-naranja' : 'text-texto/30'
+                  step >= s.n ? 'text-naranja' : 'text-texto/30 dark:text-dark-text-muted/30'
                 }`}>
                   {s.label}
                 </span>
               </div>
               {i < 2 && (
-                <div className="flex-1 h-[2px] mx-6 bg-crema rounded-full overflow-hidden">
+                <div className="flex-1 h-[2px] mx-6 bg-crema dark:bg-dark-surface rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-naranja transition-all duration-700 ease-out"
                     style={{ width: step > s.n ? '100%' : '0%' }}
@@ -646,28 +651,28 @@ const Cart: React.FC = () => {
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
             <div className="lg:col-span-2 space-y-10">
-              <div className="bg-white rounded-[40px] shadow-sm border border-naranja/5 overflow-hidden">
-                <div className="p-8 border-b border-naranja/5 flex justify-between items-center bg-crema/20">
-                  <h2 className="text-2xl font-display font-bold text-texto uppercase tracking-tight">Tu Carrito</h2>
-                  <span className="text-xs text-texto/40 font-bold uppercase tracking-widest">{cartItems.length} producto(s)</span>
+              <div className="bg-white dark:bg-dark-surface rounded-[40px] shadow-sm border border-naranja/5 dark:border-white/5 overflow-hidden">
+                <div className="p-8 border-b border-naranja/5 dark:border-white/5 flex justify-between items-center bg-crema/20 dark:bg-dark-bg/20">
+                  <h2 className="text-2xl font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Tu Carrito</h2>
+                  <span className="text-xs text-texto/40 dark:text-dark-text-muted/40 font-bold uppercase tracking-widest">{cartItems.length} producto(s)</span>
                 </div>
-                <ul className="divide-y divide-naranja/5">
+                <ul className="divide-y divide-naranja/5 dark:divide-white/5">
                   {cartItems.map((item, index) => (
                     <li key={item.cartItemId} className="p-8 flex flex-col sm:flex-row items-start sm:items-center gap-8">
-                      <img src={item.image} alt={item.name} className="w-28 h-28 rounded-3xl object-cover bg-crema shadow-sm" />
+                      <img src={item.image} alt={item.name} className="w-28 h-28 rounded-3xl object-cover bg-crema dark:bg-dark-bg shadow-sm" />
                       <div className="flex-1 w-full">
                         <div className="flex justify-between items-start mb-4">
                           <div>
-                            <h3 className="font-bold text-texto text-xl uppercase tracking-tight">{item.name}</h3>
+                            <h3 className="font-bold text-texto dark:text-dark-text text-xl uppercase tracking-tight">{item.name}</h3>
                             <p className="text-naranja text-xs font-bold uppercase tracking-widest">{item.category}</p>
                           </div>
-                          <p className="font-bold text-xl text-texto">${(item.totalPrice || 0).toLocaleString()}</p>
+                          <p className="font-bold text-xl text-texto dark:text-dark-text">${(item.totalPrice || 0).toLocaleString()}</p>
                         </div>
                         
                         {item.itemOptionsDetails && item.itemOptionsDetails.length > 0 && (
                           <div className="flex flex-wrap gap-2 mb-6">
                             {item.itemOptionsDetails.map((opt, i) => (
-                              <span key={i} className="px-3 py-1 bg-crema/50 text-texto/60 text-[10px] rounded-full border border-naranja/5 font-medium">
+                              <span key={i} className="px-3 py-1 bg-crema/50 dark:bg-dark-bg/50 text-texto/60 dark:text-dark-text-muted text-[10px] rounded-full border border-naranja/5 dark:border-white/5 font-medium">
                                 {opt}
                               </span>
                             ))}
@@ -675,24 +680,24 @@ const Cart: React.FC = () => {
                         )}
  
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center bg-crema rounded-2xl p-1.5 border border-naranja/5">
+                          <div className="flex items-center bg-crema dark:bg-dark-bg rounded-2xl p-1.5 border border-naranja/5 dark:border-white/5">
                             <button 
                               onClick={() => item.quantity > 1 && addToCart(item.id, -1, item.selectedOptions)}
-                              className="p-1.5 hover:bg-white rounded-xl transition-all text-texto/40 hover:text-naranja"
+                              className="p-1.5 hover:bg-white dark:hover:bg-dark-surface rounded-xl transition-all text-texto/40 dark:text-dark-text-muted/40 hover:text-naranja"
                             >
                               <Minus className="w-4 h-4" />
                             </button>
-                            <span className="w-10 text-center font-bold text-sm text-texto">{item.quantity}</span>
+                            <span className="w-10 text-center font-bold text-sm text-texto dark:text-dark-text">{item.quantity}</span>
                             <button 
                               onClick={() => addToCart(item.id, 1, item.selectedOptions)}
-                              className="p-1.5 hover:bg-white rounded-xl transition-all text-texto/40 hover:text-naranja"
+                              className="p-1.5 hover:bg-white dark:hover:bg-dark-surface rounded-xl transition-all text-texto/40 dark:text-dark-text-muted/40 hover:text-naranja"
                             >
                               <Plus className="w-4 h-4" />
                             </button>
                           </div>
                           <button 
                             onClick={() => removeFromCart(item.cartItemId)}
-                            className="text-texto/30 hover:text-naranja text-xs flex items-center gap-2 transition-all font-bold uppercase tracking-widest"
+                            className="text-texto/30 dark:text-dark-text-muted/30 hover:text-naranja text-xs flex items-center gap-2 transition-all font-bold uppercase tracking-widest"
                           >
                             <Trash2 className="h-4 w-4" /> Eliminar
                           </button>
@@ -707,7 +712,7 @@ const Cart: React.FC = () => {
               {groupedComplementos.length > 0 && (
                 <div className="space-y-8">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-                    <h3 className="text-xl font-display font-bold text-texto flex items-center gap-3 uppercase tracking-tight">
+                    <h3 className="text-xl font-display font-bold text-texto dark:text-dark-text flex items-center gap-3 uppercase tracking-tight">
                       <Gift className="w-6 h-6 text-naranja" />
                       ¿Querés sumar algo más?
                     </h3>
@@ -720,7 +725,7 @@ const Cart: React.FC = () => {
                           className={`px-5 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border ${
                             activeComplementCategory === cat.name 
                               ? 'bg-naranja text-white border-naranja shadow-lg shadow-naranja/20' 
-                              : 'bg-white text-texto/40 border-naranja/5 hover:border-naranja/20'
+                              : 'bg-white dark:bg-dark-surface text-texto/40 dark:text-dark-text-muted/40 border-naranja/5 dark:border-white/5 hover:border-naranja/20'
                           }`}
                         >
                           {cat.name}
@@ -731,7 +736,7 @@ const Cart: React.FC = () => {
  
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-6">
                     {groupedComplementos.find(c => c.name === activeComplementCategory)?.products.slice(0, 8).map(p => (
-                      <div key={p.id} className="bg-white p-4 rounded-[32px] border border-naranja/5 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
+                      <div key={p.id} className="bg-white dark:bg-dark-surface p-4 rounded-[32px] border border-naranja/5 dark:border-white/5 shadow-sm hover:shadow-xl transition-all group relative overflow-hidden">
                         <div className="aspect-square rounded-2xl overflow-hidden mb-4 relative">
                           <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
                           <button 
@@ -741,7 +746,7 @@ const Cart: React.FC = () => {
                             <Plus className="w-5 h-5" />
                           </button>
                         </div>
-                        <h4 className="text-[11px] font-bold text-texto uppercase tracking-tight truncate mb-1">{p.name}</h4>
+                        <h4 className="text-[11px] font-bold text-texto dark:text-dark-text uppercase tracking-tight truncate mb-1">{p.name}</h4>
                         <p className="text-naranja font-bold text-sm">${(p.price || 0).toLocaleString()}</p>
                       </div>
                     ))}
@@ -751,10 +756,10 @@ const Cart: React.FC = () => {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-sm sticky top-24 space-y-8">
-                <h3 className="text-xl font-display font-bold text-texto uppercase tracking-tight">Resumen</h3>
+              <div className="bg-white dark:bg-dark-surface rounded-[40px] p-8 border border-naranja/5 dark:border-white/5 shadow-sm sticky top-24 space-y-8">
+                <h3 className="text-xl font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Resumen</h3>
                 <div className="space-y-4">
-                  <div className="flex justify-between text-texto/60 text-sm font-medium">
+                  <div className="flex justify-between text-texto/60 dark:text-dark-text-muted text-sm font-medium">
                     <span>Subtotal</span>
                     <span>${(subtotal || 0).toLocaleString()}</span>
                   </div>
@@ -765,8 +770,8 @@ const Cart: React.FC = () => {
                     </div>
                   )}
                   {/* Shipping line removed as per user request */}
-                  <div className="pt-6 border-t border-naranja/5 flex justify-between items-center">
-                    <span className="font-bold text-texto uppercase tracking-widest text-xs">Total</span>
+                  <div className="pt-6 border-t border-naranja/5 dark:border-white/5 flex justify-between items-center">
+                    <span className="font-bold text-texto dark:text-dark-text uppercase tracking-widest text-xs">Total</span>
                     <span className="text-3xl font-bold text-naranja font-display tracking-tighter">${(total || 0).toLocaleString()}</span>
                   </div>
                 </div>
@@ -778,7 +783,7 @@ const Cart: React.FC = () => {
                 </button>
                 <button 
                   onClick={clearCart}
-                  className="w-full py-2 text-texto/30 text-[10px] font-bold uppercase tracking-widest hover:text-naranja transition-colors"
+                  className="w-full py-2 text-texto/30 dark:text-dark-text-muted/30 text-[10px] font-bold uppercase tracking-widest hover:text-naranja transition-colors"
                 >
                   Vaciar carrito
                 </button>
@@ -795,17 +800,17 @@ const Cart: React.FC = () => {
             exit={{ opacity: 0, x: -20 }}
             className="max-w-2xl mx-auto"
           >
-            <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-xl shadow-naranja/5 space-y-8">
+            <div className="bg-white dark:bg-dark-surface rounded-[40px] p-8 border border-naranja/5 dark:border-white/5 shadow-xl shadow-naranja/5 space-y-8">
               <div className="flex items-center justify-between">
-                <h2 className="text-3xl font-display font-bold text-texto">Datos de Entrega</h2>
-                <button onClick={prevStep} className="text-texto/40 hover:text-naranja flex items-center gap-1 text-sm font-bold transition-colors">
+                <h2 className="text-3xl font-display font-bold text-texto dark:text-dark-text">Datos de Entrega</h2>
+                <button onClick={prevStep} className="text-texto/40 dark:text-dark-text-muted/40 hover:text-naranja flex items-center gap-1 text-sm font-bold transition-colors">
                   <ChevronLeft className="w-4 h-4" /> Volver
                 </button>
               </div>
 
               <div className="space-y-6">
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Tus Datos</label>
+                  <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">Tus Datos</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="relative">
                       <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
@@ -816,7 +821,7 @@ const Cart: React.FC = () => {
                         autoComplete="name"
                         value={formData.customerName}
                         onChange={(e) => setFormData({...formData, customerName: e.target.value})}
-                        className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.customerName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                        className={`w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.customerName ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                       />
                       {errors.customerName && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.customerName}</p>}
                     </div>
@@ -829,7 +834,7 @@ const Cart: React.FC = () => {
                         autoComplete="tel"
                         value={formData.customerPhone}
                         onChange={(e) => setFormData({...formData, customerPhone: e.target.value})}
-                        className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.customerPhone ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                        className={`w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.customerPhone ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                       />
                       {errors.customerPhone && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.customerPhone}</p>}
                     </div>
@@ -837,32 +842,32 @@ const Cart: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Tipo de Entrega</label>
+                  <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">Tipo de Entrega</label>
                   <div className="grid grid-cols-2 gap-4">
                     <button
                       onClick={() => setFormData({...formData, deliveryType: 'DELIVERY'})}
-                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex flex-col gap-3 ${formData.deliveryType === 'DELIVERY' ? 'border-naranja bg-naranja/5' : 'border-naranja/5 bg-crema/10 hover:bg-crema/20'}`}
+                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex flex-col gap-3 ${formData.deliveryType === 'DELIVERY' ? 'border-naranja bg-naranja/5 dark:bg-naranja/10' : 'border-naranja/5 dark:border-white/5 bg-crema/10 dark:bg-dark-bg/10 hover:bg-crema/20 dark:hover:bg-dark-bg/20'}`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.deliveryType === 'DELIVERY' ? 'bg-naranja text-white' : 'bg-white text-naranja/40'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.deliveryType === 'DELIVERY' ? 'bg-naranja text-white' : 'bg-white dark:bg-dark-surface text-naranja/40'}`}>
                         <MapPin className="w-5 h-5" />
                       </div>
-                      <span className={`font-bold text-sm tracking-tight ${formData.deliveryType === 'DELIVERY' ? 'text-naranja' : 'text-texto/60'}`}>Envío a domicilio</span>
+                      <span className={`font-bold text-sm tracking-tight ${formData.deliveryType === 'DELIVERY' ? 'text-naranja' : 'text-texto/60 dark:text-dark-text-muted'}`}>Envío a domicilio</span>
                     </button>
                     <button
                       onClick={() => setFormData({...formData, deliveryType: 'PICKUP'})}
-                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex flex-col gap-3 ${formData.deliveryType === 'PICKUP' ? 'border-naranja bg-naranja/5' : 'border-naranja/5 bg-crema/10 hover:bg-crema/20'}`}
+                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex flex-col gap-3 ${formData.deliveryType === 'PICKUP' ? 'border-naranja bg-naranja/5 dark:bg-naranja/10' : 'border-naranja/5 dark:border-white/5 bg-crema/10 dark:bg-dark-bg/10 hover:bg-crema/20 dark:hover:bg-dark-bg/20'}`}
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.deliveryType === 'PICKUP' ? 'bg-naranja text-white' : 'bg-white text-naranja/40'}`}>
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${formData.deliveryType === 'PICKUP' ? 'bg-naranja text-white' : 'bg-white dark:bg-dark-surface text-naranja/40'}`}>
                         <Home className="w-5 h-5" />
                       </div>
-                      <span className={`font-bold text-sm tracking-tight ${formData.deliveryType === 'PICKUP' ? 'text-naranja' : 'text-texto/60'}`}>Retiro por local</span>
+                      <span className={`font-bold text-sm tracking-tight ${formData.deliveryType === 'PICKUP' ? 'text-naranja' : 'text-texto/60 dark:text-dark-text-muted'}`}>Retiro por local</span>
                     </button>
                   </div>
                 </div>
 
                 {formData.deliveryType === 'DELIVERY' && (
                   <div className="space-y-4 animate-fade-in">
-                    <div className="flex items-center gap-3 p-4 bg-crema/30 rounded-2xl border border-naranja/5">
+                    <div className="flex items-center gap-3 p-4 bg-crema/30 dark:bg-dark-bg/30 rounded-2xl border border-naranja/5 dark:border-white/5">
                       <input 
                         type="checkbox" 
                         id="isPrivate"
@@ -870,7 +875,7 @@ const Cart: React.FC = () => {
                         onChange={(e) => setFormData({...formData, isPrivateNeighborhood: e.target.checked})}
                         className="w-5 h-5 text-naranja rounded-lg border-naranja/20 focus:ring-naranja/20 cursor-pointer"
                       />
-                      <label htmlFor="isPrivate" className="text-sm font-bold text-texto cursor-pointer">Es un barrio privado / country</label>
+                      <label htmlFor="isPrivate" className="text-sm font-bold text-texto dark:text-dark-text cursor-pointer">Es un barrio privado / country</label>
                     </div>
 
                     {formData.isPrivateNeighborhood ? (
@@ -881,7 +886,7 @@ const Cart: React.FC = () => {
                             placeholder="Nombre del Barrio"
                             value={formData.neighborhood}
                             onChange={(e) => setFormData({...formData, neighborhood: e.target.value})}
-                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.neighborhood ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full px-5 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.neighborhood ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.neighborhood && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.neighborhood}</p>}
                         </div>
@@ -891,7 +896,7 @@ const Cart: React.FC = () => {
                             placeholder="Nombre de la Familia"
                             value={formData.familyName}
                             onChange={(e) => setFormData({...formData, familyName: e.target.value})}
-                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.familyName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full px-5 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.familyName ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.familyName && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.familyName}</p>}
                         </div>
@@ -901,7 +906,7 @@ const Cart: React.FC = () => {
                             placeholder="Manzana y Lote"
                             value={formData.blockLot}
                             onChange={(e) => setFormData({...formData, blockLot: e.target.value})}
-                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.blockLot ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full px-5 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.blockLot ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.blockLot && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.blockLot}</p>}
                         </div>
@@ -911,7 +916,7 @@ const Cart: React.FC = () => {
                             placeholder="Nro de Casa"
                             value={formData.houseNumber}
                             onChange={(e) => setFormData({...formData, houseNumber: e.target.value})}
-                            className={`w-full px-5 py-4 bg-crema/20 border ${errors.houseNumber ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full px-5 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.houseNumber ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.houseNumber && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.houseNumber}</p>}
                         </div>
@@ -927,7 +932,7 @@ const Cart: React.FC = () => {
                             autoComplete="street-address"
                             value={formData.deliveryAddress}
                             onChange={(e) => setFormData({...formData, deliveryAddress: e.target.value})}
-                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.deliveryAddress ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.deliveryAddress ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.deliveryAddress && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.deliveryAddress}</p>}
                         </div>
@@ -935,14 +940,14 @@ const Cart: React.FC = () => {
                           placeholder="Referencia (Piso, Dpto, timbre, etc)"
                           value={formData.reference}
                           onChange={(e) => setFormData({...formData, reference: e.target.value})}
-                          className="w-full px-5 py-4 bg-crema/20 border border-naranja/5 rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all"
+                          className="w-full px-5 py-4 bg-crema/20 dark:bg-dark-bg/20 border border-naranja/5 dark:border-white/5 rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all"
                         />
                       </div>
                     )}
 
                     {mapUrl && (
                       <div className="space-y-4">
-                        <div className="rounded-[32px] overflow-hidden border border-naranja/5 shadow-inner aspect-video relative bg-crema/10">
+                        <div className="rounded-[32px] overflow-hidden border border-naranja/5 dark:border-white/5 shadow-inner aspect-video relative bg-crema/10 dark:bg-dark-bg/10">
                           <iframe 
                             width="100%" 
                             height="100%" 
@@ -951,24 +956,24 @@ const Cart: React.FC = () => {
                             marginHeight={0} 
                             marginWidth={0} 
                             src={mapUrl}
-                            className="grayscale-[0.2] contrast-[1.1]"
+                            className="grayscale-[0.2] contrast-[1.1] dark:invert dark:hue-rotate-180"
                           />
                         </div>
                         
                         <div className="flex flex-col sm:flex-row items-center gap-4">
                           {isCalculatingDistance ? (
-                            <div className="flex items-center gap-2 px-5 py-3 bg-crema/20 rounded-2xl border border-naranja/5 animate-pulse">
+                            <div className="flex items-center gap-2 px-5 py-3 bg-crema/20 dark:bg-dark-bg/20 rounded-2xl border border-naranja/5 dark:border-white/5 animate-pulse">
                               <Loader2 className="w-4 h-4 animate-spin text-naranja/40" />
-                              <span className="text-xs font-bold text-texto/40">Calculando distancia...</span>
+                              <span className="text-xs font-bold text-texto/40 dark:text-dark-text-muted/40">Calculando distancia...</span>
                             </div>
                           ) : formData.distanceKm > 0 && (
                             <div className="flex flex-col sm:flex-row items-center gap-2 w-full">
-                              <div className="flex items-center gap-2 px-5 py-3 bg-crema/30 rounded-2xl border border-naranja/5 flex-1 justify-center">
-                                <span className="text-xs font-bold text-texto">Distancia estimada: <span className="text-naranja">{formData.distanceKm} km</span></span>
+                              <div className="flex items-center gap-2 px-5 py-3 bg-crema/30 dark:bg-dark-bg/30 rounded-2xl border border-naranja/5 dark:border-white/5 flex-1 justify-center">
+                                <span className="text-xs font-bold text-texto dark:text-dark-text">Distancia estimada: <span className="text-naranja">{formData.distanceKm} km</span></span>
                               </div>
                               {!isOutOfCoverage && (
-                                <div className="flex items-center gap-2 px-5 py-3 bg-verde/10 rounded-2xl border border-verde/20 flex-1 justify-center">
-                                  <span className="text-xs font-bold text-verde">Costo de envío: <span className="text-texto">${(shippingCost || 0).toLocaleString()}</span></span>
+                                <div className="flex items-center gap-2 px-5 py-3 bg-verde/10 dark:bg-verde/20 rounded-2xl border border-verde/20 flex-1 justify-center">
+                                  <span className="text-xs font-bold text-verde">Costo de envío: <span className="text-texto dark:text-dark-text">${(shippingCost || 0).toLocaleString()}</span></span>
                                 </div>
                               )}
                             </div>
@@ -978,13 +983,13 @@ const Cart: React.FC = () => {
                     )}
 
                     {isOutOfCoverage && (
-                      <div className="p-5 bg-naranja/5 border border-naranja/20 rounded-[32px] flex items-start gap-4 animate-shake">
-                        <div className="w-10 h-10 rounded-full bg-naranja/10 flex items-center justify-center shrink-0">
+                      <div className="p-5 bg-naranja/5 dark:bg-naranja/10 border border-naranja/20 dark:border-naranja/30 rounded-[32px] flex items-start gap-4 animate-shake">
+                        <div className="w-10 h-10 rounded-full bg-naranja/10 dark:bg-naranja/20 flex items-center justify-center shrink-0">
                           <AlertCircle className="w-6 h-6 text-naranja" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold text-texto mb-1">¡El envío está fuera de nuestro rango!</p>
-                          <p className="text-xs text-texto/60 leading-relaxed mb-4">
+                          <p className="text-sm font-bold text-texto dark:text-dark-text mb-1">¡El envío está fuera de nuestro rango!</p>
+                          <p className="text-xs text-texto/60 dark:text-dark-text-muted leading-relaxed mb-4">
                             Tu ubicación se encuentra en la <strong className="text-naranja">Zona 10 (Lejos)</strong>. 
                             No podemos procesar el pago automático, pero podemos coordinar por Whatsapp para enviarte tu pedido.
                           </p>
@@ -993,7 +998,7 @@ const Cart: React.FC = () => {
                     )}
 
                     <div className="space-y-3">
-                      <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Datos de quien recibe</label>
+                      <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">Datos de quien recibe</label>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="relative">
                           <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
@@ -1004,7 +1009,7 @@ const Cart: React.FC = () => {
                             autoComplete="name"
                             value={formData.recipientName}
                             onChange={(e) => setFormData({...formData, recipientName: e.target.value})}
-                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.recipientName ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.recipientName ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.recipientName && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.recipientName}</p>}
                         </div>
@@ -1017,7 +1022,7 @@ const Cart: React.FC = () => {
                             autoComplete="tel"
                             value={formData.recipientPhone}
                             onChange={(e) => setFormData({...formData, recipientPhone: e.target.value})}
-                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.recipientPhone ? 'border-red-500' : 'border-naranja/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto placeholder:text-texto/30 transition-all`}
+                            className={`w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.recipientPhone ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl focus:ring-2 focus:ring-naranja/20 outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all`}
                           />
                           {errors.recipientPhone && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.recipientPhone}</p>}
                         </div>
@@ -1027,7 +1032,7 @@ const Cart: React.FC = () => {
                 )}
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">¿Cuándo entregamos?</label>
+                  <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">¿Cuándo entregamos?</label>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-1">
                       <div className="relative">
@@ -1037,12 +1042,12 @@ const Cart: React.FC = () => {
                           name="deliveryDate"
                           value={formData.deliveryDate}
                           onChange={(e) => setFormData({...formData, deliveryDate: e.target.value})}
-                          className={`w-full pl-12 pr-4 py-4 bg-crema/20 border ${errors.deliveryDate ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto transition-all`}
+                          className={`w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.deliveryDate ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text transition-all`}
                         />
                       </div>
                       {errors.deliveryDate && <p className="text-[10px] text-red-500 ml-1 font-bold">{errors.deliveryDate}</p>}
                       {formData.deliveryDate && new Date(formData.deliveryDate + 'T00:00:00') < new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate()) && (
-                        <div className="flex items-center gap-2 mt-2 p-3 bg-naranja/5 rounded-xl border border-naranja/10">
+                        <div className="flex items-center gap-2 mt-2 p-3 bg-naranja/5 dark:bg-naranja/10 rounded-xl border border-naranja/10 dark:border-naranja/20">
                           <AlertCircle className="w-4 h-4 text-naranja" />
                           <p className="text-[10px] font-bold text-naranja">¡Tu pedido es para un día anterior, verificalo!</p>
                         </div>
@@ -1055,7 +1060,7 @@ const Cart: React.FC = () => {
                           name="deliveryTime"
                           value={formData.deliveryTime}
                           onChange={(e) => setFormData({...formData, deliveryTime: e.target.value})}
-                          className={`w-full pl-12 pr-10 py-4 bg-crema/20 border ${errors.deliveryTime ? 'border-red-500' : 'border-naranja/5'} rounded-2xl outline-none text-sm font-medium text-texto appearance-none transition-all`}
+                          className={`w-full pl-12 pr-10 py-4 bg-crema/20 dark:bg-dark-bg/20 border ${errors.deliveryTime ? 'border-red-500' : 'border-naranja/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text appearance-none transition-all`}
                         >
                           <option value="">Seleccionar rango horario</option>
                           <option value="8 a 9.15hs">8 a 9.15hs</option>
@@ -1077,23 +1082,23 @@ const Cart: React.FC = () => {
                 </div>
               </div>
 
-                <div className="pt-6 border-t border-naranja/5 space-y-3">
+                <div className="pt-6 border-t border-naranja/5 dark:border-white/5 space-y-3">
                   <div className="flex justify-between text-sm">
-                    <span className="text-texto/40 font-bold uppercase tracking-wider">Subtotal</span>
-                    <span className="text-texto font-bold">${(subtotal || 0).toLocaleString()}</span>
+                    <span className="text-texto/40 dark:text-dark-text-muted/40 font-bold uppercase tracking-wider">Subtotal</span>
+                    <span className="text-texto dark:text-dark-text font-bold">${(subtotal || 0).toLocaleString()}</span>
                   </div>
                   {formData.deliveryType === 'DELIVERY' && (
                     <div className="flex justify-between text-sm">
-                      <span className="text-texto/40 font-bold uppercase tracking-wider">Envío</span>
-                      <span className="text-texto font-bold">
+                      <span className="text-texto/40 dark:text-dark-text-muted/40 font-bold uppercase tracking-wider">Envío</span>
+                      <span className="text-texto dark:text-dark-text font-bold">
                         {isCalculatingDistance ? 'Calculando...' : 
                          isOutOfCoverage ? 'A coordinar' : 
                          shippingCost === 0 ? 'Sin cargo' : `$${(shippingCost || 0).toLocaleString()}`}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between text-2xl pt-3 border-t border-naranja/5">
-                    <span className="font-display font-bold text-texto">Total estimado</span>
+                  <div className="flex justify-between text-2xl pt-3 border-t border-naranja/5 dark:border-white/5">
+                    <span className="font-display font-bold text-texto dark:text-dark-text">Total estimado</span>
                     <span className="font-display font-bold text-naranja">
                       {isCalculatingDistance ? '...' : 
                        isOutOfCoverage ? `$${(totalAfterDiscount || 0).toLocaleString()} + Envío` : 
@@ -1107,9 +1112,9 @@ const Cart: React.FC = () => {
                   disabled={isCalculatingDistance}
                   className={`w-full py-5 rounded-2xl font-bold transition-all shadow-xl flex items-center justify-center gap-3 ${
                     isCalculatingDistance
-                      ? 'bg-crema text-texto/20 cursor-not-allowed'
+                      ? 'bg-crema dark:bg-dark-bg text-texto/20 dark:text-dark-text-muted/20 cursor-not-allowed'
                       : isOutOfCoverage 
-                        ? 'bg-texto text-crema hover:bg-black shadow-texto/10' 
+                        ? 'bg-texto dark:bg-dark-bg text-crema dark:text-dark-text hover:bg-black dark:hover:bg-black shadow-texto/10' 
                         : 'bg-naranja text-white hover:bg-naranja/90 shadow-naranja/20'
                   }`}
                 >
@@ -1134,10 +1139,10 @@ const Cart: React.FC = () => {
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
             <div className="lg:col-span-2 space-y-6">
-              <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-xl shadow-naranja/5 space-y-8">
+              <div className="bg-white dark:bg-dark-surface rounded-[40px] p-8 border border-naranja/5 dark:border-white/5 shadow-xl shadow-naranja/5 space-y-8">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-3xl font-display font-bold text-texto">Método de Pago</h2>
-                  <button onClick={prevStep} className="text-texto/40 hover:text-naranja flex items-center gap-1 text-sm font-bold transition-colors">
+                  <h2 className="text-3xl font-display font-bold text-texto dark:text-dark-text">Método de Pago</h2>
+                  <button onClick={prevStep} className="text-texto/40 dark:text-dark-text-muted/40 hover:text-naranja flex items-center gap-1 text-sm font-bold transition-colors">
                     <ChevronLeft className="w-4 h-4" /> Volver
                   </button>
                 </div>
@@ -1152,21 +1157,21 @@ const Cart: React.FC = () => {
                     <button
                       key={m.id}
                       onClick={() => setFormData({...formData, paymentMethod: m.id})}
-                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-4 ${formData.paymentMethod === m.id ? 'border-naranja bg-naranja/5' : 'border-naranja/5 bg-crema/10 hover:bg-crema/20'}`}
+                      className={`p-6 rounded-[32px] border-2 transition-all text-left flex items-center gap-4 ${formData.paymentMethod === m.id ? 'border-naranja bg-naranja/5 dark:bg-naranja/10' : 'border-naranja/5 dark:border-white/5 bg-crema/10 dark:bg-dark-bg/10 hover:bg-crema/20 dark:hover:bg-dark-bg/20'}`}
                     >
-                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${formData.paymentMethod === m.id ? 'bg-naranja text-white' : 'bg-white text-naranja/40'}`}>
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-colors ${formData.paymentMethod === m.id ? 'bg-naranja text-white' : 'bg-white dark:bg-dark-surface text-naranja/40'}`}>
                         <m.icon className="w-6 h-6" />
                       </div>
                       <div>
-                        <p className={`font-bold text-sm tracking-tight ${formData.paymentMethod === m.id ? 'text-naranja' : 'text-texto'}`}>{m.label}</p>
-                        <p className="text-[10px] text-texto/40 font-bold uppercase tracking-wider">{m.sub}</p>
+                        <p className={`font-bold text-sm tracking-tight ${formData.paymentMethod === m.id ? 'text-naranja' : 'text-texto dark:text-dark-text'}`}>{m.label}</p>
+                        <p className="text-[10px] text-texto/40 dark:text-dark-text-muted/40 font-bold uppercase tracking-wider">{m.sub}</p>
                       </div>
                     </button>
                   ))}
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">¿Tenés un cupón de descuento?</label>
+                  <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">¿Tenés un cupón de descuento?</label>
                   <div className="flex gap-3">
                     <div className="relative flex-1">
                       <Tag className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-naranja/40" />
@@ -1174,26 +1179,26 @@ const Cart: React.FC = () => {
                         placeholder="Ingresá tu código"
                         value={couponCode}
                         onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
-                        className="w-full pl-12 pr-4 py-4 bg-crema/20 border border-naranja/5 rounded-2xl outline-none text-sm font-mono font-bold text-texto placeholder:text-texto/30 transition-all"
+                        className="w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border border-naranja/5 dark:border-white/5 rounded-2xl outline-none text-sm font-mono font-bold text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 transition-all"
                       />
                     </div>
                     <button 
                       onClick={handleApplyCoupon}
-                      className="px-8 bg-texto text-crema rounded-2xl font-bold text-sm hover:bg-black transition-all shadow-lg shadow-texto/10"
+                      className="px-8 bg-texto dark:bg-dark-bg text-crema dark:text-dark-text rounded-2xl font-bold text-sm hover:bg-black dark:hover:bg-black transition-all shadow-lg shadow-texto/10"
                     >
                       Aplicar
                     </button>
                   </div>
                   {couponError && <p className="text-[10px] text-red-500 font-bold ml-1">{couponError}</p>}
                   {appliedCoupon && (
-                    <div className="flex items-center justify-between p-4 bg-verde/10 border border-verde/20 rounded-2xl">
+                    <div className="flex items-center justify-between p-4 bg-verde/10 dark:bg-verde/20 border border-verde/20 rounded-2xl">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-verde/20 flex items-center justify-center">
                           <CheckCircle className="w-4 h-4 text-verde" />
                         </div>
-                        <span className="text-xs font-bold text-texto">Cupón <span className="text-verde">{appliedCoupon.code}</span> aplicado</span>
+                        <span className="text-xs font-bold text-texto dark:text-dark-text">Cupón <span className="text-verde">{appliedCoupon.code}</span> aplicado</span>
                       </div>
-                      <button onClick={removeCoupon} className="text-texto/40 hover:text-red-500 transition-colors">
+                      <button onClick={removeCoupon} className="text-texto/40 dark:text-dark-text-muted/40 hover:text-red-500 transition-colors">
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -1201,14 +1206,14 @@ const Cart: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-texto/40 uppercase tracking-[0.2em]">Tarjeta dedicatoria</label>
+                  <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">Tarjeta dedicatoria</label>
                   <div className="relative">
                     <MessageSquare className="absolute left-4 top-4 w-4 h-4 text-naranja/40" />
                     <textarea 
                       placeholder="Escribí un mensaje especial..."
                       value={formData.notes}
                       onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                      className="w-full pl-12 pr-4 py-4 bg-crema/20 border border-naranja/5 rounded-2xl outline-none text-sm font-medium text-texto placeholder:text-texto/30 h-32 resize-none transition-all"
+                      className="w-full pl-12 pr-4 py-4 bg-crema/20 dark:bg-dark-bg/20 border border-naranja/5 dark:border-white/5 rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 h-32 resize-none transition-all"
                     />
                   </div>
                 </div>
@@ -1216,12 +1221,12 @@ const Cart: React.FC = () => {
             </div>
 
             <div className="lg:col-span-1">
-              <div className="bg-white rounded-[40px] p-8 border border-naranja/5 shadow-xl shadow-naranja/5 sticky top-24 space-y-8">
-                <h3 className="text-2xl font-display font-bold text-texto">Resumen Final</h3>
+              <div className="bg-white dark:bg-dark-surface rounded-[40px] p-8 border border-naranja/5 dark:border-white/5 shadow-xl shadow-naranja/5 sticky top-24 space-y-8">
+                <h3 className="text-2xl font-display font-bold text-texto dark:text-dark-text">Resumen Final</h3>
                 <div className="space-y-4">
-                  <div className="flex justify-between text-texto/40 text-xs font-bold uppercase tracking-wider">
+                  <div className="flex justify-between text-texto/40 dark:text-dark-text-muted/40 text-xs font-bold uppercase tracking-wider">
                     <span>Subtotal</span>
-                    <span className="text-texto">${(subtotal || 0).toLocaleString()}</span>
+                    <span className="text-texto dark:text-dark-text">${(subtotal || 0).toLocaleString()}</span>
                   </div>
                   {discountAmount > 0 && (
                     <div className="flex justify-between text-verde text-xs font-bold uppercase tracking-wider">
@@ -1236,27 +1241,27 @@ const Cart: React.FC = () => {
                     </div>
                   )}
                   {formData.deliveryType === 'DELIVERY' && (
-                    <div className="flex justify-between text-texto/40 text-xs font-bold uppercase tracking-wider">
+                    <div className="flex justify-between text-texto/40 dark:text-dark-text-muted/40 text-xs font-bold uppercase tracking-wider">
                       <span>Envío {isOutOfCoverage ? '(Zona 10 - Lejos)' : ''}</span>
-                      <span className="text-texto">
+                      <span className="text-texto dark:text-dark-text">
                         {isOutOfCoverage ? 'A coordinar' : 
                          shippingCost === 0 ? 'Sin cargo' : `$${(shippingCost || 0).toLocaleString()}`}
                       </span>
                     </div>
                   )}
-                  <div className="pt-6 border-t border-naranja/5 flex justify-between items-center">
-                    <span className="font-display font-bold text-texto text-xl">Total</span>
+                  <div className="pt-6 border-t border-naranja/5 dark:border-white/5 flex justify-between items-center">
+                    <span className="font-display font-bold text-texto dark:text-dark-text text-xl">Total</span>
                     <span className="text-3xl font-bold text-naranja font-display">
                       {isOutOfCoverage ? `$${((totalAfterDiscount || 0) + (surcharge || 0)).toLocaleString()} + Envío` : `$${(total || 0).toLocaleString()}`}
                     </span>
                   </div>
                 </div>
 
-                <div className={`p-5 rounded-[32px] border flex items-start gap-4 ${isOutOfCoverage ? 'bg-naranja/5 border-naranja/20' : 'bg-crema/30 border-naranja/5'}`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isOutOfCoverage ? 'bg-naranja/10' : 'bg-white'}`}>
+                <div className={`p-5 rounded-[32px] border flex items-start gap-4 ${isOutOfCoverage ? 'bg-naranja/5 dark:bg-naranja/10 border-naranja/20 dark:border-naranja/30' : 'bg-crema/30 dark:bg-dark-bg/30 border-naranja/5 dark:border-white/5'}`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isOutOfCoverage ? 'bg-naranja/10 dark:bg-naranja/20' : 'bg-white dark:bg-dark-bg'}`}>
                     <AlertCircle className={`w-6 h-6 ${isOutOfCoverage ? 'text-naranja' : 'text-naranja/40'}`} />
                   </div>
-                  <p className={`text-[10px] font-medium leading-relaxed ${isOutOfCoverage ? 'text-texto/60' : 'text-texto/60'}`}>
+                  <p className={`text-[10px] font-medium leading-relaxed ${isOutOfCoverage ? 'text-texto/60 dark:text-dark-text-muted' : 'text-texto/60 dark:text-dark-text-muted'}`}>
                     {isOutOfCoverage 
                       ? 'Al confirmar, se enviará el pedido directamente a WhatsApp para coordinar el envío y el pago manualmente.'
                       : 'Al confirmar, serás redirigido para completar el pago y luego a WhatsApp para enviarnos el resumen.'}
@@ -1268,7 +1273,7 @@ const Cart: React.FC = () => {
                   disabled={isSubmitting}
                   className={`w-full py-5 rounded-2xl font-bold transition-all shadow-xl flex items-center justify-center gap-3 disabled:opacity-50 ${
                     isOutOfCoverage 
-                      ? 'bg-texto text-crema hover:bg-black shadow-texto/10' 
+                      ? 'bg-texto dark:bg-dark-bg text-crema dark:text-dark-text hover:bg-black dark:hover:bg-black shadow-texto/10' 
                       : 'bg-naranja text-white hover:bg-naranja/90 shadow-naranja/20'
                   }`}
                 >
@@ -1290,11 +1295,11 @@ const Cart: React.FC = () => {
       </AnimatePresence>
 
       {showRedirectModal && (
-        <div className="fixed inset-0 bg-texto/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-[40px] p-10 max-w-sm w-full text-center shadow-2xl border border-naranja/5 animate-scale-in">
+        <div className="fixed inset-0 bg-texto/60 dark:bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-dark-surface rounded-[40px] p-10 max-w-sm w-full text-center shadow-2xl border border-naranja/5 dark:border-white/5 animate-scale-in">
             <div className={`w-24 h-24 rounded-full flex items-center justify-center mx-auto mb-8 ${
               redirectType === 'success' ? 'bg-verde/10' : 
-              (redirectType === 'failure' || redirectType === 'pending') ? 'bg-naranja/10' : 'bg-crema'
+              (redirectType === 'failure' || redirectType === 'pending') ? 'bg-naranja/10' : 'bg-crema dark:bg-dark-bg'
             }`}>
               {redirectType === 'success' ? (
                 <CheckCircle className="w-12 h-12 text-verde animate-bounce" />
@@ -1305,17 +1310,17 @@ const Cart: React.FC = () => {
               )}
             </div>
             
-            <h2 className="text-3xl font-display font-bold text-texto mb-3">
+            <h2 className="text-3xl font-display font-bold text-texto dark:text-dark-text mb-3">
               {redirectType === 'success' ? '¡Pago Exitoso!' : 
                redirectType === 'failure' ? 'Pago no realizado' :
                redirectType === 'pending' ? 'Pago pendiente' : 'Procesando...'}
             </h2>
             
-            <p className="text-texto/60 text-sm font-medium mb-8 leading-relaxed">
+            <p className="text-texto/60 dark:text-dark-text-muted text-sm font-medium mb-8 leading-relaxed">
               {redirectType === 'success' 
                 ? 'Tu pago ha sido procesado. Por favor, envíanos el detalle por WhatsApp para coordinar la entrega.'
                 : redirectType === 'failure' || redirectType === 'pending'
-                ? 'Parece que no se completó el pago. ¿Qué te gustaría hacer?'
+                ? (returnedOrder ? 'Parece que no se completó el pago. ¿Qué te gustaría hacer?' : 'Por favor, revisá los datos ingresados e intentá nuevamente.')
                 : 'Estamos preparando todo para tu pedido...'}
             </p>
 
@@ -1330,32 +1335,56 @@ const Cart: React.FC = () => {
                 <MessageSquare className="w-5 h-5" />
                 Enviar WhatsApp
               </button>
-            ) : (redirectType === 'failure' || redirectType === 'pending') && returnedOrder ? (
+            ) : (redirectType === 'failure' || redirectType === 'pending') ? (
               <div className="space-y-3">
-                <button
-                  onClick={() => setShowRedirectModal(false)}
-                  className="w-full bg-naranja text-white py-4 rounded-2xl font-bold hover:bg-naranja/90 transition-all shadow-xl shadow-naranja/20"
-                >
-                  Reintentar pago
-                </button>
-                <button
-                  onClick={() => {
-                    setStep(3);
-                    setShowRedirectModal(false);
-                  }}
-                  className="w-full bg-crema text-texto py-4 rounded-2xl font-bold hover:bg-crema/80 transition-all"
-                >
-                  Cambiar forma de pago
-                </button>
-                <button
-                  onClick={() => {
-                    localStorage.removeItem('lastOrder');
-                    setShowRedirectModal(false);
-                  }}
-                  className="w-full text-texto/40 py-2 text-xs font-bold uppercase tracking-widest hover:text-texto transition-colors mt-4"
-                >
-                  Cancelar pedido
-                </button>
+                {returnedOrder ? (
+                  <>
+                    <button
+                      onClick={() => setShowRedirectModal(false)}
+                      className="w-full bg-naranja text-white py-4 rounded-2xl font-bold hover:bg-naranja/90 transition-all shadow-xl shadow-naranja/20"
+                    >
+                      Reintentar pago
+                    </button>
+                    <button
+                      onClick={() => {
+                        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(returnedOrder, products))}`;
+                        window.location.href = whatsappUrl;
+                      }}
+                      className="w-full bg-verde text-white py-4 rounded-2xl font-bold hover:bg-verde/90 transition-all shadow-xl shadow-verde/20 flex items-center justify-center gap-3"
+                    >
+                      <MessageSquare className="w-5 h-5" />
+                      Coordinar por WhatsApp
+                    </button>
+                    <button
+                      onClick={() => {
+                        setStep(3);
+                        setShowRedirectModal(false);
+                      }}
+                      className="w-full bg-crema dark:bg-dark-bg text-texto dark:text-dark-text py-4 rounded-2xl font-bold hover:bg-crema/80 dark:hover:bg-dark-bg/80 transition-all"
+                    >
+                      Cambiar forma de pago
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    onClick={() => setShowRedirectModal(false)}
+                    className="w-full bg-naranja text-white py-4 rounded-2xl font-bold hover:bg-naranja/90 transition-all shadow-xl shadow-naranja/20"
+                  >
+                    Volver a revisar
+                  </button>
+                )}
+                
+                {returnedOrder && (
+                  <button
+                    onClick={() => {
+                      localStorage.removeItem('lastOrder');
+                      setShowRedirectModal(false);
+                    }}
+                    className="w-full text-texto/40 dark:text-dark-text-muted/40 py-2 text-xs font-bold uppercase tracking-widest hover:text-texto dark:hover:text-dark-text transition-colors mt-4"
+                  >
+                    Cancelar pedido
+                  </button>
+                )}
               </div>
             ) : null}
           </div>

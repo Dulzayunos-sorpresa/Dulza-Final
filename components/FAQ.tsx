@@ -53,7 +53,7 @@ const FAQ = () => {
   };
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-crema/30 relative overflow-hidden">
+    <section className="px-6 md:px-20 py-32 bg-crema/30 dark:bg-dark-surface/30 relative overflow-hidden">
       <div className="max-w-5xl mx-auto relative z-10">
         <motion.div 
           initial={{ opacity: 0, x: -30 }}
@@ -63,10 +63,10 @@ const FAQ = () => {
           className="max-w-3xl mb-20"
         >
           <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Preguntas frecuentes</p>
-          <h2 className="text-5xl md:text-7xl font-display text-texto leading-[0.9] mb-8 uppercase tracking-tighter">
+          <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
             Todo lo que necesitás<br /><span className="text-naranja italic">saber.</span>
           </h2>
-          <p className="text-base md:text-lg text-texto/60 leading-relaxed max-w-xl font-light">
+          <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
             No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
           </p>
         </motion.div>
@@ -85,12 +85,12 @@ const FAQ = () => {
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
               className={`p-10 rounded-[40px] cursor-pointer transition-all duration-500 border ${
                 openIndex === i 
-                ? 'bg-white shadow-[0_30px_60px_-15px_rgba(242,125,38,0.1)] border-naranja/10' 
-                : 'bg-white/50 border-naranja/5 hover:bg-white hover:border-naranja/10'
+                ? 'bg-white dark:bg-dark-surface shadow-[0_30px_60px_-15px_rgba(242,125,38,0.1)] border-naranja/10 dark:border-white/10' 
+                : 'bg-white/50 dark:bg-dark-surface/50 border-naranja/5 dark:border-white/5 hover:bg-white dark:hover:bg-dark-surface hover:border-naranja/10'
               }`}
             >
               <div className="flex justify-between items-center gap-6">
-                <h3 className="text-base font-bold text-texto uppercase tracking-tight leading-tight">{faq.q}</h3>
+                <h3 className="text-base font-bold text-texto dark:text-dark-text uppercase tracking-tight leading-tight">{faq.q}</h3>
                 <motion.div 
                   animate={{ rotate: openIndex === i ? 45 : 0 }}
                   className={`w-10 h-10 rounded-full border border-naranja/20 flex items-center justify-center text-naranja transition-all duration-500 ${openIndex === i ? 'bg-naranja text-white border-naranja' : ''}`}
@@ -107,7 +107,7 @@ const FAQ = () => {
                     transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
                     className="overflow-hidden"
                   >
-                    <p className="text-sm text-texto/60 leading-relaxed font-light border-l-2 border-naranja/20 pl-6 mt-8">
+                    <p className="text-sm text-texto/60 dark:text-dark-text-muted leading-relaxed font-light border-l-2 border-naranja/20 dark:border-white/10 pl-6 mt-8">
                       {faq.a}
                     </p>
                   </motion.div>
@@ -121,4 +121,4 @@ const FAQ = () => {
   );
 };
 
-export default FAQ;
+export default React.memo(FAQ);

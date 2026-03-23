@@ -17,6 +17,45 @@ const PageTracker = () => {
   return null;
 };
 
+// Dark Mode Manager
+const DarkModeManager = () => {
+  useEffect(() => {
+    // Check if user has already manually toggled in this session
+    const manualPreference = sessionStorage.getItem('dark-mode-preference');
+    if (manualPreference) {
+      if (manualPreference === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+      return;
+    }
+
+    const checkTime = () => {
+      // Get current time in Argentina (UTC-3)
+      const now = new Date();
+      const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+      const artTime = new Date(utc + (3600000 * -3));
+      const hour = artTime.getHours();
+
+      // Night mode from 19:00 to 07:00
+      const isNight = hour >= 19 || hour < 7;
+      
+      if (isNight) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    };
+
+    checkTime();
+    // We only check once on mount to avoid fighting the user's manual toggle
+    // unless the app is reloaded.
+  }, []);
+
+  return null;
+};
+
 // Lazy loaded pages
 const Home = lazy(() => import('./pages/Home'));
 const Cart = lazy(() => import('./pages/Cart'));
@@ -77,6 +116,7 @@ const App = () => {
       <BrowserRouter>
         <ScrollToTop />
         <PageTracker />
+        <DarkModeManager />
         <Layout>
           <AnimatedRoutes />
         </Layout>

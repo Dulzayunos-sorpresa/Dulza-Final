@@ -13,21 +13,79 @@ import {
 import { useStore } from '@/context/store';
 import { ProductOptionValue } from '@/types';
 
+interface SubobjectCardProps {
+  subobject: ProductOptionValue;
+  idx: number;
+  setEditingSubobject: (subobject: ProductOptionValue) => void;
+  deleteSubobject: (id: string) => void;
+}
+
+const SubobjectCard: React.FC<SubobjectCardProps> = React.memo(({ 
+  subobject, 
+  idx, 
+  setEditingSubobject, 
+  deleteSubobject 
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: idx * 0.05 }}
+      className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex flex-col justify-between"
+    >
+      <div>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-lg overflow-hidden border border-stone-100">
+              {subobject.image ? (
+                <img src={subobject.image} alt={subobject.name} className="w-full h-full object-cover" />
+              ) : (
+                <div className="w-full h-full bg-stone-50 flex items-center justify-center text-stone-300">
+                  <ImageIcon className="w-6 h-6" />
+                </div>
+              )}
+            </div>
+            <h3 className="font-bold text-stone-900">{subobject.name}</h3>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={() => setEditingSubobject(subobject)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
+              <Edit className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => {
+                if(confirm('¿Estás seguro de eliminar este subobjeto?')) {
+                  deleteSubobject(subobject.id);
+                }
+              }} 
+              className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        <p className="text-xs text-stone-500 mb-4">{subobject.description || 'Sin descripción'}</p>
+        <p className="text-lg font-bold text-stone-900">${(subobject.price || 0).toLocaleString()}</p>
+      </div>
+    </motion.div>
+  );
+});
+
 const SubobjectsManager: React.FC = () => {
   const { subobjects, addSubobject, updateSubobject, deleteSubobject } = useStore();
   const [isAddingSubobject, setIsAddingSubobject] = useState(false);
   const [editingSubobject, setEditingSubobject] = useState<ProductOptionValue | null>(null);
 
-  const handleSave = () => {
+  const handleSave = React.useCallback(() => {
     if (editingSubobject) {
       updateSubobject(editingSubobject);
       setEditingSubobject(null);
     } else {
       setIsAddingSubobject(false);
     }
-  };
+  }, [editingSubobject, updateSubobject]);
 
-  const handleAddSubobject = () => {
+  const handleAddSubobject = React.useCallback(() => {
     const newSubobject: ProductOptionValue = {
       id: Math.random().toString(36).substr(2, 9),
       name: 'Nuevo Subobjeto',
@@ -37,9 +95,9 @@ const SubobjectsManager: React.FC = () => {
     };
     addSubobject(newSubobject);
     setEditingSubobject(newSubobject);
-  };
+  }, [addSubobject]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageUpload = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file && editingSubobject) {
       const reader = new FileReader();
@@ -51,7 +109,7 @@ const SubobjectsManager: React.FC = () => {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, [editingSubobject]);
 
   return (
     <motion.div 
@@ -79,48 +137,13 @@ const SubobjectsManager: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {subobjects.map((subobject, idx) => (
-          <motion.div 
+          <SubobjectCard 
             key={subobject.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.05 }}
-            className="bg-white p-6 rounded-2xl shadow-sm border border-stone-100 flex flex-col justify-between"
-          >
-            <div>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-lg overflow-hidden border border-stone-100">
-                    {subobject.image ? (
-                      <img src={subobject.image} alt={subobject.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full bg-stone-50 flex items-center justify-center text-stone-300">
-                        <ImageIcon className="w-6 h-6" />
-                      </div>
-                    )}
-                  </div>
-                  <h3 className="font-bold text-stone-900">{subobject.name}</h3>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => setEditingSubobject(subobject)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if(confirm('¿Estás seguro de eliminar este subobjeto?')) {
-                        deleteSubobject(subobject.id);
-                      }
-                    }} 
-                    className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <p className="text-xs text-stone-500 mb-4">{subobject.description || 'Sin descripción'}</p>
-              <p className="text-lg font-bold text-stone-900">${(subobject.price || 0).toLocaleString()}</p>
-            </div>
-          </motion.div>
+            subobject={subobject}
+            idx={idx}
+            setEditingSubobject={setEditingSubobject}
+            deleteSubobject={deleteSubobject}
+          />
         ))}
       </div>
 

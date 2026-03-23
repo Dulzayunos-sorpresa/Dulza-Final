@@ -32,15 +32,33 @@
   --color-blanco: #FFFFFF;
   --color-verde-suave: #9AC1A3;
   --color-gris-calido: #A89A8A;
+
+  /* Dark Mode Variables */
+  --color-dark-bg: #121212;
+  --color-dark-surface: #1E1E1E;
+  --color-dark-border: #2A2A2A;
+  --color-dark-text: #F5F5F5;
+  --color-dark-text-muted: #A0A0A0;
 }
+
+/* Configure class-based dark mode for Tailwind v4 */
+@variant dark (&:where(.dark, .dark *));
 
 @layer base {
   body {
-    @apply bg-crema text-texto font-sans antialiased;
+    @apply bg-crema text-texto font-sans antialiased transition-colors duration-300;
+  }
+
+  .dark body {
+    @apply bg-dark-bg text-dark-text;
   }
   
   h1, h2, h3, h4, .font-display {
-    @apply font-display font-bold tracking-tight;
+    @apply font-display font-bold tracking-tight text-texto;
+  }
+
+  .dark h1, .dark h2, .dark h3, .dark h4, .dark .font-display {
+    @apply text-dark-text;
   }
 }
 

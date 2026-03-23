@@ -10,6 +10,94 @@ import {
 import { useStore } from '@/context/store';
 import { Coupon } from '@/types';
 
+interface CouponCardProps {
+  coupon: Coupon;
+  idx: number;
+  setEditingCoupon: (coupon: Coupon) => void;
+  deleteCoupon: (id: string) => void;
+  updateCoupon: (coupon: Coupon) => void;
+}
+
+const CouponCard: React.FC<CouponCardProps> = React.memo(({ 
+  coupon, 
+  idx, 
+  setEditingCoupon, 
+  deleteCoupon,
+  updateCoupon
+}) => {
+  return (
+    <motion.div 
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ delay: idx * 0.05 }}
+      className={`bg-white p-6 rounded-2xl shadow-sm border ${coupon.isActive ? 'border-stone-100' : 'border-red-100 bg-red-50/10'} flex flex-col justify-between relative overflow-hidden`}
+    >
+      {!coupon.isActive && (
+        <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
+          INACTIVO
+        </div>
+      )}
+      <div>
+        <div className="flex justify-between items-start mb-4">
+          <div className="flex items-center gap-2">
+            <div className={`p-2 rounded-lg ${coupon.isActive ? 'bg-brand-50 text-brand-600' : 'bg-stone-100 text-stone-400'}`}>
+              <Tag className="w-4 h-4" />
+            </div>
+            <span className="font-mono font-bold text-stone-900 tracking-wider">
+              {coupon.code}
+            </span>
+          </div>
+          <div className="flex gap-1">
+            <button onClick={() => setEditingCoupon(coupon)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
+              <Edit className="w-4 h-4" />
+            </button>
+            <button 
+              onClick={() => {
+                if(confirm('¿Estás seguro de eliminar este cupón?')) {
+                  deleteCoupon(coupon.id);
+                }
+              }} 
+              className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+            >
+              <Trash2 className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+        
+        <div className="flex items-baseline gap-1 mb-1">
+          <span className="text-3xl font-bold text-stone-900">
+            {coupon.type === 'percentage' ? `${coupon.discount}%` : `$${coupon.discount}`}
+          </span>
+          <span className="text-stone-500 text-sm font-medium">OFF</span>
+        </div>
+        
+        <p className="text-xs text-stone-500 font-medium">
+          {coupon.minPurchase > 0 ? `Válido desde $${coupon.minPurchase.toLocaleString()}` : 'Sin compra mínima'}
+        </p>
+      </div>
+
+      <div className="mt-6 pt-4 border-t border-stone-50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${coupon.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'}`}></div>
+          <span className={`text-[10px] font-bold tracking-wider uppercase ${coupon.isActive ? 'text-emerald-600' : 'text-stone-400'}`}>
+            {coupon.isActive ? 'Activo' : 'Pausado'}
+          </span>
+        </div>
+        <button 
+          onClick={() => updateCoupon({...coupon, isActive: !coupon.isActive})}
+          className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
+            coupon.isActive 
+              ? 'text-stone-600 bg-stone-100 hover:bg-stone-200' 
+              : 'text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-100'
+          }`}
+        >
+          {coupon.isActive ? 'Desactivar' : 'Activar'}
+        </button>
+      </div>
+    </motion.div>
+  );
+});
+
 const CouponsManager: React.FC = () => {
   const { coupons, addCoupon, updateCoupon, deleteCoupon } = useStore();
   const [isAddingCoupon, setIsAddingCoupon] = useState(false);
@@ -22,7 +110,7 @@ const CouponsManager: React.FC = () => {
     minPurchase: 0
   });
 
-  const handleSave = () => {
+  const handleSave = React.useCallback(() => {
     if (editingCoupon) {
       updateCoupon(editingCoupon);
       setEditingCoupon(null);
@@ -41,7 +129,7 @@ const CouponsManager: React.FC = () => {
         minPurchase: 0 
       });
     }
-  };
+  }, [editingCoupon, updateCoupon, newCouponForm, addCoupon]);
 
   return (
     <motion.div 
@@ -154,76 +242,14 @@ const CouponsManager: React.FC = () => {
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {coupons.map((coupon, idx) => (
-          <motion.div 
+          <CouponCard 
             key={coupon.id}
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ delay: idx * 0.05 }}
-            className={`bg-white p-6 rounded-2xl shadow-sm border ${coupon.isActive ? 'border-stone-100' : 'border-red-100 bg-red-50/10'} flex flex-col justify-between relative overflow-hidden`}
-          >
-            {!coupon.isActive && (
-              <div className="absolute top-0 right-0 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-bl-lg">
-                INACTIVO
-              </div>
-            )}
-            <div>
-              <div className="flex justify-between items-start mb-4">
-                <div className="flex items-center gap-2">
-                  <div className={`p-2 rounded-lg ${coupon.isActive ? 'bg-brand-50 text-brand-600' : 'bg-stone-100 text-stone-400'}`}>
-                    <Tag className="w-4 h-4" />
-                  </div>
-                  <span className="font-mono font-bold text-stone-900 tracking-wider">
-                    {coupon.code}
-                  </span>
-                </div>
-                <div className="flex gap-1">
-                  <button onClick={() => setEditingCoupon(coupon)} className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all">
-                    <Edit className="w-4 h-4" />
-                  </button>
-                  <button 
-                    onClick={() => {
-                      if(confirm('¿Estás seguro de eliminar este cupón?')) {
-                        deleteCoupon(coupon.id);
-                      }
-                    }} 
-                    className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-              
-              <div className="flex items-baseline gap-1 mb-1">
-                <span className="text-3xl font-bold text-stone-900">
-                  {coupon.type === 'percentage' ? `${coupon.discount}%` : `$${coupon.discount}`}
-                </span>
-                <span className="text-stone-500 text-sm font-medium">OFF</span>
-              </div>
-              
-              <p className="text-xs text-stone-500 font-medium">
-                {coupon.minPurchase > 0 ? `Válido desde $${coupon.minPurchase.toLocaleString()}` : 'Sin compra mínima'}
-              </p>
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-stone-50 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className={`w-2 h-2 rounded-full ${coupon.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-stone-300'}`}></div>
-                <span className={`text-[10px] font-bold tracking-wider uppercase ${coupon.isActive ? 'text-emerald-600' : 'text-stone-400'}`}>
-                  {coupon.isActive ? 'Activo' : 'Pausado'}
-                </span>
-              </div>
-              <button 
-                onClick={() => updateCoupon({...coupon, isActive: !coupon.isActive})}
-                className={`text-xs font-bold px-3 py-1.5 rounded-lg transition-all ${
-                  coupon.isActive 
-                    ? 'text-stone-600 bg-stone-100 hover:bg-stone-200' 
-                    : 'text-white bg-emerald-500 hover:bg-emerald-600 shadow-md shadow-emerald-100'
-                }`}
-              >
-                {coupon.isActive ? 'Desactivar' : 'Activar'}
-              </button>
-            </div>
-          </motion.div>
+            coupon={coupon}
+            idx={idx}
+            setEditingCoupon={setEditingCoupon}
+            deleteCoupon={deleteCoupon}
+            updateCoupon={updateCoupon}
+          />
         ))}
         
         {coupons.length === 0 && (

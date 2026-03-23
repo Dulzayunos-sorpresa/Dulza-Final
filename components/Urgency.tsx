@@ -24,7 +24,7 @@ const Urgency = () => {
   }, []);
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-naranja text-center relative overflow-hidden">
+    <section className="px-6 md:px-20 py-32 bg-naranja dark:bg-naranja/90 text-center relative overflow-hidden">
       {/* Decorative background elements */}
       <motion.div 
         initial={{ opacity: 0 }}
@@ -45,7 +45,7 @@ const Urgency = () => {
           <p className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white/60 font-bold mb-8">No pierdas tiempo</p>
           <h2 className="text-5xl md:text-8xl font-display text-white leading-[0.85] mb-10 uppercase tracking-tighter">
             Su cumpleaños es mañana.<br />
-            <span className="text-texto italic">Todavía llegás.</span>
+            <span className="text-texto dark:text-dark-text italic">Todavía llegás.</span>
           </h2>
           <p className="text-lg md:text-xl text-white/80 mb-16 font-light max-w-2xl mx-auto">
             Pedidos antes de medianoche → entrega mañana a la mañana.
@@ -108,7 +108,7 @@ const Urgency = () => {
               element.scrollIntoView({ behavior: 'smooth' });
             }
           }}
-          className="bg-texto text-crema px-16 py-6 rounded-full text-sm font-bold uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-texto/90 transition-all"
+          className="bg-texto dark:bg-dark-bg text-crema dark:text-dark-text px-16 py-6 rounded-full text-sm font-bold uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-texto/90 dark:hover:bg-dark-bg/90 transition-all"
         >
           Armar mi desayuno sorpresa →
         </motion.button>

@@ -16,6 +16,87 @@ import { useStore } from '@/context/store';
 import { Product, ProductOption } from '@/types';
 import ProductModal from './ProductModal';
 
+interface ProductRowProps {
+  product: Product;
+  updateStock: (id: string, stock: number) => void;
+  updateProduct: (product: Product) => void;
+  setEditingProduct: (product: Product) => void;
+  setLinkingProductOptions: (product: Product) => void;
+}
+
+const ProductRow: React.FC<ProductRowProps> = React.memo(({ 
+  product, 
+  updateStock, 
+  updateProduct, 
+  setEditingProduct, 
+  setLinkingProductOptions 
+}) => {
+  return (
+    <tr className="hover:bg-stone-50/50 transition-colors">
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-3">
+          <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
+          <span className="font-medium text-stone-800">{product.name}</span>
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-1 rounded-md">{product.category}</span>
+      </td>
+      <td className="px-6 py-4 font-medium text-stone-700">${product.price.toLocaleString()}</td>
+      <td className="px-6 py-4">
+        <input 
+          type="number" 
+          value={product.stock ?? 0}
+          onChange={(e) => updateStock(product.id, parseInt(e.target.value) || 0)}
+          className={`w-20 px-2 py-1 border rounded-lg text-center font-bold ${
+            (product.stock ?? 0) < 10 ? 'border-red-200 bg-red-50 text-red-600' : 'border-stone-200 text-stone-700'
+          }`}
+        />
+      </td>
+      <td className="px-6 py-4">
+        <button
+          onClick={() => updateProduct({ ...product, isHidden: !product.isHidden })}
+          className={`p-2 rounded-lg transition-colors ${
+            product.isHidden 
+              ? 'bg-stone-100 text-stone-400 hover:bg-stone-200' 
+              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+          }`}
+          title={product.isHidden ? 'Mostrar al cliente' : 'Ocultar al cliente'}
+        >
+          {product.isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+        </button>
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex flex-wrap gap-1 max-w-[200px]">
+          {product.options?.map(opt => (
+            <span key={opt.id} className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded border border-brand-100">
+              {opt.name}
+            </span>
+          )) || <span className="text-[10px] text-stone-400">Sin opciones</span>}
+        </div>
+      </td>
+      <td className="px-6 py-4 text-right">
+        <div className="flex justify-end gap-2">
+          <button 
+            onClick={() => setEditingProduct(product)}
+            className="text-stone-400 hover:text-brand-500 p-1 transition-colors"
+            title="Editar detalles"
+          >
+            <Edit className="w-4 h-4" />
+          </button>
+          <button 
+            onClick={() => setLinkingProductOptions(product)}
+            className="text-brand-500 hover:text-brand-600 font-bold text-xs flex items-center gap-1"
+          >
+            <Settings2 className="w-3 h-3" />
+            Vincular
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+});
+
 const ProductsManager: React.FC = () => {
   const { 
     products, 
@@ -32,12 +113,12 @@ const ProductsManager: React.FC = () => {
   const [isAddingProduct, setIsAddingProduct] = useState(false);
   const [linkingProductOptions, setLinkingProductOptions] = useState<Product | null>(null);
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = React.useMemo(() => products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
     p.category.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), [products, searchTerm]);
 
-  const handleExportProducts = () => {
+  const handleExportProducts = React.useCallback(() => {
     const data = products.map(p => ({
       ID: p.id,
       Nombre: p.name,
@@ -51,9 +132,9 @@ const ProductsManager: React.FC = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Productos");
     XLSX.writeFile(wb, "productos_stock.xlsx");
-  };
+  }, [products]);
 
-  const handleImportProducts = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImportProducts = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -74,9 +155,9 @@ const ProductsManager: React.FC = () => {
       alert('Stock actualizado correctamente desde Excel');
     };
     reader.readAsBinaryString(file);
-  };
+  }, [products, updateStock]);
 
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isGallery: boolean = false) => {
+  const handleImageUpload = React.useCallback((e: React.ChangeEvent<HTMLInputElement>, isGallery: boolean = false) => {
     const file = e.target.files?.[0];
     if (file && editingProduct) {
       const reader = new FileReader();
@@ -97,9 +178,9 @@ const ProductsManager: React.FC = () => {
       };
       reader.readAsDataURL(file);
     }
-  };
+  }, [editingProduct]);
 
-  const handleSaveProduct = async () => {
+  const handleSaveProduct = React.useCallback(async () => {
     if (editingProduct) {
       if (isAddingProduct) {
         await addProduct(editingProduct);
@@ -109,7 +190,7 @@ const ProductsManager: React.FC = () => {
       setEditingProduct(null);
       setIsAddingProduct(false);
     }
-  };
+  }, [editingProduct, isAddingProduct, addProduct, updateProduct]);
 
   return (
     <motion.div 
@@ -185,68 +266,14 @@ const ProductsManager: React.FC = () => {
             </thead>
             <tbody className="divide-y divide-stone-100">
               {filteredProducts.map(product => (
-                <tr key={product.id} className="hover:bg-stone-50/50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <img src={product.image} alt={product.name} className="w-10 h-10 rounded-lg object-cover" />
-                      <span className="font-medium text-stone-800">{product.name}</span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-xs font-medium text-stone-500 bg-stone-100 px-2 py-1 rounded-md">{product.category}</span>
-                  </td>
-                  <td className="px-6 py-4 font-medium text-stone-700">${product.price.toLocaleString()}</td>
-                  <td className="px-6 py-4">
-                    <input 
-                      type="number" 
-                      value={product.stock ?? 0}
-                      onChange={(e) => updateStock(product.id, parseInt(e.target.value) || 0)}
-                      className={`w-20 px-2 py-1 border rounded-lg text-center font-bold ${
-                        (product.stock ?? 0) < 10 ? 'border-red-200 bg-red-50 text-red-600' : 'border-stone-200 text-stone-700'
-                      }`}
-                    />
-                  </td>
-                  <td className="px-6 py-4">
-                    <button
-                      onClick={() => updateProduct({ ...product, isHidden: !product.isHidden })}
-                      className={`p-2 rounded-lg transition-colors ${
-                        product.isHidden 
-                          ? 'bg-stone-100 text-stone-400 hover:bg-stone-200' 
-                          : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-                      }`}
-                      title={product.isHidden ? 'Mostrar al cliente' : 'Ocultar al cliente'}
-                    >
-                      {product.isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1 max-w-[200px]">
-                      {product.options?.map(opt => (
-                        <span key={opt.id} className="text-[10px] bg-brand-50 text-brand-600 px-1.5 py-0.5 rounded border border-brand-100">
-                          {opt.name}
-                        </span>
-                      )) || <span className="text-[10px] text-stone-400">Sin opciones</span>}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex justify-end gap-2">
-                      <button 
-                        onClick={() => setEditingProduct(product)}
-                        className="text-stone-400 hover:text-brand-500 p-1 transition-colors"
-                        title="Editar detalles"
-                      >
-                        <Edit className="w-4 h-4" />
-                      </button>
-                      <button 
-                        onClick={() => setLinkingProductOptions(product)}
-                        className="text-brand-500 hover:text-brand-600 font-bold text-xs flex items-center gap-1"
-                      >
-                        <Settings2 className="w-3 h-3" />
-                        Vincular
-                      </button>
-                    </div>
-                  </td>
-                </tr>
+                <ProductRow 
+                  key={product.id}
+                  product={product}
+                  updateStock={updateStock}
+                  updateProduct={updateProduct}
+                  setEditingProduct={setEditingProduct}
+                  setLinkingProductOptions={setLinkingProductOptions}
+                />
               ))}
             </tbody>
           </table>

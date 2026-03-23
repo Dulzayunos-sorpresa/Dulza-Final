@@ -52,7 +52,7 @@ const HowItWorks = () => {
   };
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-texto text-crema relative overflow-hidden">
+    <section className="px-6 md:px-20 py-32 bg-texto dark:bg-dark-surface text-crema dark:text-dark-text relative overflow-hidden">
       {/* Background patterns */}
       <motion.div 
         initial={{ opacity: 0 }}
@@ -71,10 +71,10 @@ const HowItWorks = () => {
           className="max-w-3xl mb-24"
         >
           <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">El proceso</p>
-          <h2 className="text-5xl md:text-7xl font-display text-crema leading-[0.9] mb-8 uppercase tracking-tighter">
+          <h2 className="text-5xl md:text-7xl font-display text-crema dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
             De cero a sorpresa<br /><span className="text-naranja italic">en minutos.</span>
           </h2>
-          <p className="text-base md:text-lg text-crema/50 leading-relaxed max-w-xl font-light">
+          <p className="text-base md:text-lg text-crema/50 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
             No hace falta planificarlo con días de anticipación. Si pedís antes de medianoche, llegamos mañana a la mañana.
           </p>
         </motion.div>
@@ -106,13 +106,13 @@ const HowItWorks = () => {
               
               <motion.div 
                 whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
-                className="w-14 h-14 bg-crema/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-naranja/10 transition-colors duration-500"
+                className="w-14 h-14 bg-crema/5 dark:bg-white/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-naranja/10 transition-colors duration-500"
               >
                 {step.icon}
               </motion.div>
               
-              <h3 className="text-xl font-bold text-crema mb-4 uppercase tracking-tight">{step.title}</h3>
-              <p className="text-sm text-crema/40 leading-relaxed font-light group-hover:text-crema/60 transition-colors duration-500">
+              <h3 className="text-xl font-bold text-crema dark:text-dark-text mb-4 uppercase tracking-tight">{step.title}</h3>
+              <p className="text-sm text-crema/40 dark:text-dark-text-muted/40 leading-relaxed font-light group-hover:text-crema/60 dark:group-hover:text-dark-text/60 transition-colors duration-500">
                 {step.desc}
               </p>
               

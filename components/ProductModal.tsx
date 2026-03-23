@@ -15,6 +15,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [step, setStep] = useState<number>(-1);
+  const [showError, setShowError] = useState(false);
 
   const productImages = useMemo(() => {
     if (!product) return [];
@@ -101,18 +102,18 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-5xl bg-crema rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+            className="relative w-full max-w-5xl bg-crema dark:bg-dark-bg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
           >
             {/* Close Button */}
             <button
               onClick={onClose}
-              className="absolute top-6 right-6 z-50 p-3 bg-white/80 backdrop-blur-md rounded-full text-texto hover:bg-white transition-all shadow-lg active:scale-90"
+              className="absolute top-6 right-6 z-50 p-3 bg-white/80 dark:bg-dark-surface/80 backdrop-blur-md rounded-full text-texto dark:text-dark-text hover:bg-white dark:hover:bg-dark-surface transition-all shadow-lg active:scale-90"
             >
               <X size={20} />
             </button>
 
             {/* Left Side: Image Gallery */}
-            <div className="w-full md:w-1/2 h-[300px] md:h-auto relative bg-white">
+            <div className="w-full md:w-1/2 h-[300px] md:h-auto relative bg-white dark:bg-dark-surface">
               <AnimatePresence mode="wait">
                 <motion.img
                   key={currentImageIndex}
@@ -156,7 +157,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             </div>
 
             {/* Right Side: Content */}
-            <div className="w-full md:w-1/2 flex flex-col bg-crema min-h-0">
+            <div className="w-full md:w-1/2 flex flex-col bg-crema dark:bg-dark-bg min-h-0">
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar max-h-full">
                 <AnimatePresence mode="wait">
                   {step === -1 ? (
@@ -174,25 +175,25 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                             <span className="text-xs font-bold uppercase tracking-widest">{product.subtitle}</span>
                           </div>
                         )}
-                        <h2 className="text-3xl sm:text-4xl font-bold text-texto leading-tight">{product.name}</h2>
+                        <h2 className="text-3xl sm:text-4xl font-bold text-texto dark:text-dark-text leading-tight">{product.name}</h2>
                         <div className="flex items-baseline gap-3">
                           <span className="text-3xl font-bold text-naranja">${(product.price || 0).toLocaleString()}</span>
                           {product.oldPrice && (
-                            <span className="text-lg text-texto/40 line-through">${product.oldPrice.toLocaleString()}</span>
+                            <span className="text-lg text-texto/40 dark:text-dark-text-muted/40 line-through">${product.oldPrice.toLocaleString()}</span>
                           )}
                         </div>
                       </div>
 
-                      <div className="p-6 bg-white/50 rounded-2xl border border-naranja/10 space-y-4">
-                        <p className="text-texto/70 leading-relaxed text-sm sm:text-base whitespace-pre-line">
+                      <div className="p-6 bg-white/50 dark:bg-dark-surface/50 rounded-2xl border border-naranja/10 dark:border-white/5 space-y-4">
+                        <p className="text-texto/70 dark:text-dark-text-muted leading-relaxed text-sm sm:text-base whitespace-pre-line">
                           {product.description}
                         </p>
                         <div className="flex flex-wrap gap-4 pt-2">
-                          <div className="flex items-center gap-2 text-texto/60 text-xs font-medium">
+                          <div className="flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 text-xs font-medium">
                             <Clock size={14} className="text-naranja" />
                             <span>Entrega en 24hs</span>
                           </div>
-                          <div className="flex items-center gap-2 text-texto/60 text-xs font-medium">
+                          <div className="flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 text-xs font-medium">
                             <Info size={14} className="text-naranja" />
                             <span>Personalizable</span>
                           </div>
@@ -211,15 +212,15 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                     >
                       <button 
                         onClick={() => setStep(step - 1)}
-                        className="flex items-center gap-2 text-texto/60 hover:text-naranja transition-colors text-xs font-bold uppercase tracking-widest group"
+                        className="flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 hover:text-naranja transition-colors text-xs font-bold uppercase tracking-widest group"
                       >
                         <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                         {step === 0 ? 'Volver a detalles' : 'Anterior'}
                       </button>
 
                       <div className="space-y-2">
-                        <h2 className="text-2xl font-bold text-texto">Personalizá tu pedido</h2>
-                        <p className="text-texto/60 text-sm">Paso {step + 1} de {product.options?.length || 0}</p>
+                        <h2 className="text-2xl font-bold text-texto dark:text-dark-text">Personalizá tu pedido</h2>
+                        <p className="text-texto/60 dark:text-dark-text-muted text-sm">Paso {step + 1} de {product.options?.length || 0}</p>
                       </div>
 
                       <div className="space-y-10">
@@ -227,11 +228,11 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                           <div key={product.options[step].name} className="space-y-5">
                             <div className="flex items-center justify-between">
                               <div className="space-y-1">
-                                <h3 className="font-bold text-texto flex items-center gap-2">
+                                <h3 className="font-bold text-texto dark:text-dark-text flex items-center gap-2">
                                   {product.options[step].name}
                                   {product.options[step].isRequired && <span className="text-naranja text-[10px] uppercase tracking-widest bg-naranja/10 px-2 py-0.5 rounded-full">Obligatorio</span>}
                                 </h3>
-                                <p className="text-xs text-texto/50">
+                                <p className="text-xs text-texto/50 dark:text-dark-text-muted/50">
                                   {product.options[step].type === 'multi-select' ? 'Podés elegir varios' : 'Elegí una opción'}
                                 </p>
                               </div>
@@ -246,22 +247,22 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                                     onClick={() => handleOptionToggle(product.options![step].name, valId, product.options![step].type === 'multi-select')}
                                     className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left group ${
                                       isSelected 
-                                        ? 'border-naranja bg-naranja/5 shadow-lg shadow-naranja/5' 
-                                        : 'border-naranja/10 bg-white hover:border-naranja/30 hover:bg-naranja/[0.02]'
+                                        ? 'border-naranja bg-naranja/5 dark:bg-naranja/10 shadow-lg shadow-naranja/5' 
+                                        : 'border-naranja/10 dark:border-white/5 bg-white dark:bg-dark-surface hover:border-naranja/30 hover:bg-naranja/[0.02] dark:hover:bg-naranja/[0.05]'
                                     }`}
                                   >
                                     <div className="flex items-center gap-4">
                                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                        isSelected ? 'bg-naranja border-naranja' : 'border-naranja/20 group-hover:border-naranja/40'
+                                        isSelected ? 'bg-naranja border-naranja' : 'border-naranja/20 dark:border-white/20 group-hover:border-naranja/40'
                                       }`}>
                                         {isSelected && <Check size={14} className="text-white" />}
                                       </div>
-                                      <span className={`font-medium transition-colors ${isSelected ? 'text-texto' : 'text-texto/70 group-hover:text-texto'}`}>
+                                      <span className={`font-medium transition-colors ${isSelected ? 'text-texto dark:text-dark-text' : 'text-texto/70 dark:text-dark-text-muted group-hover:text-texto dark:group-hover:text-dark-text'}`}>
                                         {val.name}
                                       </span>
                                     </div>
                                     {val.price && (
-                                      <span className={`text-sm font-bold ${isSelected ? 'text-naranja' : 'text-texto/40'}`}>
+                                      <span className={`text-sm font-bold ${isSelected ? 'text-naranja' : 'text-texto/40 dark:text-dark-text-muted/40'}`}>
                                         +${val.price.toLocaleString()}
                                       </span>
                                     )}
@@ -278,27 +279,39 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
               </div>
 
               {/* Footer */}
-              <div className="p-6 sm:p-10 bg-white border-t border-naranja/5 sticky bottom-0 flex flex-col gap-4 z-40">
+              <div className="p-6 sm:p-10 bg-white dark:bg-dark-surface border-t border-naranja/5 dark:border-white/5 sticky bottom-0 flex flex-col gap-4 z-40">
                 {product.stock !== undefined && product.stock < 5 && product.stock > 0 && (
-                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 px-3 py-2 rounded-lg w-full justify-center uppercase tracking-wider">
+                  <div className="flex items-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg w-full justify-center uppercase tracking-wider">
                     <AlertCircle size={14} />
                     ¡Apurate! Solo quedan {product.stock} unidades disponibles.
                   </div>
                 )}
-                <div className="flex items-center gap-4 w-full">
+                <div className="flex items-center gap-4 w-full relative">
+                  {showError && (
+                    <motion.div 
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 10 }}
+                      className="absolute -top-12 left-0 right-0 flex justify-center"
+                    >
+                      <div className="bg-red-500 text-white text-[10px] font-bold px-4 py-2 rounded-full uppercase tracking-widest shadow-lg">
+                        Por favor, completá esta opción obligatoria
+                      </div>
+                    </motion.div>
+                  )}
                   {step === -1 ? (
                     <>
-                      <div className="flex items-center bg-crema rounded-full overflow-hidden h-14 shrink-0">
+                      <div className="flex items-center bg-crema dark:bg-dark-bg rounded-full overflow-hidden h-14 shrink-0">
                         <button 
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className="px-6 h-full hover:bg-naranja/10 transition-colors text-texto font-bold"
+                          className="px-6 h-full hover:bg-naranja/10 transition-colors text-texto dark:text-dark-text font-bold"
                         >
                           -
                         </button>
-                        <span className="w-10 text-center font-bold text-texto text-sm">{quantity}</span>
+                        <span className="w-10 text-center font-bold text-texto dark:text-dark-text text-sm">{quantity}</span>
                         <button 
                           onClick={() => setQuantity(quantity + 1)}
-                          className="px-6 h-full hover:bg-naranja/10 transition-colors text-texto font-bold"
+                          className="px-6 h-full hover:bg-naranja/10 transition-colors text-texto dark:text-dark-text font-bold"
                         >
                           +
                         </button>
@@ -306,7 +319,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       {hasOptions ? (
                         <button 
                           onClick={() => setStep(0)}
-                          className="flex-1 bg-texto text-crema h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-texto/90 transition-all shadow-2xl shadow-texto/20 active:scale-95 flex items-center justify-center gap-3"
+                          className="flex-1 bg-texto dark:bg-naranja text-crema h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-texto/90 dark:hover:bg-naranja/90 transition-all shadow-2xl shadow-texto/20 dark:shadow-naranja/20 active:scale-95 flex items-center justify-center gap-3"
                         >
                           <span>Elegir adicionales</span>
                           <ChevronRight className="h-4 w-4" />
@@ -328,10 +341,11 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                         const isCurrentMissing = currentOption.isRequired && (!selectedOptions[currentOption.name] || selectedOptions[currentOption.name].length === 0);
                         
                         if (isCurrentMissing) {
-                          alert('Por favor, completá esta opción obligatoria para continuar.');
+                          setShowError(true);
+                          setTimeout(() => setShowError(false), 3000);
                           return;
                         }
-
+  
                         if (step < product.options!.length - 1) {
                           setStep(step + 1);
                         } else {
@@ -363,4 +377,4 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
   );
 };
 
-export default ProductModal;
+export default React.memo(ProductModal);

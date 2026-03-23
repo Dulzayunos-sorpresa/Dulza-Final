@@ -23,7 +23,7 @@ interface ProductModalProps {
   onImageUpload: (e: React.ChangeEvent<HTMLInputElement>, isGallery?: boolean) => void;
 }
 
-const ProductModal: React.FC<ProductModalProps> = ({
+const ProductModal: React.FC<ProductModalProps> = React.memo(({
   product,
   categories,
   allProducts,
@@ -224,6 +224,6 @@ const ProductModal: React.FC<ProductModalProps> = ({
       </div>
     </div>
   );
-};
+});
 
 export default ProductModal;

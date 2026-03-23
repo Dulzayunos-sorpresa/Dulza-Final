@@ -12,6 +12,69 @@ import {
 import { useStore } from '@/context/store';
 import { Category } from '@/types';
 
+interface CategoryItemProps {
+  category: Category;
+  index: number;
+  totalCategories: number;
+  moveCategory: (index: number, direction: 'up' | 'down') => void;
+  setEditingCategory: (category: Category) => void;
+  deleteCategory: (id: string) => void;
+}
+
+const CategoryItem: React.FC<CategoryItemProps> = React.memo(({ 
+  category, 
+  index, 
+  totalCategories, 
+  moveCategory, 
+  setEditingCategory, 
+  deleteCategory 
+}) => {
+  return (
+    <div className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
+      <div className="flex items-center gap-4">
+        <div className="flex flex-col gap-1">
+          <button 
+            onClick={() => moveCategory(index, 'up')}
+            disabled={index === 0}
+            className="p-1 text-stone-400 hover:text-brand-500 disabled:opacity-30"
+          >
+            <ChevronLeft className="w-4 h-4 rotate-90" />
+          </button>
+          <button 
+            onClick={() => moveCategory(index, 'down')}
+            disabled={index === totalCategories - 1}
+            className="p-1 text-stone-400 hover:text-brand-500 disabled:opacity-30"
+          >
+            <ChevronRight className="w-4 h-4 rotate-90" />
+          </button>
+        </div>
+        <div>
+          <h3 className="font-bold text-stone-800">{category.name}</h3>
+          <p className="text-xs text-stone-500">Posición: {index + 1}</p>
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <button 
+          onClick={() => setEditingCategory(category)}
+          className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"
+        >
+          <Edit className="w-4 h-4" />
+        </button>
+        <button 
+          onClick={() => {
+            if(confirm('¿Estás seguro de eliminar esta categoría? Los productos no se eliminarán pero quedarán sin categoría.')) {
+              deleteCategory(category.id);
+            }
+          }}
+          className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+});
+
 const CategoriesManager: React.FC = () => {
   const { categories, addCategory, updateCategory, deleteCategory, reorderCategories } = useStore();
   const [isAddingCategory, setIsAddingCategory] = useState(false);
@@ -19,7 +82,7 @@ const CategoriesManager: React.FC = () => {
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryParentId, setNewCategoryParentId] = useState<string>('');
 
-  const handleSave = () => {
+  const handleSave = React.useCallback(() => {
     if (editingCategory) {
       updateCategory(editingCategory);
       setEditingCategory(null);
@@ -35,9 +98,9 @@ const CategoriesManager: React.FC = () => {
       setNewCategoryParentId('');
       setIsAddingCategory(false);
     }
-  };
+  }, [editingCategory, updateCategory, newCategoryName, addCategory, categories.length, newCategoryParentId]);
 
-  const moveCategory = (index: number, direction: 'up' | 'down') => {
+  const moveCategory = React.useCallback((index: number, direction: 'up' | 'down') => {
     const newCategories = [...categories];
     const targetIndex = direction === 'up' ? index - 1 : index + 1;
     if (targetIndex < 0 || targetIndex >= categories.length) return;
@@ -52,7 +115,7 @@ const CategoriesManager: React.FC = () => {
     }));
     
     reorderCategories(orderedCategories);
-  };
+  }, [categories, reorderCategories]);
 
   return (
     <motion.div 
@@ -126,48 +189,15 @@ const CategoriesManager: React.FC = () => {
       <div className="bg-white rounded-2xl border border-stone-200 shadow-sm overflow-hidden">
         <div className="divide-y divide-stone-100">
           {categories.map((category, index) => (
-            <div key={category.id} className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
-              <div className="flex items-center gap-4">
-                <div className="flex flex-col gap-1">
-                  <button 
-                    onClick={() => moveCategory(index, 'up')}
-                    disabled={index === 0}
-                    className="p-1 text-stone-400 hover:text-brand-500 disabled:opacity-30"
-                  >
-                    <ChevronLeft className="w-4 h-4 rotate-90" />
-                  </button>
-                  <button 
-                    onClick={() => moveCategory(index, 'down')}
-                    disabled={index === categories.length - 1}
-                    className="p-1 text-stone-400 hover:text-brand-500 disabled:opacity-30"
-                  >
-                    <ChevronRight className="w-4 h-4 rotate-90" />
-                  </button>
-                </div>
-                <div>
-                  <h3 className="font-bold text-stone-800">{category.name}</h3>
-                  <p className="text-xs text-stone-500">Posición: {index + 1}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2">
-                <button 
-                  onClick={() => setEditingCategory(category)}
-                  className="p-2 text-stone-400 hover:text-brand-500 hover:bg-brand-50 rounded-lg transition-all"
-                >
-                  <Edit className="w-4 h-4" />
-                </button>
-                <button 
-                  onClick={() => {
-                    if(confirm('¿Estás seguro de eliminar esta categoría? Los productos no se eliminarán pero quedarán sin categoría.')) {
-                      deleteCategory(category.id);
-                    }
-                  }}
-                  className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
+            <CategoryItem 
+              key={category.id}
+              category={category}
+              index={index}
+              totalCategories={categories.length}
+              moveCategory={moveCategory}
+              setEditingCategory={setEditingCategory}
+              deleteCategory={deleteCategory}
+            />
           ))}
         </div>
       </div>

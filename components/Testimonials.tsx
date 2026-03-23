@@ -72,7 +72,7 @@ const Testimonials = () => {
   };
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-white relative overflow-hidden">
+    <section className="px-6 md:px-20 py-32 bg-white dark:bg-dark-bg relative overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, y: 30 }}
@@ -82,10 +82,10 @@ const Testimonials = () => {
           className="max-w-3xl mb-24"
         >
           <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Lo que dice la gente</p>
-          <h2 className="text-5xl md:text-7xl font-display text-texto leading-[0.9] mb-8 uppercase tracking-tighter">
+          <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
             La prueba la da<br /><span className="text-naranja italic">el receptor.</span>
           </h2>
-          <p className="text-base md:text-lg text-texto/60 leading-relaxed max-w-xl font-light">
+          <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
             No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
           </p>
         </motion.div>
@@ -104,8 +104,8 @@ const Testimonials = () => {
               whileHover={{ y: -10, scale: 1.02 }}
               className={`p-10 rounded-[40px] transition-all duration-500 border ${
                 review.featured 
-                ? 'bg-texto text-crema border-texto shadow-[0_30px_60px_-15px_rgba(20,20,20,0.2)]' 
-                : 'bg-crema/30 text-texto border-naranja/5 hover:bg-crema/50'
+                ? 'bg-texto dark:bg-dark-surface text-crema dark:text-dark-text border-texto dark:border-white/5 shadow-[0_30px_60px_-15px_rgba(20,20,20,0.2)]' 
+                : 'bg-crema/30 dark:bg-dark-surface/30 text-texto dark:text-dark-text border-naranja/5 dark:border-white/5 hover:bg-crema/50 dark:hover:bg-dark-surface/50'
               }`}
             >
               <div className={`flex gap-1 mb-8 ${review.featured ? 'text-naranja' : 'text-naranja/60'}`}>
@@ -121,19 +121,19 @@ const Testimonials = () => {
                   </motion.span>
                 ))}
               </div>
-              <p className={`text-lg font-display italic leading-relaxed mb-10 ${review.featured ? 'text-crema' : 'text-texto'}`}>
+              <p className={`text-lg font-display italic leading-relaxed mb-10 ${review.featured ? 'text-crema dark:text-dark-text' : 'text-texto dark:text-dark-text'}`}>
                 "{review.text}"
               </p>
               <div className="flex items-center gap-5">
                 <motion.div 
                   whileHover={{ rotate: [0, -10, 10, 0] }}
-                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${review.featured ? 'bg-crema/10' : 'bg-white shadow-sm'}`}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${review.featured ? 'bg-crema/10 dark:bg-white/10' : 'bg-white dark:bg-dark-bg shadow-sm'}`}
                 >
                   {review.icon}
                 </motion.div>
                 <div>
-                  <div className={`text-sm font-bold uppercase tracking-tight ${review.featured ? 'text-crema' : 'text-texto'}`}>{review.author}</div>
-                  <div className={`text-[10px] uppercase tracking-[0.15em] font-medium ${review.featured ? 'text-crema/40' : 'text-texto/40'}`}>{review.detail}</div>
+                  <div className={`text-sm font-bold uppercase tracking-tight ${review.featured ? 'text-crema dark:text-dark-text' : 'text-texto dark:text-dark-text'}`}>{review.author}</div>
+                  <div className={`text-[10px] uppercase tracking-[0.15em] font-medium ${review.featured ? 'text-crema/40' : 'text-texto/40 dark:text-dark-text-muted/40'}`}>{review.detail}</div>
                 </div>
               </div>
             </motion.div>

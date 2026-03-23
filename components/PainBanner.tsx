@@ -12,7 +12,7 @@ const PainBanner = () => {
   ];
 
   return (
-    <div className="bg-texto py-6 overflow-hidden relative">
+    <div className="bg-texto dark:bg-dark-surface py-6 overflow-hidden relative">
       <motion.div 
         animate={{ x: ["0%", "-50%"] }}
         transition={{ 
@@ -23,8 +23,8 @@ const PainBanner = () => {
         className="flex gap-20 whitespace-nowrap"
       >
         {[...items, ...items].map((item, i) => (
-          <span key={i} className="text-[10px] md:text-xs text-crema/40 uppercase tracking-[0.2em] flex items-center gap-4">
-            <strong className="text-crema font-bold">{item}</strong>
+          <span key={i} className="text-[10px] md:text-xs text-crema/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em] flex items-center gap-4">
+            <strong className="text-crema dark:text-dark-text font-bold">{item}</strong>
             <span className="text-naranja opacity-50">✦</span>
           </span>
         ))}

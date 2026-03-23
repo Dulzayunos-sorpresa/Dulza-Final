@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { ShoppingBag, Menu, X, User, LogOut } from 'lucide-react';
+import { ShoppingBag, Menu, X, User, LogOut, Moon, Sun } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../context/store';
 
@@ -9,6 +9,26 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(false);
+
+  useEffect(() => {
+    const checkDarkMode = () => {
+      setIsDarkMode(document.documentElement.classList.contains('dark'));
+    };
+
+    checkDarkMode();
+    const observer = new MutationObserver(checkDarkMode);
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
+
+  const toggleDarkMode = () => {
+    const isDark = document.documentElement.classList.toggle('dark');
+    // Set manual override flag to prevent automatic time-based switching
+    sessionStorage.setItem('dark-mode-manual', 'true');
+    // Also store the preference for the current session
+    sessionStorage.setItem('dark-mode-preference', isDark ? 'dark' : 'light');
+  };
 
   const cartCount = React.useMemo(() => cart.reduce((acc, item) => acc + item.quantity, 0), [cart]);
 
@@ -32,9 +52,9 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [location.pathname, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-crema">
+    <div className="min-h-screen flex flex-col font-sans bg-crema dark:bg-dark-bg transition-colors duration-300">
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-crema/90 backdrop-blur-md border-b border-naranja/10">
+      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-crema/90 dark:bg-dark-bg/90 backdrop-blur-md border-b border-naranja/10 dark:border-white/5">
         <Link to="/" className="flex flex-col items-start leading-none group">
           <span className="font-display text-xl md:text-2xl text-naranja font-bold tracking-tighter uppercase">
             Dulzayunos
@@ -46,16 +66,24 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
         {/* Desktop Menu */}
         <div className="hidden md:flex items-center gap-8">
-          <Link to="/" className="text-xs font-semibold text-texto/70 hover:text-naranja transition-colors uppercase tracking-wider">Inicio</Link>
-          <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-xs font-semibold text-texto/70 hover:text-naranja transition-colors uppercase tracking-wider">Catálogo</a>
-          <Link to="/personalizados" className="text-xs font-semibold text-texto/70 hover:text-naranja transition-colors uppercase tracking-wider">Personalizados</Link>
-          <Link to="/empresas" className="text-xs font-semibold text-texto/70 hover:text-naranja transition-colors uppercase tracking-wider">Empresas</Link>
-          <Link to="/nosotros" className="text-xs font-semibold text-texto/70 hover:text-naranja transition-colors uppercase tracking-wider">Nosotros</Link>
+          <Link to="/" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Inicio</Link>
+          <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Catálogo</a>
+          <Link to="/personalizados" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Personalizados</Link>
+          <Link to="/empresas" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Empresas</Link>
+          <Link to="/nosotros" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Nosotros</Link>
         </div>
 
         <div className="flex items-center gap-4">
+          <button
+            onClick={toggleDarkMode}
+            className="p-2 text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors rounded-full hover:bg-rosa-suave dark:hover:bg-white/5"
+            title={isDarkMode ? "Modo claro" : "Modo oscuro"}
+          >
+            {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
+
           {user ? (
-            <div className="hidden md:flex items-center gap-3 bg-crema/50 px-3 py-1.5 rounded-full border border-naranja/10">
+            <div className="hidden md:flex items-center gap-3 bg-crema/50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-naranja/10 dark:border-white/10">
               {user.photoURL ? (
                 <img src={user.photoURL} alt={user.displayName || 'Foto de perfil'} className="w-6 h-6 rounded-full border border-naranja/20" />
               ) : (
@@ -74,7 +102,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           ) : null}
 
-          <Link to="/carrito" className="relative p-2 text-texto hover:bg-rosa-suave rounded-full transition-colors group">
+          <Link to="/carrito" className="relative p-2 text-texto dark:text-dark-text hover:bg-rosa-suave dark:hover:bg-white/5 rounded-full transition-colors group">
             <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
             {cartCount > 0 && (
               <span className="absolute top-0 right-0 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-naranja rounded-full">
@@ -85,7 +113,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-            className="md:hidden text-texto p-2"
+            className="md:hidden text-texto dark:text-dark-text p-2"
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
@@ -104,22 +132,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             <motion.div
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
+               exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 right-0 bg-crema border-b border-naranja/10 p-6 flex flex-col gap-4 md:hidden shadow-xl"
+              className="absolute top-full left-0 right-0 bg-crema dark:bg-dark-bg border-b border-naranja/10 dark:border-white/5 p-6 flex flex-col gap-4 md:hidden shadow-xl"
             >
-              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto uppercase tracking-tight">Inicio</Link>
-              <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-lg font-display font-bold text-texto uppercase tracking-tight">Catálogo</a>
-              <Link to="/personalizados" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto uppercase tracking-tight">Personalizados</Link>
-              <Link to="/empresas" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto uppercase tracking-tight">Empresas</Link>
-              <Link to="/nosotros" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto uppercase tracking-tight">Nosotros</Link>
+              <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Inicio</Link>
+              <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Catálogo</a>
+              <Link to="/personalizados" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Personalizados</Link>
+              <Link to="/empresas" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Empresas</Link>
+              <Link to="/nosotros" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Nosotros</Link>
               
-              <div className="pt-4 border-t border-naranja/10 mt-2">
+              <div className="pt-4 border-t border-naranja/10 dark:border-white/5 mt-2">
                 {user ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {user.photoURL && <img src={user.photoURL} alt="Foto de perfil del usuario" className="w-8 h-8 rounded-full" />}
-                      <span className="font-bold text-texto">{user.displayName}</span>
+                      <span className="font-bold text-texto dark:text-dark-text">{user.displayName}</span>
                     </div>
                     <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="text-naranja font-bold text-sm uppercase tracking-widest">Salir</button>
                   </div>

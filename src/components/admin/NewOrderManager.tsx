@@ -17,10 +17,63 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/store';
 import { Product, PaymentMethod, CartItem } from '@/types';
+import { PrinterService } from '@/services/PrinterService';
 
 interface NewOrderManagerProps {
   onOrderCreated: () => void;
 }
+
+interface ProductItemProps {
+  product: Product;
+  addItem: (product: Product) => void;
+}
+
+const ProductItem: React.FC<ProductItemProps> = React.memo(({ product, addItem }) => {
+  return (
+    <button 
+      type="button"
+      onClick={() => addItem(product)}
+      className="w-full flex items-center justify-between p-3 hover:bg-brand-50 rounded-xl transition-colors text-left group"
+    >
+      <div className="flex items-center gap-3">
+        <div className="w-10 h-10 rounded-lg overflow-hidden bg-stone-100">
+          <img src={product.image} alt="" className="w-full h-full object-cover" />
+        </div>
+        <div>
+          <p className="text-xs font-bold text-stone-800 group-hover:text-brand-600">{product.name}</p>
+          <p className="text-[10px] text-stone-500">${(product.price || 0).toLocaleString()}</p>
+        </div>
+      </div>
+      <Plus className="w-4 h-4 text-stone-300 group-hover:text-brand-500" />
+    </button>
+  );
+});
+
+interface CartItemRowProps {
+  item: any;
+  removeItem: (productId: string) => void;
+}
+
+const CartItemRow: React.FC<CartItemRowProps> = React.memo(({ item, removeItem }) => {
+  return (
+    <div className="flex justify-between items-center p-3 bg-stone-50 rounded-xl">
+      <div className="flex-1">
+        <p className="text-sm font-bold text-stone-800">{item.name}</p>
+        <p className="text-xs text-stone-500">Cant: {item.quantity} x ${(item.price || 0).toLocaleString()}</p>
+      </div>
+      <div className="flex items-center gap-3">
+        <span className="text-sm font-bold text-stone-900">${((item.price || 0) * item.quantity).toLocaleString()}</span>
+        <button 
+          type="button"
+          onClick={() => removeItem(item.productId)}
+          className="text-stone-400 hover:text-red-500"
+        >
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+    </div>
+  );
+});
 
 const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => {
   const { products, addOrder } = useStore();
@@ -47,11 +100,11 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
     items: [] as any[]
   });
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = React.useMemo(() => products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ), [products, searchTerm]);
 
-  const validateForm = () => {
+  const validateForm = React.useCallback(() => {
     const newErrors: Record<string, string> = {};
     if (!form.customerName.trim()) newErrors.customerName = 'Nombre obligatorio';
     
@@ -81,9 +134,9 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
 
     setOrderErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
+  }, [form]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = React.useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (form.items.length === 0) {
       alert('Debe agregar al menos un producto');
@@ -103,7 +156,7 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
     // Simple total calculation for manual order
     const total = subtotal;
 
-    addOrder({
+    const newOrder = {
       ...form,
       id: Math.random().toString(36).substr(2, 9),
       createdAt: new Date().toISOString(),
@@ -111,33 +164,38 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
       paymentStatus: 'PENDIENTE',
       total,
       items: form.items.map(i => ({ ...i, id: Math.random().toString(36).substr(2, 9) }))
-    } as any);
+    } as any;
 
+    addOrder(newOrder);
+
+    if (confirm('Pedido creado con éxito. ¿Deseas imprimir la comanda ahora?')) {
+      PrinterService.printOrder(newOrder, products);
+    }
+    
     onOrderCreated();
-    alert('Pedido creado con éxito');
-  };
+  }, [form, validateForm, products, addOrder, onOrderCreated]);
 
-  const addItem = (product: Product) => {
+  const addItem = React.useCallback((product: Product) => {
     const existing = form.items.find(i => i.productId === product.id);
     if (existing) {
-      setForm({
-        ...form,
-        items: form.items.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i)
-      });
+      setForm(prev => ({
+        ...prev,
+        items: prev.items.map(i => i.productId === product.id ? { ...i, quantity: i.quantity + 1 } : i)
+      }));
     } else {
-      setForm({
-        ...form,
-        items: [...form.items, { productId: product.id, quantity: 1, name: product.name, price: product.price }]
-      });
+      setForm(prev => ({
+        ...prev,
+        items: [...prev.items, { productId: product.id, quantity: 1, name: product.name, price: product.price }]
+      }));
     }
-  };
+  }, [form.items]);
 
-  const removeItem = (productId: string) => {
-    setForm({
-      ...form,
-      items: form.items.filter(i => i.productId !== productId)
-    });
-  };
+  const removeItem = React.useCallback((productId: string) => {
+    setForm(prev => ({
+      ...prev,
+      items: prev.items.filter(i => i.productId !== productId)
+    }));
+  }, []);
 
   return (
     <motion.div 
@@ -340,22 +398,11 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
             
             <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
               {form.items.map((item, idx) => (
-                <div key={idx} className="flex justify-between items-center p-3 bg-stone-50 rounded-xl">
-                  <div className="flex-1">
-                    <p className="text-sm font-bold text-stone-800">{item.name}</p>
-                    <p className="text-xs text-stone-500">Cant: {item.quantity} x ${(item.price || 0).toLocaleString()}</p>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm font-bold text-stone-900">${((item.price || 0) * item.quantity).toLocaleString()}</span>
-                    <button 
-                      type="button"
-                      onClick={() => removeItem(item.productId)}
-                      className="text-stone-400 hover:text-red-500"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
+                <CartItemRow 
+                  key={idx}
+                  item={item}
+                  removeItem={removeItem}
+                />
               ))}
               {form.items.length === 0 && (
                 <p className="text-center text-stone-400 py-8 italic">No hay productos seleccionados</p>
@@ -392,23 +439,11 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
 
             <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
               {filteredProducts.map(product => (
-                <button 
+                <ProductItem 
                   key={product.id}
-                  type="button"
-                  onClick={() => addItem(product)}
-                  className="w-full flex items-center justify-between p-3 hover:bg-brand-50 rounded-xl transition-colors text-left group"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg overflow-hidden bg-stone-100">
-                      <img src={product.image} alt="" className="w-full h-full object-cover" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-stone-800 group-hover:text-brand-600">{product.name}</p>
-                      <p className="text-[10px] text-stone-500">${(product.price || 0).toLocaleString()}</p>
-                    </div>
-                  </div>
-                  <Plus className="w-4 h-4 text-stone-300 group-hover:text-brand-500" />
-                </button>
+                  product={product}
+                  addItem={addItem}
+                />
               ))}
             </div>
           </div>

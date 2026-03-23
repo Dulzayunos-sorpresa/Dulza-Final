@@ -12,17 +12,17 @@ import {
 import { useStore } from '@/context/store';
 import { ShippingSettings } from '@/types';
 
-const ShippingManager: React.FC = () => {
+const ShippingManager: React.FC = React.memo(() => {
   const { shippingSettings, updateShippingSettings } = useStore();
   const [isEditingShipping, setIsEditingShipping] = useState(false);
   const [tempShipping, setTempShipping] = useState<ShippingSettings | null>(null);
 
-  const handleSaveShipping = async () => {
+  const handleSaveShipping = React.useCallback(async () => {
     if (tempShipping) {
       await updateShippingSettings(tempShipping);
       setIsEditingShipping(false);
     }
-  };
+  }, [tempShipping, updateShippingSettings]);
 
   return (
     <motion.div
@@ -151,6 +151,6 @@ const ShippingManager: React.FC = () => {
       </div>
     </motion.div>
   );
-};
+});
 
 export default ShippingManager;
