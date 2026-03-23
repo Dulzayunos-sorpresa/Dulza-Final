@@ -21,96 +21,116 @@ export class PrinterService {
   static async printOrder(order: Order, products: Product[]) {
     const config = this.getStoredConfig();
     
-    // If USB config exists, try USB printing first
     if (config && config.vendorId && config.productId) {
       try {
         await this.printViaUSB(order, products, config);
         return;
-      } catch (error) {
-        console.error('USB Printing failed, falling back to browser print:', error);
+      } catch (error: any) {
+        console.error('USB Printing failed:', error);
+        const retry = confirm(`Error al imprimir por USB: ${error.message || 'Error desconocido'}.\n\n¿Deseas intentar imprimir usando el diálogo del navegador?`);
+        if (!retry) return;
       }
     }
 
-    // Fallback to browser print if USB fails or is not configured
     this.printViaBrowser(order, products);
   }
 
   private static async printViaUSB(order: Order, products: Product[], config: PrinterConfig) {
     let device: USBDevice | undefined;
     
-    // Try to find an already authorized device
-    const devices = await navigator.usb.getDevices();
-    device = devices.find(d => d.vendorId === config.vendorId && d.productId === config.productId);
+    try {
+      const devices = await navigator.usb.getDevices();
+      device = devices.find(d => d.vendorId === config.vendorId && d.productId === config.productId);
 
-    // If not found, request it (this will show the picker)
-    if (!device) {
-      device = await navigator.usb.requestDevice({
-        filters: [{ vendorId: config.vendorId, productId: config.productId }]
-      });
-    }
-
-    if (!device) throw new Error('No device selected');
-
-    await device.open();
-    await device.selectConfiguration(1);
-    await device.claimInterface(0);
-
-    const encoder = new TextEncoder();
-    const esc = '\x1B';
-    const gs = '\x1D';
-    
-    // ESC/POS Commands
-    const init = esc + '@';
-    const center = esc + 'a' + '\x01';
-    const left = esc + 'a' + '\x00';
-    const boldOn = esc + 'E' + '\x01';
-    const boldOff = esc + 'E' + '\x00';
-    const doubleSize = gs + '!' + '\x11';
-    const normalSize = gs + '!' + '\x00';
-    const cut = esc + 'i';
-
-    let data = init;
-    
-    // Header
-    data += center + boldOn + doubleSize + "DULZAYUNOS\n" + normalSize + boldOff;
-    data += "Pedido #" + order.id.slice(-6) + "\n";
-    data += new Date(order.createdAt).toLocaleString('es-AR') + "\n\n";
-    
-    // Customer Info
-    data += left + boldOn + "CLIENTE:\n" + boldOff;
-    data += order.customerName + "\n";
-    data += order.customerPhone + "\n";
-    data += "Pago: " + order.paymentMethod + "\n\n";
-
-    // Delivery Info
-    data += boldOn + "ENTREGA:\n" + boldOff;
-    data += (order.deliveryType === 'PICKUP' ? 'Retiro en Local' : 'Delivery') + "\n";
-    data += (order.deliveryAddress || 'No especificada') + "\n";
-    data += "Fecha: " + order.deliveryDate + "\n";
-    data += "Hora: " + (order.deliveryTime || 'N/A') + "\n\n";
-
-    if (order.notes) {
-      data += boldOn + "DEDICATORIA:\n" + boldOff;
-      data += "\"" + order.notes + "\"\n\n";
-    }
-
-    data += boldOn + "DETALLE:\n" + boldOff;
-    order.items.forEach(item => {
-      const p = products.find(prod => prod.id === item.productId);
-      data += item.quantity + "x " + (p?.name || 'Producto') + "\n";
-      if (item.selectedOptions) {
-        item.selectedOptions.forEach(opt => {
-          data += "  - " + opt.values.join(', ') + "\n";
+      if (!device) {
+        device = await navigator.usb.requestDevice({
+          filters: [{ vendorId: config.vendorId, productId: config.productId }]
         });
       }
-    });
 
-    data += "\n" + boldOn + "TOTAL: $" + order.total.toLocaleString('es-AR') + boldOff + "\n";
-    data += "\n\n\n\n" + cut;
+      if (!device) throw new Error('No se seleccionó ninguna impresora.');
 
-    const bytes = encoder.encode(data);
-    await device.transferOut(1, bytes);
-    await device.close();
+      await device.open();
+      
+      // Try to select configuration and claim interface
+      if (device.configuration === null) {
+        await device.selectConfiguration(1);
+      }
+      
+      // Find the interface that supports ESC/POS (usually the first one)
+      const interfaceNum = 0; 
+      await device.claimInterface(interfaceNum);
+
+      // Find the bulk out endpoint
+      const endpoint = device.configuration?.interfaces[interfaceNum].alternate.endpoints.find(
+        e => e.direction === 'out' && e.type === 'bulk'
+      );
+
+      if (!endpoint) {
+        throw new Error('No se encontró el canal de salida (bulk out endpoint) en la impresora.');
+      }
+
+      const encoder = new TextEncoder();
+      const esc = '\x1B';
+      const gs = '\x1D';
+      
+      const init = esc + '@';
+      const center = esc + 'a' + '\x01';
+      const left = esc + 'a' + '\x00';
+      const boldOn = esc + 'E' + '\x01';
+      const boldOff = esc + 'E' + '\x00';
+      const doubleSize = gs + '!' + '\x11';
+      const normalSize = gs + '!' + '\x00';
+      const cut = esc + 'i';
+
+      let data = init;
+      
+      // Header
+      data += center + boldOn + doubleSize + "DULZAYUNOS\n" + normalSize + boldOff;
+      data += "Pedido #" + order.id.slice(-6) + "\n";
+      data += new Date(order.createdAt).toLocaleString('es-AR') + "\n\n";
+      
+      // Customer Info
+      data += left + boldOn + "CLIENTE:\n" + boldOff;
+      data += order.customerName + "\n";
+      data += order.customerPhone + "\n";
+      data += "Pago: " + order.paymentMethod + "\n\n";
+
+      // Delivery Info
+      data += boldOn + "ENTREGA:\n" + boldOff;
+      data += (order.deliveryType === 'PICKUP' ? 'Retiro en Local' : 'Delivery') + "\n";
+      data += (order.deliveryAddress || 'No especificada') + "\n";
+      data += "Fecha: " + order.deliveryDate + "\n";
+      data += "Hora: " + (order.deliveryTime || 'N/A') + "\n\n";
+
+      if (order.notes) {
+        data += boldOn + "DEDICATORIA:\n" + boldOff;
+        data += "\"" + order.notes + "\"\n\n";
+      }
+
+      data += boldOn + "DETALLE:\n" + boldOff;
+      order.items.forEach(item => {
+        const p = products.find(prod => prod.id === item.productId);
+        data += item.quantity + "x " + (p?.name || 'Producto') + "\n";
+        if (item.selectedOptions) {
+          item.selectedOptions.forEach(opt => {
+            data += "  - " + opt.values.join(', ') + "\n";
+          });
+        }
+      });
+
+      data += "\n" + boldOn + "TOTAL: $" + order.total.toLocaleString('es-AR') + boldOff + "\n";
+      data += "\n\n\n\n" + cut;
+
+      const bytes = encoder.encode(data);
+      await device.transferOut(endpoint.endpointNumber, bytes);
+      await device.close();
+    } catch (err: any) {
+      if (device && device.opened) {
+        await device.close();
+      }
+      throw err;
+    }
   }
 
   private static printViaBrowser(order: Order, products: Product[]) {

@@ -42,6 +42,30 @@ const PrinterSettings: React.FC = () => {
     }
   };
 
+  const testPrint = async () => {
+    const config = PrinterService.getStoredConfig();
+    if (!config) return;
+    
+    try {
+      // Mock order for testing
+      const mockOrder = {
+        id: 'TEST-123',
+        createdAt: new Date().toISOString(),
+        customerName: 'Test Impresión',
+        customerPhone: '12345678',
+        paymentMethod: 'Efectivo',
+        deliveryType: 'PICKUP',
+        deliveryDate: '2024-03-23',
+        total: 1000,
+        items: []
+      } as any;
+      
+      await PrinterService.printOrder(mockOrder, []);
+    } catch (error: any) {
+      alert(`Error en la prueba: ${error.message}`);
+    }
+  };
+
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -63,6 +87,20 @@ const PrinterSettings: React.FC = () => {
               <li>Guardá la configuración.</li>
             </ol>
             <p className="mt-2 text-xs opacity-80 italic">Nota: Esto permite imprimir directamente sin pasar por el diálogo de impresión de Chrome.</p>
+          </div>
+        </div>
+
+        <div className="flex items-start gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
+          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+          <div className="text-xs text-amber-700 space-y-2">
+            <p className="font-bold uppercase">Importante para Windows:</p>
+            <p>Si la impresora es reconocida pero no imprime, es probable que Windows esté bloqueando el acceso directo.</p>
+            <p>Para solucionarlo:</p>
+            <ol className="list-decimal ml-4 space-y-1">
+              <li>Descargá la herramienta <a href="https://zadig.akeo.ie/" target="_blank" rel="noreferrer" className="underline font-bold">Zadig</a>.</li>
+              <li>En Zadig, seleccioná tu impresora en la lista (Options &gt; List All Devices).</li>
+              <li>Cambiá el driver actual a <b>WinUSB</b> y hacé clic en "Replace Driver".</li>
+            </ol>
           </div>
         </div>
 
@@ -109,22 +147,34 @@ const PrinterSettings: React.FC = () => {
             </div>
           </div>
 
-          <div className="flex gap-4 pt-4">
-            <button
-              onClick={requestPrinter}
-              className="flex-1 flex items-center justify-center gap-2 py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg"
-            >
-              <Printer className="w-5 h-5" />
-              Buscar Impresora
-            </button>
-            <button
-              onClick={handleSave}
-              disabled={!config.vendorId}
-              className="flex-1 flex items-center justify-center gap-2 py-4 bg-brand-500 text-white rounded-2xl font-bold hover:bg-brand-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <Save className="w-5 h-5" />
-              {isSaved ? '¡Guardado!' : 'Guardar Configuración'}
-            </button>
+          <div className="flex flex-col gap-4 pt-4">
+            <div className="flex gap-4">
+              <button
+                onClick={requestPrinter}
+                className="flex-1 flex items-center justify-center gap-2 py-4 bg-stone-900 text-white rounded-2xl font-bold hover:bg-black transition-all shadow-lg"
+              >
+                <Printer className="w-5 h-5" />
+                Buscar Impresora
+              </button>
+              <button
+                onClick={handleSave}
+                disabled={!config.vendorId}
+                className="flex-1 flex items-center justify-center gap-2 py-4 bg-brand-500 text-white rounded-2xl font-bold hover:bg-brand-600 transition-all shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <Save className="w-5 h-5" />
+                {isSaved ? '¡Guardado!' : 'Guardar Configuración'}
+              </button>
+            </div>
+            
+            {config.vendorId > 0 && (
+              <button
+                onClick={testPrint}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-stone-100 text-stone-700 rounded-2xl font-bold hover:bg-stone-200 transition-all"
+              >
+                <Printer className="w-5 h-5" />
+                Probar Impresión USB
+              </button>
+            )}
           </div>
 
           {config.vendorId > 0 && (
@@ -136,13 +186,6 @@ const PrinterSettings: React.FC = () => {
               Eliminar Configuración
             </button>
           )}
-        </div>
-
-        <div className="flex items-start gap-4 p-4 bg-amber-50 rounded-2xl border border-amber-100">
-          <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-          <p className="text-xs text-amber-700 leading-relaxed">
-            Si la impresora no responde, asegurate de que no esté siendo usada por otro programa y que los drivers de Windows/Mac estén instalados correctamente. En algunos casos, Chrome necesita permisos especiales para acceder a dispositivos USB.
-          </p>
         </div>
       </div>
     </motion.div>
