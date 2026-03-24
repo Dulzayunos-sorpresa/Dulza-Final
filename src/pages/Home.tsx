@@ -90,7 +90,7 @@ export default function Home() {
         setTimeout(() => {
           const headerOffset = 160;
           const elementPosition = element.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+          const offsetPosition = elementPosition + window.scrollY - headerOffset;
           window.scrollTo({
             top: offsetPosition,
             behavior: "smooth"
@@ -110,7 +110,7 @@ export default function Home() {
 
     const observerCallback = (entries: IntersectionObserverEntry[]) => {
       entries.forEach((entry) => {
-        if (entry.isIntersecting) {
+        if (entry.isIntersecting && activeCategory !== entry.target.id) {
           setActiveCategory(entry.target.id);
         }
       });
@@ -124,14 +124,14 @@ export default function Home() {
     });
 
     return () => observer.disconnect();
-  }, [allNavCategories, products]);
+  }, [allNavCategories, activeCategory]);
 
   const scrollToCategory = useCallback((category: string) => {
     const element = document.getElementById(category);
     if (element) {
       const headerOffset = 160;
       const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+      const offsetPosition = elementPosition + window.scrollY - headerOffset;
       window.scrollTo({
         top: offsetPosition,
         behavior: "smooth"
@@ -387,7 +387,7 @@ export default function Home() {
 
         {/* Standard Categories */}
         <div className="space-y-40">
-          {filteredCatalog.map((item) => (
+          {filteredCatalog.map((item, itemIndex) => (
             <div 
               key={item.category} 
               id={item.category} 
@@ -405,6 +405,7 @@ export default function Home() {
                     product={product} 
                     index={prodIndex}
                     onProductClick={handleProductClick}
+                    priority={itemIndex === 0 && prodIndex < 3}
                   />
                 ))}
               </div>

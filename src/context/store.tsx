@@ -92,22 +92,6 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Firestore Error (products):', error);
     });
 
-    const unsubscribeOptions = onSnapshot(collection(db, 'options'), (snapshot) => {
-      const opts: ProductOption[] = [];
-      snapshot.forEach(doc => opts.push(doc.data() as ProductOption));
-      setOptions(opts);
-    }, (error) => {
-      console.error('Firestore Error (options):', error);
-    });
-
-    const unsubscribeSubobjects = onSnapshot(collection(db, 'subobjects'), (snapshot) => {
-      const subs: ProductOptionValue[] = [];
-      snapshot.forEach(doc => subs.push(doc.data() as ProductOptionValue));
-      setSubobjects(subs);
-    }, (error) => {
-      console.error('Firestore Error (subobjects):', error);
-    });
-
     const unsubscribeCategories = onSnapshot(query(collection(db, 'categories'), orderBy('order', 'asc')), (snapshot) => {
       const cats: Category[] = [];
       snapshot.forEach(doc => cats.push(doc.data() as Category));
@@ -116,52 +100,76 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Firestore Error (categories):', error);
     });
 
+    // Delay non-critical listeners to improve initial page load performance
+    let unsubscribeOptions = () => {};
+    let unsubscribeSubobjects = () => {};
     let unsubscribeOrders = () => {};
-    if (isAdmin) {
-      let isFirstLoad = true;
-      unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snapshot) => {
-        const ords: Order[] = [];
-        snapshot.forEach(doc => ords.push(doc.data() as Order));
-        
-        // Only play sound for new orders added AFTER the initial load
-        if (!isFirstLoad) {
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              NotificationService.playNewOrderSound();
-            }
-          });
-        }
-        
-        setOrders(ords);
-        isFirstLoad = false;
+    let unsubscribeCoupons = () => {};
+    let unsubscribeShipping = () => {};
+
+    const timeoutId = setTimeout(() => {
+      unsubscribeOptions = onSnapshot(collection(db, 'options'), (snapshot) => {
+        const opts: ProductOption[] = [];
+        snapshot.forEach(doc => opts.push(doc.data() as ProductOption));
+        setOptions(opts);
       }, (error) => {
-        console.error('Firestore Error (orders):', error);
+        console.error('Firestore Error (options):', error);
       });
-    }
 
-    const unsubscribeCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
-      const cups: Coupon[] = [];
-      snapshot.forEach(doc => cups.push(doc.data() as Coupon));
-      setCoupons(cups);
-    }, (error) => {
-      if (error.code !== 'permission-denied') console.error('Firestore Error (coupons):', error);
-    });
+      unsubscribeSubobjects = onSnapshot(collection(db, 'subobjects'), (snapshot) => {
+        const subs: ProductOptionValue[] = [];
+        snapshot.forEach(doc => subs.push(doc.data() as ProductOptionValue));
+        setSubobjects(subs);
+      }, (error) => {
+        console.error('Firestore Error (subobjects):', error);
+      });
 
-    const unsubscribeShipping = onSnapshot(doc(db, 'settings', 'shipping'), (snapshot) => {
-      if (snapshot.exists()) {
-        setShippingSettings(snapshot.data() as ShippingSettings);
-      } else if (isAdmin) {
-        setDoc(doc(db, 'settings', 'shipping'), {
-          baseCost: 3000,
-          pricePerKm: 1350,
-          maxKmForAutoPayment: 25
-        }).catch(console.error);
+      if (isAdmin) {
+        let isFirstLoad = true;
+        unsubscribeOrders = onSnapshot(query(collection(db, 'orders'), orderBy('createdAt', 'desc')), (snapshot) => {
+          const ords: Order[] = [];
+          snapshot.forEach(doc => ords.push(doc.data() as Order));
+          
+          if (!isFirstLoad) {
+            snapshot.docChanges().forEach((change) => {
+              if (change.type === 'added') {
+                NotificationService.playNewOrderSound();
+              }
+            });
+          }
+          
+          setOrders(ords);
+          isFirstLoad = false;
+        }, (error) => {
+          console.error('Firestore Error (orders):', error);
+        });
       }
-    }, (error) => {
-      if (error.code !== 'permission-denied') console.error('Firestore Error (shipping):', error);
-    });
+
+      unsubscribeCoupons = onSnapshot(collection(db, 'coupons'), (snapshot) => {
+        const cups: Coupon[] = [];
+        snapshot.forEach(doc => cups.push(doc.data() as Coupon));
+        setCoupons(cups);
+      }, (error) => {
+        if (error.code !== 'permission-denied') console.error('Firestore Error (coupons):', error);
+      });
+
+      unsubscribeShipping = onSnapshot(doc(db, 'settings', 'shipping'), (snapshot) => {
+        if (snapshot.exists()) {
+          setShippingSettings(snapshot.data() as ShippingSettings);
+        } else if (isAdmin) {
+          setDoc(doc(db, 'settings', 'shipping'), {
+            baseCost: 3000,
+            pricePerKm: 1350,
+            maxKmForAutoPayment: 25
+          }).catch(console.error);
+        }
+      }, (error) => {
+        if (error.code !== 'permission-denied') console.error('Firestore Error (shipping):', error);
+      });
+    }, 2000); // 2 second delay for non-critical data
 
     return () => {
+      clearTimeout(timeoutId);
       unsubscribeCategories();
       unsubscribeProducts();
       unsubscribeOptions();

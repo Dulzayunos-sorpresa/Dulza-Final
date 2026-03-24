@@ -7,22 +7,24 @@ interface ProductCardProps {
   product: Product;
   index: number;
   onProductClick: (product: Product) => void;
+  priority?: boolean;
 }
 
 const ProductCard: React.FC<ProductCardProps> = memo(({ 
   product, 
   index, 
-  onProductClick 
+  onProductClick,
+  priority = false
 }) => {
   const isLowStock = product.stock !== undefined && product.stock < 5 && product.stock > 0;
   
   return (
     <motion.div 
       layout
-      initial={{ opacity: 0, y: 20 }}
-      whileInView={{ opacity: 1, y: 0 }}
+      initial={priority ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
+      whileInView={priority ? undefined : { opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.5, delay: (index % 3) * 0.1 }}
+      transition={{ duration: 0.5, delay: priority ? 0 : (index % 3) * 0.1 }}
       onClick={() => onProductClick(product)}
       className="group bg-white dark:bg-dark-surface border border-naranja/10 dark:border-white/5 rounded-[40px] p-8 flex flex-col transition-all duration-500 hover:border-naranja/30 dark:hover:border-naranja/30 hover:shadow-2xl hover:shadow-naranja/5 hover:-translate-y-2 cursor-pointer"
     >
@@ -32,10 +34,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           transition={{ duration: 0.8 }}
           src={product.image} 
           alt={`Imagen de ${product.name}`} 
-          loading="lazy"
+          loading={priority ? "eager" : "lazy"}
           width="400"
           height="400"
           decoding="async"
+          fetchpriority={priority ? "high" : "auto"}
           referrerPolicy="no-referrer"
           className="object-cover w-full h-full"
         />

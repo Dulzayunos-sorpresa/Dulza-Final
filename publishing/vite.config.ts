@@ -15,6 +15,21 @@ export default defineConfig(({ mode }) => {
       build: {
         outDir: path.resolve(__dirname, '../dist'),
         emptyOutDir: true,
+        minify: 'esbuild',
+        target: 'es2020',
+        cssCodeSplit: true,
+        sourcemap: false,
+        rollupOptions: {
+          output: {
+            manualChunks: {
+              'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+              'vendor-motion': ['framer-motion'],
+              'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
+              'vendor-utils': ['axios', 'lucide-react', 'zustand'],
+            }
+          }
+        },
+        chunkSizeWarningLimit: 1000,
       },
       resolve: {
         alias: {

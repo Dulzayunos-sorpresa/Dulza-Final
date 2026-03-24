@@ -236,8 +236,26 @@ async function startServer() {
     });
     app.use(vite.middlewares);
   } else if (process.env.VERCEL !== "1") {
-    app.use(express.static(path.join(__dirname, "..", "dist")));
+    // Serve static assets with long-term caching
+    app.use("/assets", express.static(path.join(__dirname, "..", "dist", "assets"), {
+      maxAge: "1y",
+      immutable: true,
+    }));
+    
+    // Serve other static files (like favicon, etc.)
+    app.use(express.static(path.join(__dirname, "..", "dist"), {
+      maxAge: "1h", // Shorter cache for root files
+      setHeaders: (res, path) => {
+        if (path.endsWith('index.html')) {
+          res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          res.setHeader('Pragma', 'no-cache');
+          res.setHeader('Expires', '0');
+        }
+      }
+    }));
+
     app.get("*", (req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(__dirname, "..", "dist", "index.html"));
     });
   }

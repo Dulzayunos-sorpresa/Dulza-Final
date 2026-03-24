@@ -7,36 +7,60 @@
     <meta name="description" content="Desayunos sorpresa artesanales en Córdoba. Experiencias gourmet diseñadas para emocionar y sorprender a quienes más querés. Envío a domicilio en toda la ciudad." />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     
+    <!-- Preconnect to critical origins -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="preconnect" href="https://www.googletagmanager.com">
-    <link rel="preconnect" href="https://connect.facebook.net">
-    <link rel="preconnect" href="https://maps.googleapis.com">
+    <link rel="preconnect" href="https://firestore.googleapis.com">
     
-    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="/src/styles/index.css">
+    <!-- DNS Prefetch for non-critical origins -->
+    <link rel="dns-prefetch" href="https://www.googletagmanager.com">
+    <link rel="dns-prefetch" href="https://connect.facebook.net">
+    <link rel="dns-prefetch" href="https://maps.googleapis.com">
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HDK80W7242"></script>
+    <!-- Preload critical fonts -->
+    <link rel="preload" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" as="style">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" media="print" onload="this.media='all'" fetchpriority="high">
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap">
+    </noscript>
+
+    <title>Dulzayunos Sorpresa · Desayunos Reales en Córdoba</title>
+
+    <!-- Delayed Google Tag Manager -->
     <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-HDK80W7242');
+      window.addEventListener('load', function() {
+        const scheduleTask = window.requestIdleCallback || function(cb) { setTimeout(cb, 4000); };
+        scheduleTask(function() {
+          var script = document.createElement('script');
+          script.async = true;
+          script.src = "https://www.googletagmanager.com/gtag/js?id=G-HDK80W7242";
+          document.head.appendChild(script);
+          
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-HDK80W7242');
+        });
+      });
     </script>
     
     <!-- Meta Pixel Code -->
     <script>
-    !function(f,b,e,v,n,t,s)
-    {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
-    n.callMethod.apply(n,arguments):n.queue.push(arguments)};
-    if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
-    n.queue=[];t=b.createElement(e);t.async=!0;
-    t.src=v;s=b.getElementsByTagName(e)[0];
-    s.parentNode.insertBefore(t,s)}(window, document,'script',
-    'https://connect.facebook.net/en_US/fbevents.js');
-    fbq('init', '1406787301063079');
-    fbq('track', 'PageView');
+    window.addEventListener('load', function() {
+      const scheduleTask = window.requestIdleCallback || function(cb) { setTimeout(cb, 5000); };
+      scheduleTask(function() {
+        !function(f,b,e,v,n,t,s)
+        {if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+        n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+        if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+        n.queue=[];t=b.createElement(e);t.async=!0;
+        t.src=v;s=b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t,s)}(window, document,'script',
+        'https://connect.facebook.net/en_US/fbevents.js');
+        fbq('init', '1406787301063079');
+        fbq('track', 'PageView');
+      });
+    });
     </script>
     <!-- End Meta Pixel Code -->
 </head>
@@ -45,6 +69,6 @@
     src="https://www.facebook.com/tr?id=1406787301063079&ev=PageView&noscript=1"
     /></noscript>
     <div id="root"></div>
-  <script type="module" src="/src/core/main.tsx"></script>
-</body>
+    <script type="module" src="/src/core/main.tsx" fetchpriority="high"></script>
+  </body>
 </html>
