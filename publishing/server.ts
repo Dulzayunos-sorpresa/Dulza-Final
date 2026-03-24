@@ -169,6 +169,14 @@ app.post("/api/pedidos", async (req, res) => {
             auto_return: "approved",
             notification_url: baseUrl.startsWith('https') ? `${baseUrl}/api/webhooks/mercadopago` : undefined,
             external_reference: newOrder.id,
+            payment_methods: {
+              excluded_payment_types: [
+                { id: "ticket" },
+                { id: "credit_card" },
+                { id: "debit_card" }
+              ],
+              installments: 12
+            }
           },
         };
 
