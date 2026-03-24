@@ -1,4 +1,4 @@
-import { Order, Product, PaymentMethod } from '../../types';
+import { Order, Product, PaymentMethod } from '@/types';
 
 export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
   const date = new Date(order.createdAt).toLocaleDateString('es-AR');

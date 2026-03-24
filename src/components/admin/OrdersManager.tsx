@@ -21,8 +21,8 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/store';
 import { OrderStatus, PaymentStatus, Order } from '@/types';
-import { formatOrderToWhatsApp } from '@/src/utils/orderUtils';
-import { trackEvent, AnalyticsEvents } from '@/src/utils/analytics';
+import { formatOrderToWhatsApp } from '@/utils/orderUtils';
+import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import { PrinterService } from '@/services/PrinterService';
 import { NotificationService } from '@/services/NotificationService';
 

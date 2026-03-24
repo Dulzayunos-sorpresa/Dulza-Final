@@ -1,77 +1,147 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Star, Quote } from 'lucide-react';
 
 const Testimonials = () => {
-  const testimonials = [
-    { name: 'María García', text: 'El desayuno fue increíble, la presentación impecable y todo riquísimo. ¡Súper recomendable!', rating: 5, date: 'Hace 2 días' },
-    { name: 'Juan Pérez', text: 'Excelente atención y puntualidad. El regalo llegó perfecto y a mi novia le encantó.', rating: 5, date: 'Hace 1 semana' },
-    { name: 'Ana Rodríguez', text: 'Lo mejor que he probado en desayunos artesanales. Se nota el amor en cada detalle.', rating: 5, date: 'Hace 3 días' },
+  const reviews = [
+    {
+      stars: "★★★★★",
+      text: "Quedé como el marido del año. Mi señora no paraba de llorar. Dijo exactamente eso: 'se nota que lo pensaste'. No lo puedo creer.",
+      author: "Matías R.",
+      detail: "Aniversario · Nva. Cordoba",
+      icon: "👨"
+    },
+    {
+      stars: "★★★★★",
+      text: "Era un martes al azar. Sin fecha especial. Y fue el mejor desayuno de mi vida. Mi amiga es la más detallista del mundo.",
+      author: "Valentina S.",
+      detail: "Recibió la sorpresa · Centro",
+      icon: "👩",
+      featured: true
+    },
+    {
+      stars: "★★★★★",
+      text: "Me acordé a la noche del cumple de mi mamá y pedí a las 11pm. A las 9am ella ya estaba llorando de emoción. Servicio increíble.",
+      author: "Lucía P.",
+      detail: "Cumpleaños de último momento · Villa Allende",
+      icon: "🙋"
+    },
+    {
+      stars: "★★★★★",
+      text: "Vivo en Córdoba y mandé el desayuno a mi abuela en Buenos Aires. Me llamó llorando. Fue como estar presente sin estar.",
+      author: "Tomás G.",
+      detail: "Regalo a distancia · Córdoba",
+      icon: "🧑"
+    },
+    {
+      stars: "★★★★★",
+      text: "Llevamos 8 años y creía que ya no podía sorprenderla. Este desayuno fue la primera vez en años que me dijo 'no me lo esperaba'.",
+      author: "Nicolás F.",
+      detail: "Pareja larga · Alta Cba",
+      icon: "😊"
+    },
+    {
+      stars: "★★★★★",
+      text: "Lo posté en stories y me etiquetó. Después de eso me escribieron 5 amigas preguntando dónde lo había pedido. Se re nota.",
+      author: "Caro M.",
+      detail: "Regalo creativo · Barrio Jardin",
+      icon: "💁"
+    }
   ];
 
-  return (
-    <section className="py-32 bg-white relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute top-0 right-0 w-1/3 h-full bg-stone-50/50 -skew-x-12 translate-x-1/2" />
-      
-      <div className="max-w-7xl mx-auto px-6 md:px-20 relative z-10">
-        <div className="text-center mb-24">
-          <motion.h2 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-5xl md:text-7xl font-serif text-stone-900 mb-8"
-          >
-            Lo que dicen <span className="text-brand-500 italic">nuestros</span> clientes
-          </motion.h2>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.2 }}
-            className="text-xl text-stone-500 max-w-2xl mx-auto"
-          >
-            Nuestra mayor satisfacción es ser parte de tus momentos especiales.
-          </motion.p>
-        </div>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.15
+      }
+    }
+  };
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
-          {testimonials.map((testimonial, index) => (
-            <motion.div
-              key={testimonial.name}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
-              className="bg-stone-50 p-12 rounded-[3rem] relative group hover:bg-white hover:shadow-2xl hover:shadow-stone-100 transition-all duration-500"
+  const itemVariants: any = {
+    hidden: { opacity: 0, scale: 0.9, y: 30 },
+    visible: {
+      opacity: 1,
+      scale: 1,
+      y: 0,
+      transition: {
+        duration: 0.6,
+        ease: [0.22, 1, 0.36, 1]
+      }
+    }
+  };
+
+  return (
+    <section className="px-6 md:px-20 py-32 bg-white dark:bg-dark-bg relative overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="max-w-3xl mb-24"
+        >
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Lo que dice la gente</p>
+          <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
+            La prueba la da<br /><span className="text-naranja italic">el receptor.</span>
+          </h2>
+          <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
+            No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
+          </p>
+        </motion.div>
+
+        <motion.div 
+          variants={containerVariants}
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
+        >
+          {reviews.map((review, i) => (
+            <motion.div 
+              key={i} 
+              variants={itemVariants}
+              whileHover={{ y: -10, scale: 1.02 }}
+              className={`p-10 rounded-[40px] transition-all duration-500 border ${
+                review.featured 
+                ? 'bg-texto dark:bg-dark-surface text-crema dark:text-dark-text border-texto dark:border-white/5 shadow-[0_30px_60px_-15px_rgba(20,20,20,0.2)]' 
+                : 'bg-crema/30 dark:bg-dark-surface/30 text-texto dark:text-dark-text border-naranja/5 dark:border-white/5 hover:bg-crema/50 dark:hover:bg-dark-surface/50'
+              }`}
             >
-              <Quote className="absolute top-8 right-8 w-12 h-12 text-stone-200 group-hover:text-brand-100 transition-colors" />
-              
-              <div className="flex gap-1 mb-8">
-                {[...Array(testimonial.rating)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 fill-brand-500 text-brand-500" />
+              <div className={`flex gap-1 mb-8 ${review.featured ? 'text-naranja' : 'text-naranja/60'}`}>
+                {[...Array(5)].map((_, i) => (
+                  <motion.span 
+                    key={i} 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ delay: 0.5 + (i * 0.1) }}
+                    className="text-xs"
+                  >
+                    ✦
+                  </motion.span>
                 ))}
               </div>
-              
-              <p className="text-xl text-stone-700 mb-10 leading-relaxed italic">
-                "{testimonial.text}"
+              <p className={`text-lg font-display italic leading-relaxed mb-10 ${review.featured ? 'text-crema dark:text-dark-text' : 'text-texto dark:text-dark-text'}`}>
+                "{review.text}"
               </p>
-              
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-brand-100 rounded-full flex items-center justify-center text-brand-600 font-bold">
-                  {testimonial.name[0]}
-                </div>
+              <div className="flex items-center gap-5">
+                <motion.div 
+                  whileHover={{ rotate: [0, -10, 10, 0] }}
+                  className={`w-14 h-14 rounded-2xl flex items-center justify-center text-2xl ${review.featured ? 'bg-crema/10 dark:bg-white/10' : 'bg-white dark:bg-dark-bg shadow-sm'}`}
+                >
+                  {review.icon}
+                </motion.div>
                 <div>
-                  <p className="font-bold text-stone-900">{testimonial.name}</p>
-                  <p className="text-xs text-stone-400 font-bold uppercase tracking-widest">{testimonial.date}</p>
+                  <div className={`text-sm font-bold uppercase tracking-tight ${review.featured ? 'text-crema dark:text-dark-text' : 'text-texto dark:text-dark-text'}`}>{review.author}</div>
+                  <div className={`text-[10px] uppercase tracking-[0.15em] font-medium ${review.featured ? 'text-crema/40' : 'text-texto/40 dark:text-dark-text-muted/40'}`}>{review.detail}</div>
                 </div>
               </div>
             </motion.div>
           ))}
-        </div>
+        </motion.div>
       </div>
     </section>
   );
 };
 
-export default React.memo(Testimonials);
+export default Testimonials;

@@ -4,10 +4,10 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx server.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "lint": "tsc --noEmit"
+    "dev": "tsx publishing/server.ts",
+    "build": "vite build --config publishing/vite.config.ts",
+    "preview": "vite preview --config publishing/vite.config.ts",
+    "lint": "tsc --noEmit --project publishing/tsconfig.json"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.2.1",

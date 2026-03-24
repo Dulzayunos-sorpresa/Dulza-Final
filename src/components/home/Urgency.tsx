@@ -1,67 +1,120 @@
-import React from 'react';
-import { motion } from 'framer-motion';
-import { Clock, ArrowRight } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Urgency = () => {
+  const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
+
+  useEffect(() => {
+    const updateClock = () => {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0);
+      const diff = midnight.getTime() - now.getTime();
+      
+      const h = Math.floor(diff / 3600000);
+      const m = Math.floor((diff % 3600000) / 60000);
+      const s = Math.floor((diff % 60000) / 1000);
+      
+      setTimeLeft({ h, m, s });
+    };
+
+    updateClock();
+    const interval = setInterval(updateClock, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
   return (
-    <section className="py-32 bg-brand-500 text-white relative overflow-hidden">
-      {/* Background Elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl translate-y-1/2 -translate-x-1/2" />
-      </div>
+    <section className="px-6 md:px-20 py-32 bg-naranja dark:bg-naranja/90 text-center relative overflow-hidden">
+      {/* Decorative background elements */}
+      <motion.div 
+        initial={{ opacity: 0 }}
+        whileInView={{ opacity: 0.1 }}
+        viewport={{ once: true }}
+        className="absolute inset-0 pointer-events-none"
+      >
+        <div className="absolute top-0 left-0 w-full h-full" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '30px 30px' }} />
+      </motion.div>
+      
+      <div className="max-w-5xl mx-auto relative z-10">
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+        >
+          <p className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white/60 font-bold mb-8">No pierdas tiempo</p>
+          <h2 className="text-5xl md:text-8xl font-display text-white leading-[0.85] mb-10 uppercase tracking-tighter">
+            Su cumpleaños es mañana.<br />
+            <span className="text-texto dark:text-dark-text italic">Todavía llegás.</span>
+          </h2>
+          <p className="text-lg md:text-xl text-white/80 mb-16 font-light max-w-2xl mx-auto">
+            Pedidos antes de medianoche → entrega mañana a la mañana.
+          </p>
+        </motion.div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-20 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/20 text-white rounded-full text-sm font-bold mb-8">
-              <Clock className="w-4 h-4" />
-              <span>¡No te quedes sin el tuyo!</span>
-            </div>
-            
-            <h2 className="text-5xl md:text-7xl font-serif leading-[1.1] mb-8">
-              Hacé tu pedido con <span className="text-stone-900 italic underline decoration-brand-300 underline-offset-8">anticipación</span>
-            </h2>
-            
-            <p className="text-xl text-white/80 mb-12 leading-relaxed max-w-lg">
-              Nuestros productos son 100% artesanales y tenemos cupos limitados por día. 
-              Asegurá tu regalo hoy mismo.
-            </p>
-            
-            <a 
-              href="#catalog"
-              className="inline-flex items-center justify-center gap-3 px-10 py-5 bg-white text-brand-600 rounded-full font-bold text-lg hover:bg-stone-50 transition-all shadow-xl shadow-brand-600/20 group"
-            >
-              Reservar Ahora
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </a>
-          </motion.div>
-
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
-            whileInView={{ opacity: 1, scale: 1 }}
-            viewport={{ once: true }}
-            transition={{ duration: 1, delay: 0.2 }}
-            className="relative"
-          >
-            <div className="relative aspect-square rounded-[3rem] overflow-hidden shadow-2xl">
-              <img 
-                src="https://cdn.pedix.app/0faziepQZj69lgGsYCmH/products/1740743569577-76706.png?size=2000x2000" 
-                alt="Desayuno Premium"
-                className="w-full h-full object-cover"
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-brand-900/40 to-transparent" />
-            </div>
-          </motion.div>
+        <div className="flex gap-6 md:gap-12 justify-center mb-20">
+          <div className="text-center min-w-[80px] md:min-w-[120px]">
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={timeLeft.h}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="font-display text-6xl md:text-8xl text-white block leading-none mb-2"
+              >
+                {String(timeLeft.h).padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Horas</span>
+          </div>
+          <span className="text-5xl md:text-7xl text-white/20 pt-2 font-display">:</span>
+          <div className="text-center min-w-[80px] md:min-w-[120px]">
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={timeLeft.m}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="font-display text-6xl md:text-8xl text-white block leading-none mb-2"
+              >
+                {String(timeLeft.m).padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Minutos</span>
+          </div>
+          <span className="text-5xl md:text-7xl text-white/20 pt-2 font-display">:</span>
+          <div className="text-center min-w-[80px] md:min-w-[120px]">
+            <AnimatePresence mode="wait">
+              <motion.span 
+                key={timeLeft.s}
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -20, opacity: 0 }}
+                className="font-display text-6xl md:text-8xl text-white block leading-none mb-2"
+              >
+                {String(timeLeft.s).padStart(2, '0')}
+              </motion.span>
+            </AnimatePresence>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Segundos</span>
+          </div>
         </div>
+
+        <motion.button 
+          whileHover={{ scale: 1.05, y: -5 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => {
+            const element = document.getElementById('catalog');
+            if (element) {
+              element.scrollIntoView({ behavior: 'smooth' });
+            }
+          }}
+          className="bg-texto dark:bg-dark-bg text-crema dark:text-dark-text px-16 py-6 rounded-full text-sm font-bold uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-texto/90 dark:hover:bg-dark-bg/90 transition-all"
+        >
+          Armar mi desayuno sorpresa →
+        </motion.button>
       </div>
     </section>
   );
 };
 
-export default React.memo(Urgency);
+export default Urgency;
