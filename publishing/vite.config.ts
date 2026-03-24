@@ -25,7 +25,7 @@ export default defineConfig(({ mode }) => {
               'vendor-react': ['react', 'react-dom', 'react-router-dom'],
               'vendor-motion': ['framer-motion'],
               'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
-              'vendor-utils': ['axios', 'lucide-react', 'zustand'],
+              'vendor-utils': ['axios', 'lucide-react'],
             }
           }
         },
