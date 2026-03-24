@@ -207,13 +207,21 @@ app.post("/api/webhooks/mercadopago", async (req, res) => {
   
   if (type === "payment") {
     const paymentId = data.id;
+    console.log(`Mercado Pago Webhook: Payment ${paymentId} received`);
     // In a real app, you'd fetch payment details from MP to verify
-    // const payment = await new Payment(mpClient).get({ id: paymentId });
-    // if (payment.status === 'approved') { ... }
-    
-    // For demo, we'll assume it's approved if we get the webhook
-    // and we'd need the external_reference to find the order
+    // and update the order in Firestore
   }
+  
+  res.status(200).send("OK");
+});
+
+// Webhook for Ualá
+app.post("/api/webhooks/uala", async (req, res) => {
+  const { uuid, status, external_id } = req.body;
+  console.log(`Ualá Webhook: Payment ${uuid} for order ${external_id} has status ${status}`);
+  
+  // In a real app, you'd verify the signature and update the order in Firestore
+  // if (status === 'PAID') { ... }
   
   res.status(200).send("OK");
 });
