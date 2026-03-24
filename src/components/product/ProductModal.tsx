@@ -94,14 +94,16 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             onClick={onClose}
             className="absolute inset-0 bg-texto/40 backdrop-blur-sm"
           />
           
           <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            initial={{ opacity: 0, scale: 0.98 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.98 }}
+            transition={{ duration: 0.2 }}
             className="relative w-full max-w-5xl bg-crema dark:bg-dark-bg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
           >
             {/* Close Button */}
@@ -163,9 +165,10 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                   {step === -1 ? (
                     <motion.div
                       key="info"
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="space-y-8"
                     >
                       <div className="space-y-4">
@@ -205,9 +208,10 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                   ) : (
                     <motion.div
                       key={`option-${step}`}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
                       className="space-y-8"
                     >
                       <button 

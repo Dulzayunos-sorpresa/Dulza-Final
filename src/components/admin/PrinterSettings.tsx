@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 import { Printer, Save, Trash2, AlertCircle, Info } from 'lucide-react';
 import { PrinterService, PrinterConfig } from '@/services/PrinterService';
 

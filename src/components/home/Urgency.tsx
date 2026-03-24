@@ -37,10 +37,10 @@ const Urgency = () => {
       
       <div className="max-w-5xl mx-auto relative z-10">
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.5 }}
         >
           <p className="text-[11px] md:text-xs uppercase tracking-[0.4em] text-white/80 font-bold mb-8">No pierdas tiempo</p>
           <h2 className="text-5xl md:text-8xl font-display text-white leading-[0.85] mb-10 uppercase tracking-tighter">

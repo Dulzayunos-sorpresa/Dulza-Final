@@ -34,19 +34,26 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const handleScrollToCategory = React.useCallback((e: React.MouseEvent, categoryId: string) => {
     e.preventDefault();
-    setIsMobileMenuOpen(false);
-    if (location.pathname !== '/') {
-      navigate(`/#${categoryId}`);
-    } else {
-      const element = document.getElementById(categoryId);
-      if (element) {
-        const headerOffset = 80;
-        const elementPosition = element.getBoundingClientRect().top;
-        const offsetPosition = elementPosition + window.scrollY - headerOffset;
+    const element = document.getElementById(categoryId);
+    
+    if (element) {
+      const rect = element.getBoundingClientRect();
+      const targetTop = rect.top + window.scrollY - 80;
+      
+      setIsMobileMenuOpen(false);
+      
+      if (location.pathname !== '/') {
+        navigate(`/#${categoryId}`);
+      } else {
         window.scrollTo({
-          top: offsetPosition,
+          top: targetTop,
           behavior: "smooth"
         });
+      }
+    } else {
+      setIsMobileMenuOpen(false);
+      if (location.pathname !== '/') {
+        navigate(`/#${categoryId}`);
       }
     }
   }, [location.pathname, navigate]);
@@ -173,26 +180,17 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
       {/* Footer */}
       <footer className="bg-texto text-crema/50 px-6 md:px-20 py-16">
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
-          className="max-w-7xl mx-auto"
-        >
+        <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between gap-12 mb-16">
             <div className="max-w-xs">
-              <motion.div 
-                whileHover={{ scale: 1.05 }}
-                className="flex flex-col items-start leading-none mb-6"
-              >
+              <div className="flex flex-col items-start leading-none mb-6">
                 <span className="font-display text-2xl text-naranja font-bold tracking-tighter uppercase">
                   Dulzayunos
                 </span>
                 <span className="text-[11px] text-dorado font-bold tracking-[0.2em] uppercase">
                   Desayunos Reales
                 </span>
-              </motion.div>
+              </div>
               <p className="text-sm leading-relaxed text-crema/40">
                 "Se nota que lo pensaste." Transformando momentos cotidianos en recuerdos inolvidables con desayunos artesanales y experiencias reales.
               </p>
@@ -232,8 +230,8 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="pt-8 border-t border-crema/10 text-center text-[10px] tracking-wider uppercase">
             © {new Date().getFullYear()} Dulzayunos Sorpresa · Todos los desayunos artesanales, todas las sorpresas reales.
           </div>
-        </motion.div>
-      </footer>
+          </div>
+        </footer>
     </div>
   );
 };

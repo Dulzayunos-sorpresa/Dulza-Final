@@ -79,37 +79,22 @@ const HowItWorks = () => {
           </p>
         </motion.div>
 
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-16">
           {steps.map((step, i) => (
-            <motion.div 
+            <div 
               key={i} 
-              variants={itemVariants}
-              whileHover={{ y: -5 }}
-              className="relative group"
+              className="relative group transition-transform duration-500 hover:-translate-y-2"
             >
               <div className="flex items-baseline gap-4 mb-8">
-                <motion.div 
-                  initial={{ opacity: 0.2 }}
-                  whileHover={{ opacity: 0.4, scale: 1.1 }}
-                  className="font-display text-6xl font-bold text-naranja leading-none transition-colors duration-500"
-                >
+                <div className="font-display text-6xl font-bold text-naranja leading-none transition-all duration-500 opacity-20 group-hover:opacity-40 group-hover:scale-110">
                   {step.num}
-                </motion.div>
+                </div>
                 <div className="w-12 h-[1px] bg-naranja/30 group-hover:w-16 transition-all duration-500" />
               </div>
               
-              <motion.div 
-                whileHover={{ rotate: [0, -10, 10, 0], scale: 1.1 }}
-                className="w-14 h-14 bg-crema/5 dark:bg-white/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-naranja/10 transition-colors duration-500"
-              >
+              <div className="w-14 h-14 bg-crema/5 dark:bg-white/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-naranja/10 transition-all duration-500 group-hover:scale-110">
                 {step.icon}
-              </motion.div>
+              </div>
               
               <h3 className="text-xl font-bold text-crema dark:text-dark-text mb-4 uppercase tracking-tight">{step.title}</h3>
               <p className="text-sm text-crema/40 dark:text-dark-text-muted/40 leading-relaxed font-light group-hover:text-crema/60 dark:group-hover:text-dark-text/60 transition-colors duration-500">
@@ -117,17 +102,13 @@ const HowItWorks = () => {
               </p>
               
               {i < 3 && (
-                <motion.div 
-                  animate={{ x: [0, 5, 0] }}
-                  transition={{ repeat: Infinity, duration: 2 }}
-                  className="hidden lg:block absolute top-12 -right-12 text-naranja/20 text-3xl"
-                >
+                <div className="hidden lg:block absolute top-12 -right-12 text-naranja/20 text-3xl animate-pulse">
                   →
-                </motion.div>
+                </div>
               )}
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );

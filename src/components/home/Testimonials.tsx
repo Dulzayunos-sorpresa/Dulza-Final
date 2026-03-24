@@ -59,14 +59,11 @@ const Testimonials = () => {
   };
 
   const itemVariants: any = {
-    hidden: { opacity: 0, scale: 0.9, y: 30 },
+    hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      scale: 1,
-      y: 0,
       transition: {
-        duration: 0.6,
-        ease: [0.22, 1, 0.36, 1]
+        duration: 0.4
       }
     }
   };
@@ -75,10 +72,10 @@ const Testimonials = () => {
     <section className="px-6 md:px-20 py-32 bg-white dark:bg-dark-bg relative overflow-hidden">
       <div className="max-w-7xl mx-auto">
         <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.5 }}
           className="max-w-3xl mb-24"
         >
           <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Lo que dice la gente</p>

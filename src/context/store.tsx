@@ -73,10 +73,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     return () => unsubscribeAuth();
   }, []);
 
-  useEffect(() => {
+  const isAdmin = useMemo(() => {
     const adminEmails = ['audisiofausto@gmail.com', 'uateventos@gmail.com'];
-    const isAdmin = user && adminEmails.includes(user.email || '');
+    return user && adminEmails.includes(user.email || '');
+  }, [user]);
 
+  useEffect(() => {
     const unsubscribeProducts = onSnapshot(collection(db, 'products'), (snapshot) => {
       const prods: Product[] = [];
       snapshot.forEach(doc => {
@@ -100,7 +102,13 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       console.error('Firestore Error (categories):', error);
     });
 
-    // Delay non-critical listeners to improve initial page load performance
+    return () => {
+      unsubscribeCategories();
+      unsubscribeProducts();
+    };
+  }, []);
+
+  useEffect(() => {
     let unsubscribeOptions = () => {};
     let unsubscribeSubobjects = () => {};
     let unsubscribeOrders = () => {};
@@ -166,19 +174,17 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       }, (error) => {
         if (error.code !== 'permission-denied') console.error('Firestore Error (shipping):', error);
       });
-    }, 2000); // 2 second delay for non-critical data
+    }, 2000);
 
     return () => {
       clearTimeout(timeoutId);
-      unsubscribeCategories();
-      unsubscribeProducts();
       unsubscribeOptions();
       unsubscribeSubobjects();
       unsubscribeOrders();
       unsubscribeCoupons();
       unsubscribeShipping();
     };
-  }, [user]);
+  }, [isAdmin]);
 
   const addCategory = useCallback(async (category: Category) => {
     try {

@@ -19,19 +19,12 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
   const isLowStock = product.stock !== undefined && product.stock < 5 && product.stock > 0;
   
   return (
-    <motion.div 
-      layout
-      initial={priority ? { opacity: 1, y: 0 } : { opacity: 0, y: 20 }}
-      whileInView={priority ? undefined : { opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "-50px" }}
-      transition={{ duration: 0.5, delay: priority ? 0 : (index % 3) * 0.1 }}
+    <div 
       onClick={() => onProductClick(product)}
       className="group bg-white dark:bg-dark-surface border border-naranja/10 dark:border-white/5 rounded-[40px] p-8 flex flex-col transition-all duration-500 hover:border-naranja/30 dark:hover:border-naranja/30 hover:shadow-2xl hover:shadow-naranja/5 hover:-translate-y-2 cursor-pointer"
     >
       <div className="relative aspect-square rounded-[32px] overflow-hidden mb-8 bg-crema dark:bg-dark-bg">
-        <motion.img 
-          whileHover={{ scale: 1.1 }}
-          transition={{ duration: 0.8 }}
+        <img 
           src={product.image} 
           alt={`Imagen de ${product.name}`} 
           loading={priority ? "eager" : "lazy"}
@@ -40,7 +33,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           decoding="async"
           fetchpriority={priority ? "high" : "auto"}
           referrerPolicy="no-referrer"
-          className="object-cover w-full h-full"
+          className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-110"
         />
         {product.tags?.includes('NUEVO') && (
           <motion.div 
@@ -79,7 +72,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           </button>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 });
 

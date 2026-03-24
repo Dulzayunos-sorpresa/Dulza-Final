@@ -88,11 +88,10 @@ export default function Home() {
       const element = document.getElementById(hash);
       if (element) {
         setTimeout(() => {
-          const headerOffset = 160;
-          const elementPosition = element.getBoundingClientRect().top;
-          const offsetPosition = elementPosition + window.scrollY - headerOffset;
+          const rect = element.getBoundingClientRect();
+          const targetTop = rect.top + window.scrollY - 160;
           window.scrollTo({
-            top: offsetPosition,
+            top: targetTop,
             behavior: "smooth"
           });
           setActiveCategory(hash);
@@ -129,11 +128,10 @@ export default function Home() {
   const scrollToCategory = useCallback((category: string) => {
     const element = document.getElementById(category);
     if (element) {
-      const headerOffset = 160;
-      const elementPosition = element.getBoundingClientRect().top;
-      const offsetPosition = elementPosition + window.scrollY - headerOffset;
+      const rect = element.getBoundingClientRect();
+      const targetTop = rect.top + window.scrollY - 160;
       window.scrollTo({
-        top: offsetPosition,
+        top: targetTop,
         behavior: "smooth"
       });
       setActiveCategory(category);
@@ -180,27 +178,27 @@ export default function Home() {
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none noise-pattern dark:opacity-[0.05]"></div>
 
         <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          animate="visible"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5 }}
           className="flex flex-col justify-center px-6 md:px-20 py-20 relative z-10"
         >
-          <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
+          <div className="flex items-center gap-3 mb-8">
             <div className="h-px w-8 bg-naranja"></div>
             <p className="text-[11px] tracking-[0.3em] uppercase text-naranja font-bold">
               Desayunos Reales · Córdoba
             </p>
-          </motion.div>
+          </div>
           
-          <motion.h1 variants={itemVariants} className="text-6xl md:text-8xl font-display text-texto dark:text-dark-text font-bold leading-[0.9] mb-10 uppercase tracking-tighter">
+          <h1 className="text-6xl md:text-8xl font-display text-texto dark:text-dark-text font-bold leading-[0.9] mb-10 uppercase tracking-tighter">
             Se nota<br />que lo<br /><span className="text-naranja">pensaste.</span>
-          </motion.h1>
+          </h1>
           
-          <motion.p variants={itemVariants} className="text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-md mb-12 font-medium">
+          <p className="text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-md mb-12 font-medium">
             El desayuno sorpresa que convierte un martes cualquiera en el momento que no se olvida. Experiencias diseñadas para emocionar.
-          </motion.p>
+          </p>
           
-          <motion.div variants={itemVariants} className="flex flex-wrap gap-6">
+          <div className="flex flex-wrap gap-6">
             <button 
               onClick={() => scrollToCategory('catalog')}
               className="bg-naranja text-white px-12 py-5 rounded-full text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl shadow-naranja/30 hover:bg-naranja/90 transition-all transform hover:-translate-y-1"
@@ -214,9 +212,9 @@ export default function Home() {
             >
               Ver cómo funciona <span className="text-lg">↓</span>
             </button>
-          </motion.div>
+          </div>
 
-          <motion.div variants={itemVariants} className="mt-20 flex items-center gap-6">
+          <div className="mt-20 flex items-center gap-6">
             <div className="flex -space-x-4">
               {[1, 2, 3, 4].map(i => (
                 <div key={i} className="w-12 h-12 rounded-full border-4 border-crema dark:border-dark-bg bg-rosa-suave dark:bg-dark-surface flex items-center justify-center text-lg shadow-sm">
@@ -228,7 +226,7 @@ export default function Home() {
               <strong className="block text-texto dark:text-dark-text font-bold mb-1 text-xs">+2.400 sorpresas reales</strong>
               Entregadas con amor en Córdoba
             </div>
-          </motion.div>
+          </div>
         </motion.div>
 
         <div className="relative flex items-center justify-center bg-rosa-suave/30 dark:bg-dark-surface/30 overflow-hidden min-h-[500px]">

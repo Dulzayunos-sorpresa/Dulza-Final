@@ -42,12 +42,11 @@ const FAQ = () => {
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 20 },
+    hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      y: 0,
       transition: {
-        duration: 0.5
+        duration: 0.3
       }
     }
   };
@@ -56,10 +55,10 @@ const FAQ = () => {
     <section className="px-6 md:px-20 py-32 bg-crema/30 dark:bg-dark-surface/30 relative overflow-hidden">
       <div className="max-w-5xl mx-auto relative z-10">
         <motion.div 
-          initial={{ opacity: 0, x: -30 }}
-          whileInView={{ opacity: 1, x: 0 }}
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
           viewport={{ once: true }}
-          transition={{ duration: 0.8 }}
+          transition={{ duration: 0.5 }}
           className="max-w-3xl mb-20"
         >
           <p className="text-[11px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Preguntas frecuentes</p>

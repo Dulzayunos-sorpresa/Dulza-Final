@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, XCircle, LogOut } from 'lucide-react';
 import { loginWithGoogle, logout, auth } from '@/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { motion } from 'motion/react';
+import { motion } from 'framer-motion';
 
 interface AdminLoginProps {
   onAuthenticated: () => void;

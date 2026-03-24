@@ -14,7 +14,7 @@ import {
   LogOut,
   Printer
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Modular Components - Lazy Loaded
 const AdminLogin = lazy(() => import('@/components/admin/AdminLogin'));

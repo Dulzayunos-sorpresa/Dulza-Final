@@ -5,7 +5,7 @@ import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import { useStore } from '@/context/store';
 import { PaymentMethod, Order, Product, ProductOption, Coupon } from '@/types';
 import { formatOrderToWhatsApp } from '@/utils/orderUtils';
-import { motion, AnimatePresence } from 'motion/react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const WHATSAPP_NUMBER = '5493512261245'; // Número real de Dulzayunos
 
@@ -645,9 +645,10 @@ const Cart: React.FC = () => {
         {step === 1 && (
           <motion.div 
             key="step1"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
             <div className="lg:col-span-2 space-y-10">
@@ -795,9 +796,10 @@ const Cart: React.FC = () => {
         {step === 2 && (
           <motion.div 
             key="step2"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="max-w-2xl mx-auto"
           >
             <div className="bg-white dark:bg-dark-surface rounded-[40px] p-8 border border-naranja/5 dark:border-white/5 shadow-xl shadow-naranja/5 space-y-8">
@@ -1133,9 +1135,10 @@ const Cart: React.FC = () => {
         {step === 3 && (
           <motion.div 
             key="step3"
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
             className="grid grid-cols-1 lg:grid-cols-3 gap-8"
           >
             <div className="lg:col-span-2 space-y-6">

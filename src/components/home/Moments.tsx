@@ -90,26 +90,15 @@ const Moments = () => {
           </div>
         </div>
 
-        <motion.div 
-          variants={containerVariants}
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
-        >
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {moments.map((moment, i) => (
-            <motion.div 
+            <div 
               key={i} 
-              variants={itemVariants}
-              whileHover={{ y: -10, boxShadow: "0 30px 60px -15px rgba(242,125,38,0.1)" }}
-              className="group relative bg-white dark:bg-dark-surface rounded-[40px] p-10 transition-all duration-500 border border-naranja/5 dark:border-white/5"
+              className="group relative bg-white dark:bg-dark-surface rounded-[40px] p-10 transition-all duration-500 border border-naranja/5 dark:border-white/5 hover:shadow-2xl hover:shadow-naranja/10 hover:-translate-y-2"
             >
-              <motion.div 
-                whileHover={{ scale: 1.1, rotate: 5 }}
-                className="w-16 h-16 bg-crema dark:bg-dark-bg rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform duration-500"
-              >
+              <div className="w-16 h-16 bg-crema dark:bg-dark-bg rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
                 {moment.icon}
-              </motion.div>
+              </div>
               <h3 className="text-2xl font-display text-texto dark:text-dark-text mb-4 uppercase tracking-tight">{moment.title}</h3>
               <div className="space-y-6">
                 <p className="text-sm text-texto/60 dark:text-dark-text-muted/60 italic leading-relaxed border-l-2 border-naranja/30 pl-6 py-1">
@@ -120,9 +109,9 @@ const Moments = () => {
                   {moment.hook}
                 </p>
               </div>
-            </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
   );
