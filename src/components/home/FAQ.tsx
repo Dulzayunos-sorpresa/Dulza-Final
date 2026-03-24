@@ -62,7 +62,7 @@ const FAQ = () => {
           transition={{ duration: 0.8 }}
           className="max-w-3xl mb-20"
         >
-          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Preguntas frecuentes</p>
+          <p className="text-[11px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Preguntas frecuentes</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
             Todo lo que necesitás<br /><span className="text-naranja italic">saber.</span>
           </h2>

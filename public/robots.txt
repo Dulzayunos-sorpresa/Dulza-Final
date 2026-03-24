@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://dulzayunos.com/sitemap.xml
+Sitemap: https://ais-pre-cajnjpcyeushptpvyv3ywi-201156356327.us-west2.run.app/sitemap.xml

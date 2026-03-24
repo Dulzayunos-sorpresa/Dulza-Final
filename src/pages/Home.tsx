@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { Heart, ChevronRight, Eye, Share2, Sparkles, AlertCircle, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -6,12 +6,16 @@ import { useStore } from '@/context/store';
 import { ProductCategory, Product } from '@/types';
 import ProductModal from '@/components/product/ProductModal';
 import ProductCard from '@/components/product/ProductCard';
-import PainBanner from '@/components/home/PainBanner';
-import Moments from '@/components/home/Moments';
-import HowItWorks from '@/components/home/HowItWorks';
-import Testimonials from '@/components/home/Testimonials';
-import Urgency from '@/components/home/Urgency';
-import FAQ from '@/components/home/FAQ';
+
+// Lazy load below-the-fold components
+const PainBanner = lazy(() => import('@/components/home/PainBanner'));
+const Moments = lazy(() => import('@/components/home/Moments'));
+const HowItWorks = lazy(() => import('@/components/home/HowItWorks'));
+const Testimonials = lazy(() => import('@/components/home/Testimonials'));
+const Urgency = lazy(() => import('@/components/home/Urgency'));
+const FAQ = lazy(() => import('@/components/home/FAQ'));
+
+const LoadingFallback = () => <div className="h-32 flex items-center justify-center text-naranja/20">...</div>;
 
 const containerVariants: any = {
   hidden: { opacity: 0 },
@@ -183,7 +187,7 @@ export default function Home() {
         >
           <motion.div variants={itemVariants} className="flex items-center gap-3 mb-8">
             <div className="h-px w-8 bg-naranja"></div>
-            <p className="text-[10px] tracking-[0.3em] uppercase text-naranja font-bold">
+            <p className="text-[11px] tracking-[0.3em] uppercase text-naranja font-bold">
               Desayunos Reales · Córdoba
             </p>
           </motion.div>
@@ -199,7 +203,8 @@ export default function Home() {
           <motion.div variants={itemVariants} className="flex flex-wrap gap-6">
             <button 
               onClick={() => scrollToCategory('catalog')}
-              className="bg-naranja text-white px-12 py-5 rounded-full text-[10px] font-bold uppercase tracking-[0.2em] shadow-2xl shadow-naranja/30 hover:bg-naranja/90 transition-all transform hover:-translate-y-1"
+              className="bg-naranja text-white px-12 py-5 rounded-full text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl shadow-naranja/30 hover:bg-naranja/90 transition-all transform hover:-translate-y-1"
+              aria-label="Sorprender ahora con un desayuno"
             >
               Sorprender ahora
             </button>
@@ -219,7 +224,7 @@ export default function Home() {
                 </div>
               ))}
             </div>
-            <div className="text-[10px] text-texto/40 dark:text-dark-text-muted/40 leading-tight uppercase tracking-widest">
+            <div className="text-[11px] text-texto/60 dark:text-dark-text-muted leading-tight uppercase tracking-widest">
               <strong className="block text-texto dark:text-dark-text font-bold mb-1 text-xs">+2.400 sorpresas reales</strong>
               Entregadas con amor en Córdoba
             </div>
@@ -254,7 +259,7 @@ export default function Home() {
               className="absolute -left-16 bottom-24 bg-white dark:bg-dark-surface p-5 rounded-[24px] shadow-2xl flex items-center gap-4 z-20 whitespace-nowrap border border-naranja/5 dark:border-white/5"
             >
               <div className="w-10 h-10 rounded-full bg-crema dark:bg-dark-bg flex items-center justify-center text-xl">😭</div>
-              <div className="text-[10px] leading-tight uppercase tracking-wider">
+              <div className="text-[11px] leading-tight uppercase tracking-wider">
                 <strong className="block text-texto dark:text-dark-text font-bold mb-0.5">Juli M.</strong>
                 "¡No lo puedo creer!"
               </div>
@@ -266,7 +271,7 @@ export default function Home() {
               className="absolute -right-12 top-24 bg-white dark:bg-dark-surface p-5 rounded-[24px] shadow-2xl flex items-center gap-4 z-20 whitespace-nowrap border border-naranja/5 dark:border-white/5"
             >
               <div className="w-10 h-10 rounded-full bg-crema dark:bg-dark-bg flex items-center justify-center text-xl">🤩</div>
-              <div className="text-[10px] leading-tight uppercase tracking-wider">
+              <div className="text-[11px] leading-tight uppercase tracking-wider">
                 <strong className="block text-texto dark:text-dark-text font-bold mb-0.5">Romi A.</strong>
                 "El mejor regalo"
               </div>
@@ -276,7 +281,7 @@ export default function Home() {
               whileHover={{ rotate: -1, scale: 1.02 }}
               className="w-[360px] bg-white dark:bg-dark-surface rounded-[48px] p-10 shadow-2xl relative border border-naranja/5 dark:border-white/5"
             >
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-naranja text-white text-[10px] font-bold uppercase tracking-[0.2em] px-8 py-2.5 rounded-full whitespace-nowrap shadow-xl shadow-naranja/20">
+              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-naranja text-white text-[11px] font-bold uppercase tracking-[0.2em] px-8 py-2.5 rounded-full whitespace-nowrap shadow-xl shadow-naranja/20">
                 ✨ Sorpresa Real
               </div>
               
@@ -295,13 +300,13 @@ export default function Home() {
                     className="bg-crema dark:bg-dark-bg rounded-2xl p-5 text-center transition-all"
                   >
                     <span className="text-3xl block mb-2">{item.e}</span>
-                    <span className="text-[8px] uppercase tracking-widest text-texto/40 dark:text-dark-text-muted/40 font-bold">{item.l}</span>
+                    <span className="text-[10px] uppercase tracking-widest text-texto/60 dark:text-dark-text-muted font-bold">{item.l}</span>
                   </motion.div>
                 ))}
               </div>
 
               <div className="pt-8 border-t border-naranja/10 dark:border-white/5 text-center">
-                <p className="text-[10px] text-texto/30 dark:text-dark-text-muted/30 mb-2 uppercase tracking-widest font-bold">De parte de alguien que lo pensó</p>
+                <p className="text-[11px] text-texto/50 dark:text-dark-text-muted mb-2 uppercase tracking-widest font-bold">De parte de alguien que lo pensó</p>
                 <p className="font-display text-texto dark:text-dark-text font-bold text-lg leading-tight uppercase tracking-tighter">"Se nota que lo pensaste." 🥹</p>
               </div>
             </motion.div>
@@ -309,20 +314,28 @@ export default function Home() {
         </div>
       </section>
 
-      <PainBanner />
+      <Suspense fallback={<LoadingFallback />}>
+        <PainBanner />
+      </Suspense>
 
-      <Moments />
+      <Suspense fallback={<LoadingFallback />}>
+        <Moments />
+      </Suspense>
 
       <div id="how-it-works">
-        <HowItWorks />
+        <Suspense fallback={<LoadingFallback />}>
+          <HowItWorks />
+        </Suspense>
       </div>
 
-      <Testimonials />
+      <Suspense fallback={<LoadingFallback />}>
+        <Testimonials />
+      </Suspense>
 
       {/* Catalog Section */}
       <div id="catalog" className="max-w-7xl mx-auto px-6 md:px-20 py-32 scroll-mt-20">
         <div className="flex flex-col items-center text-center mb-20">
-          <p className="text-[10px] tracking-[0.3em] uppercase text-naranja font-bold mb-6">Elegí tu sorpresa</p>
+          <p className="text-[11px] tracking-[0.3em] uppercase text-naranja font-bold mb-6">Elegí tu sorpresa</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text font-bold leading-[0.9] mb-8 uppercase tracking-tighter">
             Cada momento<br />tiene su <span className="text-naranja">desayuno.</span>
           </h2>
@@ -348,7 +361,7 @@ export default function Home() {
           <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar w-full justify-start md:justify-center">
             <button
               onClick={() => setActiveFilter('Todos')}
-              className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+              className={`whitespace-nowrap px-8 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${
                 activeFilter === 'Todos' 
                   ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
                   : 'bg-white dark:bg-dark-surface text-texto/50 dark:text-dark-text-muted hover:bg-crema dark:hover:bg-white/5 hover:text-naranja'
@@ -360,7 +373,7 @@ export default function Home() {
               <button
                 key={category}
                 onClick={() => setActiveFilter(category)}
-                className={`whitespace-nowrap px-8 py-3 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+                className={`whitespace-nowrap px-8 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${
                   activeFilter === category 
                     ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
                     : 'bg-white dark:bg-dark-surface text-texto/50 dark:text-dark-text-muted hover:bg-crema dark:hover:bg-white/5 hover:text-naranja'
@@ -400,9 +413,13 @@ export default function Home() {
         </div>
       </div>
 
-      <Urgency />
+      <Suspense fallback={<LoadingFallback />}>
+        <Urgency />
+      </Suspense>
 
-      <FAQ />
+      <Suspense fallback={<LoadingFallback />}>
+        <FAQ />
+      </Suspense>
 
       <ProductModal 
         product={selectedProduct} 

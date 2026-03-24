@@ -42,7 +42,7 @@ const Urgency = () => {
           viewport={{ once: true }}
           transition={{ duration: 0.8 }}
         >
-          <p className="text-[10px] md:text-xs uppercase tracking-[0.4em] text-white/60 font-bold mb-8">No pierdas tiempo</p>
+          <p className="text-[11px] md:text-xs uppercase tracking-[0.4em] text-white/80 font-bold mb-8">No pierdas tiempo</p>
           <h2 className="text-5xl md:text-8xl font-display text-white leading-[0.85] mb-10 uppercase tracking-tighter">
             Su cumpleaños es mañana.<br />
             <span className="text-texto dark:text-dark-text italic">Todavía llegás.</span>
@@ -65,7 +65,7 @@ const Urgency = () => {
                 {String(timeLeft.h).padStart(2, '0')}
               </motion.span>
             </AnimatePresence>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Horas</span>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-white/60 font-bold">Horas</span>
           </div>
           <span className="text-5xl md:text-7xl text-white/20 pt-2 font-display">:</span>
           <div className="text-center min-w-[80px] md:min-w-[120px]">
@@ -80,7 +80,7 @@ const Urgency = () => {
                 {String(timeLeft.m).padStart(2, '0')}
               </motion.span>
             </AnimatePresence>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Minutos</span>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-white/60 font-bold">Minutos</span>
           </div>
           <span className="text-5xl md:text-7xl text-white/20 pt-2 font-display">:</span>
           <div className="text-center min-w-[80px] md:min-w-[120px]">
@@ -95,23 +95,24 @@ const Urgency = () => {
                 {String(timeLeft.s).padStart(2, '0')}
               </motion.span>
             </AnimatePresence>
-            <span className="text-[10px] uppercase tracking-[0.2em] text-white/40 font-bold">Segundos</span>
+            <span className="text-[11px] uppercase tracking-[0.2em] text-white/60 font-bold">Segundos</span>
           </div>
         </div>
 
-        <motion.button 
-          whileHover={{ scale: 1.05, y: -5 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={() => {
-            const element = document.getElementById('catalog');
-            if (element) {
-              element.scrollIntoView({ behavior: 'smooth' });
-            }
-          }}
-          className="bg-texto dark:bg-dark-bg text-crema dark:text-dark-text px-16 py-6 rounded-full text-sm font-bold uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-texto/90 dark:hover:bg-dark-bg/90 transition-all"
-        >
-          Armar mi desayuno sorpresa →
-        </motion.button>
+          <motion.button 
+            whileHover={{ scale: 1.05, y: -5 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              const element = document.getElementById('catalog');
+              if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+              }
+            }}
+            className="bg-texto dark:bg-dark-bg text-crema dark:text-dark-text px-16 py-6 rounded-full text-sm font-bold uppercase tracking-[0.2em] shadow-[0_20px_40px_-10px_rgba(0,0,0,0.3)] hover:bg-texto/90 dark:hover:bg-dark-bg/90 transition-all"
+            aria-label="Armar mi desayuno sorpresa ahora"
+          >
+            Armar mi desayuno sorpresa →
+          </motion.button>
       </div>
     </section>
   );

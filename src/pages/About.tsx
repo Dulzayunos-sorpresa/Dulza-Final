@@ -86,8 +86,11 @@ const About: React.FC = () => {
               <div className="aspect-square rounded-2xl overflow-hidden mb-6">
                 <img 
                   src="https://images.unsplash.com/photo-1513442542250-854d436a73f2?ixlib=rb-1.2.1&auto=format&fit=crop&w=800&q=80" 
-                  alt="Dulzayunos Team" 
+                  alt="Equipo de Dulzayunos" 
                   loading="lazy"
+                  width="320"
+                  height="320"
+                  decoding="async"
                   className="w-full h-full object-cover"
                 />
               </div>
@@ -157,7 +160,7 @@ const About: React.FC = () => {
                <h2 className="text-4xl md:text-5xl font-display text-cafe mb-8">Lo que dicen de <span className="text-tostado italic">nosotros.</span></h2>
                <div className="flex flex-col items-center justify-center gap-6">
                    <div className="bg-white px-8 py-4 rounded-full shadow-2xl shadow-tostado/10 flex items-center gap-4 border border-tostado/5">
-                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png" alt="Logo de Google" className="w-6 h-6" />
+                      <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png" alt="Logo de Google" className="w-6 h-6" width="24" height="24" loading="lazy" />
                       <div className="flex flex-col items-start">
                         <div className="flex items-center gap-2">
                           <span className="font-bold text-cafe text-lg">4.9/5</span>
@@ -187,7 +190,7 @@ const About: React.FC = () => {
                   <div key={review.id} className="bg-white rounded-[32px] p-8 shadow-xl shadow-tostado/5 animate-fade-up flex flex-col h-full border border-tostado/5" style={{ animationDelay: `${idx * 100}ms` }}>
                      <div className="flex items-center gap-4 mb-6">
                         {review.image ? (
-                            <img src={review.image} alt={review.name} className="w-12 h-12 rounded-full object-cover shadow-sm" />
+                            <img src={review.image} alt={`Foto de ${review.name}`} className="w-12 h-12 rounded-full object-cover shadow-sm" width="48" height="48" loading="lazy" decoding="async" />
                         ) : (
                             <div className="w-12 h-12 rounded-full bg-crema flex items-center justify-center text-tostado font-bold text-xl">
                                 {review.name.charAt(0)}

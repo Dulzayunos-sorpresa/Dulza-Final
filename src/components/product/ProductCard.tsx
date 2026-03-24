@@ -31,8 +31,11 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           whileHover={{ scale: 1.1 }}
           transition={{ duration: 0.8 }}
           src={product.image} 
-          alt={product.name} 
+          alt={`Imagen de ${product.name}`} 
           loading="lazy"
+          width="400"
+          height="400"
+          decoding="async"
           referrerPolicy="no-referrer"
           className="object-cover w-full h-full"
         />

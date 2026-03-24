@@ -53,30 +53,34 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   return (
     <div className="min-h-screen flex flex-col font-sans bg-crema dark:bg-dark-bg transition-colors duration-300">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-naranja focus:text-white focus:px-4 focus:py-2 focus:rounded-full focus:font-bold">
+        Saltar al contenido principal
+      </a>
       {/* Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-crema/90 dark:bg-dark-bg/90 backdrop-blur-md border-b border-naranja/10 dark:border-white/5">
-        <Link to="/" className="flex flex-col items-start leading-none group">
+        <Link to="/" className="flex flex-col items-start leading-none group" aria-label="Dulzayunos Sorpresa - Inicio">
           <span className="font-display text-xl md:text-2xl text-naranja font-bold tracking-tighter uppercase">
             Dulzayunos
           </span>
-          <span className="text-[8px] md:text-[10px] text-dorado font-medium tracking-[0.2em] uppercase">
+          <span className="text-[10px] md:text-[11px] text-naranja font-bold tracking-[0.2em] uppercase">
             Desayunos Reales
           </span>
         </Link>
 
         {/* Desktop Menu */}
-        <div className="hidden md:flex items-center gap-8">
+        <nav className="hidden md:flex items-center gap-8" aria-label="Menú principal">
           <Link to="/" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Inicio</Link>
           <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Catálogo</a>
           <Link to="/personalizados" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Personalizados</Link>
           <Link to="/empresas" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Empresas</Link>
           <Link to="/nosotros" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Nosotros</Link>
-        </div>
+        </nav>
 
         <div className="flex items-center gap-4">
           <button
             onClick={toggleDarkMode}
             className="p-2 text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors rounded-full hover:bg-rosa-suave dark:hover:bg-white/5"
+            aria-label={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
             title={isDarkMode ? "Modo claro" : "Modo oscuro"}
           >
             {isDarkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
@@ -85,7 +89,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           {user ? (
             <div className="hidden md:flex items-center gap-3 bg-crema/50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-naranja/10 dark:border-white/10">
               {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || 'Foto de perfil'} className="w-6 h-6 rounded-full border border-naranja/20" />
+                <img src={user.photoURL} alt={user.displayName || 'Foto de perfil'} className="w-6 h-6 rounded-full border border-naranja/20" width="24" height="24" loading="lazy" />
               ) : (
                 <User className="w-4 h-4 text-naranja" />
               )}
@@ -95,6 +99,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <button 
                 onClick={() => logout()}
                 className="p-1 hover:text-naranja transition-colors"
+                aria-label="Cerrar sesión"
                 title="Cerrar sesión"
               >
                 <LogOut className="w-3.5 h-3.5" />
@@ -102,7 +107,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </div>
           ) : null}
 
-          <Link to="/carrito" className="relative p-2 text-texto dark:text-dark-text hover:bg-rosa-suave dark:hover:bg-white/5 rounded-full transition-colors group">
+          <Link to="/carrito" className="relative p-2 text-texto dark:text-dark-text hover:bg-rosa-suave dark:hover:bg-white/5 rounded-full transition-colors group" aria-label={`Ver carrito con ${cartCount} productos`}>
             <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
             {cartCount > 0 && (
               <span className="absolute top-0 right-0 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-naranja rounded-full">
@@ -114,13 +119,16 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <button
             onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             className="md:hidden text-texto dark:text-dark-text p-2"
+            aria-label={isMobileMenuOpen ? "Cerrar menú" : "Abrir menú"}
+            aria-expanded={isMobileMenuOpen}
           >
             {isMobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
           </button>
 
             <button 
               onClick={() => navigate('/#catalog')}
-              className="hidden md:block bg-naranja text-white px-6 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest hover:bg-naranja/90 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-naranja/20"
+              className="hidden md:block bg-naranja text-white px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest hover:bg-naranja/90 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-naranja/20"
+              aria-label="Armar mi desayuno personalizado"
             >
               Armar mi desayuno →
             </button>
@@ -159,7 +167,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
       </nav>
 
       {/* Main Content */}
-      <main className="flex-grow pt-16">
+      <main id="main-content" className="flex-grow pt-16">
         {children}
       </main>
 
@@ -181,7 +189,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
                 <span className="font-display text-2xl text-naranja font-bold tracking-tighter uppercase">
                   Dulzayunos
                 </span>
-                <span className="text-[10px] text-dorado font-medium tracking-[0.2em] uppercase">
+                <span className="text-[11px] text-dorado font-bold tracking-[0.2em] uppercase">
                   Desayunos Reales
                 </span>
               </motion.div>
