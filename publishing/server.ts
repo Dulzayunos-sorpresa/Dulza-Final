@@ -50,8 +50,9 @@ try {
 }
 
 // --- UALÁ CONFIG ---
-const UALA_AUTH_URL = "https://auth.ualabis.com.ar/auth/token";
-const UALA_API_URL = "https://api.ualabis.com.ar/checkout";
+const UALA_AUTH_URL = "https://auth.developers.ar.ua.la/v2/api/auth/token";
+const UALA_API_URL = "https://checkout.developers.ar.ua.la/v2/api/checkout";
+const UALA_ORDERS_URL = "https://checkout.developers.ar.ua.la/v2/api/orders";
 const ualaConfig = {
   userName: process.env.UALA_USERNAME,
   clientId: process.env.UALA_CLIENT_ID,
@@ -66,15 +67,30 @@ async function getUalaToken() {
   try {
     console.log(`Fetching Ualá token for user: ${ualaConfig.userName}`);
     const response = await axios.post(UALA_AUTH_URL, {
-      user_name: ualaConfig.userName,
+      username: ualaConfig.userName,
       client_id: ualaConfig.clientId,
-      client_secret: ualaConfig.clientSecret,
+      client_secret_id: ualaConfig.clientSecret,
       grant_type: "client_credentials",
     });
     console.log("Ualá token fetched successfully");
     return response.data.access_token;
   } catch (error: any) {
     console.error("Error getting Ualá token:", error?.response?.data || error.message);
+    return null;
+  }
+}
+
+async function getUalaOrder(uuid: string) {
+  const token = await getUalaToken();
+  if (!token) return null;
+
+  try {
+    const response = await axios.get(`${UALA_ORDERS_URL}/${uuid}`, {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+    return response.data;
+  } catch (error: any) {
+    console.error(`Error fetching Ualá order ${uuid}:`, error?.response?.data || error.message);
     return null;
   }
 }
@@ -89,6 +105,18 @@ app.get("/api/health", (req, res) => {
 // Get all orders (for Migration only, returns empty array now)
 app.get("/api/pedidos", (req, res) => {
   res.json([]);
+});
+
+// Get Ualá order status
+app.get("/api/pedidos/status/:uuid", async (req, res) => {
+  const { uuid } = req.params;
+  const order = await getUalaOrder(uuid);
+  
+  if (!order) {
+    return res.status(404).json({ error: "No se pudo encontrar la orden en Ualá" });
+  }
+  
+  res.json(order);
 });
 
 // Create a new order payment link
@@ -159,10 +187,12 @@ app.post("/api/pedidos", async (req, res) => {
       if (token) {
         try {
           const ualaResponse = await axios.post(UALA_API_URL, {
-            amount: orderData.total,
+            amount: orderData.total.toString(),
             description: `Pedido ${newOrder.id}`,
-            callback_url: `${baseUrl}/carrito?status=success&orderId=${newOrder.id}`,
+            callback_success: `${baseUrl}/carrito?status=success&orderId=${newOrder.id}`,
+            callback_fail: `${baseUrl}/carrito?status=failure&orderId=${newOrder.id}`,
             notification_url: `${baseUrl}/api/webhooks/uala`,
+            external_reference: newOrder.id
           }, {
             headers: { Authorization: `Bearer ${token}` }
           });
