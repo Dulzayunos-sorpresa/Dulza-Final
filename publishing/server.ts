@@ -196,17 +196,19 @@ app.post("/api/pedidos", async (req, res) => {
           }, {
             headers: { Authorization: `Bearer ${token}` }
           });
-          paymentUrl = ualaResponse.data.checkoutLink;
+          
+          // Use the official link provided by Ualá
+          paymentUrl = ualaResponse.data.links?.checkout_link || ualaResponse.data.checkoutLink;
           newOrder.externalPaymentId = ualaResponse.data.uuid;
           console.log(`Ualá checkout created: ${paymentUrl}`);
         } catch (ualaError: any) {
           console.error("Error creating Ualá checkout:", ualaError?.response?.data || ualaError.message);
-          // Fallback to a better mock or error
-          paymentUrl = `https://checkout.ualabis.com.ar/checkout/${newOrder.id}`;
+          // Don't construct manual links that don't exist
+          paymentUrl = null; 
         }
       } else {
-        console.warn("Ualá token not available, using fallback URL");
-        paymentUrl = `https://checkout.ualabis.com.ar/checkout/${newOrder.id}`;
+        console.warn("Ualá token not available");
+        paymentUrl = null;
       }
       newOrder.externalPaymentId = `UALA-${newOrder.id}`;
     } else {
