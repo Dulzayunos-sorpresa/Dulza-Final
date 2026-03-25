@@ -1,11 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { ShoppingBag, Menu, X, User, LogOut, Moon, Sun } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const { cart, user, loginWithGoogle, logout } = useStore();
+  const { cart, user, loginWithGoogle, logout, uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
   const location = useLocation();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
@@ -34,13 +36,25 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
   const handleScrollToCategory = React.useCallback((e: React.MouseEvent, categoryId: string) => {
     e.preventDefault();
+    setIsMobileMenuOpen(false);
+    
+    if (categoryId === 'catalog') {
+      if (location.pathname.startsWith('/catalogo') || location.pathname === '/') {
+        const element = document.getElementById('catalog');
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else {
+        navigate('/catalogo');
+      }
+      return;
+    }
+
     const element = document.getElementById(categoryId);
     
     if (element) {
       const rect = element.getBoundingClientRect();
       const targetTop = rect.top + window.scrollY - 80;
-      
-      setIsMobileMenuOpen(false);
       
       if (location.pathname !== '/') {
         navigate(`/#${categoryId}`);
@@ -51,7 +65,6 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         });
       }
     } else {
-      setIsMobileMenuOpen(false);
       if (location.pathname !== '/') {
         navigate(`/#${categoryId}`);
       }
@@ -59,34 +72,34 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   }, [location.pathname, navigate]);
 
   return (
-    <div className="min-h-screen flex flex-col font-sans bg-crema dark:bg-dark-bg transition-colors duration-300">
-      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] focus:bg-naranja focus:text-white focus:px-4 focus:py-2 focus:rounded-full focus:font-bold">
+    <div className={`min-h-screen flex flex-col font-sans ${theme.bg} dark:bg-dark-bg transition-colors duration-300`}>
+      <a href="#main-content" className={`sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100] ${theme.secondary} focus:text-white focus:px-4 focus:py-2 focus:rounded-full focus:font-bold`}>
         Saltar al contenido principal
       </a>
       {/* Navigation */}
-      <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 bg-crema/90 dark:bg-dark-bg/90 backdrop-blur-md border-b border-naranja/10 dark:border-white/5">
+      <nav className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 md:px-12 py-4 ${theme.bg}/90 dark:bg-dark-bg/90 backdrop-blur-md border-b ${theme.accent}/10 dark:border-white/5`}>
         <Link to="/" className="flex flex-col items-start leading-none group" aria-label="Dulzayunos Sorpresa - Inicio">
-          <span className="font-display text-xl md:text-2xl text-naranja font-bold tracking-tighter uppercase">
+          <span className={`font-display text-xl md:text-2xl ${theme.primary} font-bold tracking-tighter uppercase`}>
             Dulzayunos
           </span>
-          <span className="text-[10px] md:text-[11px] text-naranja font-bold tracking-[0.2em] uppercase">
+          <span className={`text-[10px] md:text-[11px] ${theme.primary} font-bold tracking-[0.2em] uppercase`}>
             Desayunos Reales
           </span>
         </Link>
 
         {/* Desktop Menu */}
         <nav className="hidden md:flex items-center gap-8" aria-label="Menú principal">
-          <Link to="/" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Inicio</Link>
-          <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Catálogo</a>
-          <Link to="/personalizados" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Personalizados</Link>
-          <Link to="/empresas" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Empresas</Link>
-          <Link to="/nosotros" className="text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors uppercase tracking-wider">Nosotros</Link>
+          <Link to="/" className={`text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:${theme.primary} transition-colors uppercase tracking-wider`}>Inicio</Link>
+          <Link to="/catalogo" className={`text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:${theme.primary} transition-colors uppercase tracking-wider`}>Catálogo</Link>
+          <Link to="/personalizados" className={`text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:${theme.primary} transition-colors uppercase tracking-wider`}>Personalizados</Link>
+          <Link to="/empresas" className={`text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:${theme.primary} transition-colors uppercase tracking-wider`}>Empresas</Link>
+          <Link to="/nosotros" className={`text-xs font-semibold text-texto/70 dark:text-dark-text/70 hover:${theme.primary} transition-colors uppercase tracking-wider`}>Nosotros</Link>
         </nav>
 
         <div className="flex items-center gap-4">
           <button
             onClick={toggleDarkMode}
-            className="p-2 text-texto/70 dark:text-dark-text/70 hover:text-naranja transition-colors rounded-full hover:bg-rosa-suave dark:hover:bg-white/5"
+            className={`p-2 text-texto/70 dark:text-dark-text/70 hover:${theme.primary} transition-colors rounded-full hover:bg-rosa-suave dark:hover:bg-white/5`}
             aria-label={isDarkMode ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
             title={isDarkMode ? "Modo claro" : "Modo oscuro"}
           >
@@ -94,18 +107,18 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           </button>
 
           {user ? (
-            <div className="hidden md:flex items-center gap-3 bg-crema/50 dark:bg-white/5 px-3 py-1.5 rounded-full border border-naranja/10 dark:border-white/10">
+            <div className={`hidden md:flex items-center gap-3 ${theme.bg}/50 dark:bg-white/5 px-3 py-1.5 rounded-full border ${theme.accent}/10 dark:border-white/10`}>
               {user.photoURL ? (
-                <img src={user.photoURL} alt={user.displayName || 'Foto de perfil'} className="w-6 h-6 rounded-full border border-naranja/20" width="24" height="24" loading="lazy" />
+                <img src={user.photoURL} alt={user.displayName || 'Foto de perfil'} className={`w-6 h-6 rounded-full border ${theme.accent}/20`} width="24" height="24" loading="lazy" />
               ) : (
-                <User className="w-4 h-4 text-naranja" />
+                <User className={`w-4 h-4 ${theme.primary}`} />
               )}
               <span className="text-[10px] font-bold text-texto/60 uppercase tracking-wider max-w-[80px] truncate">
                 {user.displayName?.split(' ')[0]}
               </span>
               <button 
                 onClick={() => logout()}
-                className="p-1 hover:text-naranja transition-colors"
+                className={`p-1 hover:${theme.primary} transition-colors`}
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
               >
@@ -117,7 +130,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <Link to="/carrito" className="relative p-2 text-texto dark:text-dark-text hover:bg-rosa-suave dark:hover:bg-white/5 rounded-full transition-colors group" aria-label={`Ver carrito con ${cartCount} productos`}>
             <ShoppingBag className="h-5 w-5 transition-transform group-hover:scale-110" />
             {cartCount > 0 && (
-              <span className="absolute top-0 right-0 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white bg-naranja rounded-full">
+              <span className={`absolute top-0 right-0 flex items-center justify-center w-4 h-4 text-[10px] font-bold text-white ${theme.secondary} rounded-full`}>
                 {cartCount}
               </span>
             )}
@@ -134,7 +147,7 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
             <button 
               onClick={() => navigate('/#catalog')}
-              className="hidden md:block bg-naranja text-white px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest hover:bg-naranja/90 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-naranja/20"
+              className={`hidden md:block ${theme.secondary} text-white px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest hover:opacity-90 transition-all transform hover:-translate-y-0.5 shadow-lg shadow-brand-200`}
               aria-label="Armar mi desayuno personalizado"
             >
               Armar mi desayuno →
@@ -149,22 +162,22 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               animate={{ opacity: 1, y: 0 }}
                exit={{ opacity: 0, y: -20 }}
               transition={{ duration: 0.2 }}
-              className="absolute top-full left-0 right-0 bg-crema dark:bg-dark-bg border-b border-naranja/10 dark:border-white/5 p-6 flex flex-col gap-4 md:hidden shadow-xl"
+              className={`absolute top-full left-0 right-0 ${theme.bg} dark:bg-dark-bg border-b ${theme.accent}/10 dark:border-white/5 p-6 flex flex-col gap-4 md:hidden shadow-xl`}
             >
               <Link to="/" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Inicio</Link>
-              <a href="/#catalog" onClick={(e) => handleScrollToCategory(e, 'catalog')} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Catálogo</a>
+              <Link to="/catalogo" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Catálogo</Link>
               <Link to="/personalizados" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Personalizados</Link>
               <Link to="/empresas" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Empresas</Link>
               <Link to="/nosotros" onClick={() => setIsMobileMenuOpen(false)} className="text-lg font-display font-bold text-texto dark:text-dark-text uppercase tracking-tight">Nosotros</Link>
               
-              <div className="pt-4 border-t border-naranja/10 dark:border-white/5 mt-2">
+              <div className={`pt-4 border-t ${theme.accent}/10 dark:border-white/5 mt-2`}>
                 {user ? (
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       {user.photoURL && <img src={user.photoURL} alt="Foto de perfil del usuario" className="w-8 h-8 rounded-full" />}
                       <span className="font-bold text-texto dark:text-dark-text">{user.displayName}</span>
                     </div>
-                    <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className="text-naranja font-bold text-sm uppercase tracking-widest">Salir</button>
+                    <button onClick={() => { logout(); setIsMobileMenuOpen(false); }} className={`${theme.primary} font-bold text-sm uppercase tracking-widest`}>Salir</button>
                   </div>
                 ) : null}
               </div>
@@ -184,15 +197,15 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
           <div className="flex flex-col md:flex-row justify-between gap-12 mb-16">
             <div className="max-w-xs">
               <div className="flex flex-col items-start leading-none mb-6">
-                <span className="font-display text-2xl text-naranja font-bold tracking-tighter uppercase">
+                <span className={`font-display text-2xl ${theme.primary} font-bold tracking-tighter uppercase`}>
                   Dulzayunos
                 </span>
-                <span className="text-[11px] text-dorado font-bold tracking-[0.2em] uppercase">
+                <span className={`text-[11px] ${theme.primary} opacity-70 font-bold tracking-[0.2em] uppercase`}>
                   Desayunos Reales
                 </span>
               </div>
               <p className="text-sm leading-relaxed text-crema/40">
-                "Se nota que lo pensaste." Transformando momentos cotidianos en recuerdos inolvidables con desayunos artesanales y experiencias reales.
+                {uiContent.hero_subtitle}
               </p>
             </div>
 
@@ -200,28 +213,28 @@ const Layout: React.FC<{ children: React.ReactNode }> = ({ children }) => {
               <div className="space-y-4">
                 <h4 className="text-[10px] uppercase tracking-[2px] text-crema/30 font-bold">Menú</h4>
                 <div className="flex flex-col gap-2">
-                  <Link to="/" className="text-sm text-crema/60 hover:text-naranja transition-colors">Inicio</Link>
-                  <a href="/#catalog" className="text-sm text-crema/60 hover:text-naranja transition-colors">Catálogo</a>
-                  <Link to="/personalizados" className="text-sm text-crema/60 hover:text-naranja transition-colors">Personalizados</Link>
-                  <Link to="/empresas" className="text-sm text-crema/60 hover:text-naranja transition-colors">Empresas</Link>
+                  <Link to="/" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Inicio</Link>
+                  <Link to="/catalogo" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Catálogo</Link>
+                  <Link to="/personalizados" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Personalizados</Link>
+                  <Link to="/empresas" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Empresas</Link>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-[10px] uppercase tracking-[2px] text-crema/30 font-bold">Nosotros</h4>
                 <div className="flex flex-col gap-2">
-                  <Link to="/nosotros" className="text-sm text-crema/60 hover:text-naranja transition-colors">Quiénes somos</Link>
-                  <Link to="/nosotros" className="text-sm text-crema/60 hover:text-naranja transition-colors">Cómo trabajamos</Link>
-                  <Link to="/nosotros" className="text-sm text-crema/60 hover:text-naranja transition-colors">Zona de cobertura</Link>
+                  <Link to="/nosotros" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Quiénes somos</Link>
+                  <Link to="/nosotros" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Cómo trabajamos</Link>
+                  <Link to="/nosotros" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Zona de cobertura</Link>
                 </div>
               </div>
 
               <div className="space-y-4">
                 <h4 className="text-[10px] uppercase tracking-[2px] text-crema/30 font-bold">Contacto</h4>
                 <div className="flex flex-col gap-2">
-                  <a href="https://instagram.com/dulzayunos.sorpresa" target="_blank" rel="noopener noreferrer" className="text-sm text-crema/60 hover:text-naranja transition-colors">Instagram</a>
-                  <a href="https://wa.me/5493512261245" target="_blank" rel="noopener noreferrer" className="text-sm text-crema/60 hover:text-naranja transition-colors">WhatsApp</a>
-                  <a href="https://tiktok.com/@dulzayunos" target="_blank" rel="noopener noreferrer" className="text-sm text-crema/60 hover:text-naranja transition-colors">TikTok</a>
+                  <a href="https://instagram.com/dulzayunos.sorpresa" target="_blank" rel="noopener noreferrer" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>Instagram</a>
+                  <a href="https://wa.me/5493512261245" target="_blank" rel="noopener noreferrer" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>WhatsApp</a>
+                  <a href="https://tiktok.com/@dulzayunos" target="_blank" rel="noopener noreferrer" className={`text-sm text-crema/60 hover:${theme.primary} transition-colors`}>TikTok</a>
                 </div>
               </div>
             </div>

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   Search, 
   ShoppingCart, 
@@ -19,12 +19,14 @@ import {
   Volume2,
   VolumeX
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useStore } from '@/context/store';
-import { OrderStatus, PaymentStatus, Order } from '@/types';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import { OrderStatus, PaymentStatus, Order, PaymentMethod, TransferAccount } from '@/types';
 import { formatOrderToWhatsApp } from '@/utils/orderUtils';
 import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import { PrinterService } from '@/services/PrinterService';
-import { NotificationService } from '@/services/NotificationService';
+import { NotificationService, NOTIFICATION_SOUNDS } from '@/services/NotificationService';
 
 interface OrderCardProps {
   order: Order;
@@ -33,10 +35,11 @@ interface OrderCardProps {
   updateOrderStatus: (id: string, status: OrderStatus) => void;
   updateOrderPaymentStatus: (id: string, status: PaymentStatus) => void;
   updateOrderShipping: (id: string, cost: number, zone: string) => void;
-  deleteOrder: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
   hasFreeDelivery: (order: Order) => boolean;
   getGoogleMapsLink: (order: Order) => string;
   SHIPPING_ZONES: { name: string; cost: number }[];
+  transferAccounts: TransferAccount[];
 }
 
 const OrderCard: React.FC<OrderCardProps> = React.memo(({ 
@@ -46,10 +49,11 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({
   updateOrderStatus, 
   updateOrderPaymentStatus, 
   updateOrderShipping,
-  deleteOrder,
+  onDeleteRequest,
   hasFreeDelivery,
   getGoogleMapsLink,
-  SHIPPING_ZONES
+  SHIPPING_ZONES,
+  transferAccounts
 }) => {
   return (
     <motion.div 
@@ -123,6 +127,24 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({
               <CreditCard className="w-3.5 h-3.5 text-stone-400 shrink-0" />
               <span className="text-stone-700 font-medium">{order.paymentMethod}</span>
             </div>
+            {order.paymentMethod === PaymentMethod.TRANSFERENCIA && order.transferAccountId && (
+              <div className="flex items-start gap-2 text-[10px] mt-1 p-2 bg-stone-50 rounded-lg border border-stone-100">
+                <div className="text-stone-600 space-y-0.5">
+                  {(() => {
+                    const account = transferAccounts.find(a => a.id === order.transferAccountId);
+                    if (!account) return <span className="text-red-500 italic">Cuenta no encontrada</span>;
+                    return (
+                      <>
+                        <p className="font-bold text-stone-900 leading-none mb-1">{account.bankName}</p>
+                        <p className="text-[9px]">{account.accountHolder}</p>
+                        <p className="font-mono text-[8px] opacity-70">{account.cbu}</p>
+                        <p className="text-brand-600 font-medium text-[9px]">Alias: {account.alias}</p>
+                      </>
+                    );
+                  })()}
+                </div>
+              </div>
+            )}
             {order.recipientName && (
               <div className="flex items-start gap-2 text-[11px]">
                 <UserIcon className="w-3.5 h-3.5 text-stone-400 shrink-0 mt-0.5" />
@@ -257,7 +279,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({
                 trackEvent(AnalyticsEvents.ORDER_PRINTED, { orderId: order.id });
               } catch (err) {
                 console.error('Error al imprimir:', err);
-                alert('Error al imprimir. Verifique la conexión con la impresora.');
+                toast.error('Error al imprimir. Verifique la conexión con la impresora.');
               }
             }}
             className="p-2 bg-white text-stone-400 hover:text-brand-600 border border-stone-200 rounded-lg transition-all"
@@ -267,7 +289,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({
           </button>
           <button 
             onClick={() => {
-              const text = formatOrderToWhatsApp(order, products);
+              const text = formatOrderToWhatsApp(order, products, transferAccounts);
               const url = `https://wa.me/${order.customerPhone.replace(/\D/g, '')}?text=${encodeURIComponent(text)}`;
               window.open(url, '_blank');
             }}
@@ -277,11 +299,7 @@ const OrderCard: React.FC<OrderCardProps> = React.memo(({
             <Send className="w-4 h-4" />
           </button>
           <button 
-            onClick={() => {
-              if(confirm('¿Estás seguro de eliminar este pedido?')) {
-                deleteOrder(order.id);
-              }
-            }}
+            onClick={() => onDeleteRequest(order.id)}
             className="p-2 bg-white text-stone-400 hover:text-red-600 border border-stone-200 rounded-lg transition-all"
             title="Eliminar Pedido"
           >
@@ -297,6 +315,7 @@ const OrdersManager: React.FC = () => {
   const { 
     orders, 
     products, 
+    transferAccounts,
     updateOrderStatus, 
     updateOrderPaymentStatus, 
     updateOrderShipping,
@@ -305,7 +324,9 @@ const OrdersManager: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'TODOS'>('TODOS');
 
+  const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => NotificationService.getEnabled());
+  const [selectedSoundId, setSelectedSoundId] = useState(() => NotificationService.getSelectedSoundId());
 
   const toggleSound = () => {
     const newState = !isSoundEnabled;
@@ -314,6 +335,11 @@ const OrdersManager: React.FC = () => {
     if (newState) {
       NotificationService.playNewOrderSound(); // Test sound
     }
+  };
+
+  const changeSound = (soundId: string) => {
+    setSelectedSoundId(soundId);
+    NotificationService.setSound(soundId);
   };
 
   const SHIPPING_ZONES = React.useMemo(() => [
@@ -393,6 +419,24 @@ const OrdersManager: React.FC = () => {
             )}
             {isSoundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
           </button>
+          
+          <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-200">
+            <span className="text-[10px] font-bold text-stone-400 uppercase px-2">Sonido:</span>
+            {NOTIFICATION_SOUNDS.map(sound => (
+              <button
+                key={sound.id}
+                onClick={() => changeSound(sound.id)}
+                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                  selectedSoundId === sound.id 
+                    ? 'bg-brand-500 text-white shadow-sm' 
+                    : 'text-stone-500 hover:bg-stone-200'
+                }`}
+              >
+                {sound.name}
+              </button>
+            ))}
+          </div>
+
           <div className="h-8 w-px bg-stone-100 mx-1 hidden lg:block" />
           {['TODOS', ...Object.values(OrderStatus)].map(status => (
             <button
@@ -438,10 +482,11 @@ const OrdersManager: React.FC = () => {
                       updateOrderStatus={updateOrderStatus}
                       updateOrderPaymentStatus={updateOrderPaymentStatus}
                       updateOrderShipping={updateOrderShipping}
-                      deleteOrder={deleteOrder}
+                      onDeleteRequest={setOrderToDelete}
                       hasFreeDelivery={hasFreeDelivery}
                       getGoogleMapsLink={getGoogleMapsLink}
                       SHIPPING_ZONES={SHIPPING_ZONES}
+                      transferAccounts={transferAccounts}
                     />
                   ))}
                 </div>
@@ -450,6 +495,20 @@ const OrdersManager: React.FC = () => {
           })}
         </div>
       )}
+
+      <ConfirmDialog 
+        isOpen={!!orderToDelete}
+        title="¿Eliminar pedido?"
+        description="Esta acción no se puede deshacer. El pedido será eliminado permanentemente de la base de datos."
+        confirmText="Eliminar"
+        onConfirm={() => {
+          if (orderToDelete) {
+            deleteOrder(orderToDelete);
+            toast.success('Pedido eliminado correctamente');
+          }
+        }}
+        onCancel={() => setOrderToDelete(null)}
+      />
     </motion.div>
   );
 };

@@ -1,6 +1,8 @@
 import React from 'react';
 import { Star, ExternalLink } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const GeoStripes = ({ className }: { className?: string }) => (
   <svg viewBox="0 0 100 100" className={className} fill="currentColor">
@@ -13,6 +15,8 @@ const GeoStripes = ({ className }: { className?: string }) => (
 );
 
 const About: React.FC = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
   const reviews = [
     {
       id: 1,
@@ -49,37 +53,37 @@ const About: React.FC = () => {
   ];
 
   return (
-    <div className="bg-blanco min-h-screen animate-fade-in overflow-hidden">
+    <div className={`${theme.bg} min-h-screen animate-fade-in overflow-hidden`}>
       {/* Hero Section */}
       <section className="min-h-[80vh] grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none noise-pattern"></div>
 
         <div className="flex flex-col justify-center px-6 md:px-20 py-20 relative z-10">
-          <p className="text-[10px] tracking-[2.5px] uppercase text-tostado font-bold mb-6 animate-fade-up">
-            Nuestra Historia
+          <p className={`text-[10px] tracking-[2.5px] uppercase ${theme.primary} font-bold mb-6 animate-fade-up`}>
+            {theme.emoji} Nuestra Historia
           </p>
-          <h1 className="text-5xl md:text-7xl font-display text-cafe leading-[1.08] mb-8 animate-fade-up delay-100">
+          <h1 className={`text-5xl md:text-7xl font-display ${theme.text} leading-[1.08] mb-8 animate-fade-up delay-100`}>
             Regalamos <br />
-            <span className="text-tostado italic">emociones,</span> <br />
+            <span className={`${theme.primary} italic`}>emociones,</span> <br />
             no solo desayunos.
           </h1>
-          <p className="text-lg text-cafe-medio leading-relaxed max-w-lg mb-12 font-light animate-fade-up delay-200">
-            En Dulzayunos Sorpresa diseñamos experiencias que se recuerdan. No enviamos cajas: creamos momentos pensados para emocionar, sorprender y decir lo que a veces las palabras no alcanzan.
+          <p className={`text-lg ${theme.text} opacity-70 leading-relaxed max-w-lg mb-12 font-light animate-fade-up delay-200`}>
+            {uiContent.about_text}
           </p>
           
           <div className="flex flex-wrap gap-4 animate-fade-up delay-300">
             <Link 
               to="/"
-              className="bg-tostado text-white px-10 py-4 rounded-full text-sm font-bold shadow-2xl shadow-tostado/40 hover:bg-cafe transition-all transform hover:-translate-y-1"
+              className={`${theme.secondary} text-white px-10 py-4 rounded-full text-sm font-bold shadow-2xl shadow-brand-200 hover:opacity-90 transition-all transform hover:-translate-y-1`}
             >
               Ver catálogo
             </Link>
           </div>
         </div>
 
-        <div className="relative flex items-center justify-center bg-crema overflow-hidden min-h-[500px]">
+        <div className={`relative flex items-center justify-center ${theme.heroBg} overflow-hidden min-h-[500px]`}>
           <div className="absolute inset-0 opacity-20">
-             <GeoStripes className="w-full h-full text-tostado" />
+             <GeoStripes className={`w-full h-full ${theme.primary}`} />
           </div>
           <div className="relative z-10 animate-scale-in delay-200">
             <div className="w-[320px] bg-white rounded-[32px] p-8 shadow-2xl relative">
@@ -95,8 +99,8 @@ const About: React.FC = () => {
                 />
               </div>
               <div className="text-center">
-                <p className="text-[10px] text-tostado font-bold uppercase tracking-widest mb-2">Desde 2018</p>
-                <p className="font-display italic text-cafe text-lg">"Hecho con amor en Córdoba"</p>
+                <p className={`text-[10px] ${theme.primary} font-bold uppercase tracking-widest mb-2`}>Desde 2018</p>
+                <p className={`font-display italic ${theme.text} text-lg`}>"Hecho con amor en Córdoba"</p>
               </div>
             </div>
           </div>
@@ -104,12 +108,12 @@ const About: React.FC = () => {
       </section>
 
       {/* Values Section */}
-      <div className="py-32 bg-white relative z-20">
+      <div className="py-32 bg-white dark:bg-dark-surface relative z-20">
         <div className="max-w-7xl mx-auto px-6 md:px-20">
           <div className="mb-20 animate-fade-up">
-            <p className="text-[10px] tracking-[2.5px] uppercase text-tostado font-bold mb-4">Por qué nos eligen</p>
-            <h2 className="text-4xl md:text-5xl font-display text-cafe leading-[1.15]">
-              Nuestros <span className="text-tostado italic">Valores.</span>
+            <p className={`text-[10px] tracking-[2.5px] uppercase ${theme.primary} font-bold mb-4`}>Por qué nos eligen</p>
+            <h2 className={`text-4xl md:text-5xl font-display ${theme.text} dark:text-dark-text leading-[1.15]`}>
+              Nuestros <span className={`${theme.primary} italic`}>Valores.</span>
             </h2>
           </div>
 
@@ -137,12 +141,12 @@ const About: React.FC = () => {
               },
             ].map((feature, idx) => (
               <div key={feature.title} className="flex gap-8 animate-fade-up" style={{ animationDelay: `${idx * 100}ms` }}>
-                <div className="w-16 h-16 rounded-3xl bg-crema flex items-center justify-center text-3xl shrink-0 shadow-sm">
+                <div className={`w-16 h-16 rounded-3xl ${theme.heroBg} flex items-center justify-center text-3xl shrink-0 shadow-sm`}>
                   {feature.icon}
                 </div>
                 <div>
-                  <h3 className="text-xl font-display text-cafe mb-3">{feature.title}</h3>
-                  <p className="text-cafe-medio leading-relaxed font-light text-sm">
+                  <h3 className={`text-xl font-display ${theme.text} dark:text-dark-text mb-3`}>{feature.title}</h3>
+                  <p className={`${theme.text} opacity-70 dark:text-dark-text-muted leading-relaxed font-light text-sm`}>
                     {feature.description}
                   </p>
                 </div>
@@ -153,24 +157,24 @@ const About: React.FC = () => {
       </div>
 
       {/* Reviews Section */}
-      <div className="py-32 bg-crema/30">
+      <div className={`py-32 ${theme.heroBg}/30`}>
          <div className="max-w-7xl mx-auto px-6 md:px-20">
             <div className="text-center mb-20 animate-fade-up">
-               <p className="text-[10px] tracking-[2.5px] uppercase text-tostado font-bold mb-4">Clientes Felices</p>
-               <h2 className="text-4xl md:text-5xl font-display text-cafe mb-8">Lo que dicen de <span className="text-tostado italic">nosotros.</span></h2>
+               <p className={`text-[10px] tracking-[2.5px] uppercase ${theme.primary} font-bold mb-4`}>Clientes Felices</p>
+               <h2 className={`text-4xl md:text-5xl font-display ${theme.text} mb-8`}>Lo que dicen de <span className={`${theme.primary} italic`}>nosotros.</span></h2>
                <div className="flex flex-col items-center justify-center gap-6">
-                   <div className="bg-white px-8 py-4 rounded-full shadow-2xl shadow-tostado/10 flex items-center gap-4 border border-tostado/5">
+                   <div className={`bg-white px-8 py-4 rounded-full shadow-2xl shadow-brand-500/10 flex items-center gap-4 border border-brand-500/5`}>
                       <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Google_%22G%22_logo.svg/768px-Google_%22G%22_logo.svg.png" alt="Logo de Google" className="w-6 h-6" width="24" height="24" loading="lazy" />
                       <div className="flex flex-col items-start">
                         <div className="flex items-center gap-2">
-                          <span className="font-bold text-cafe text-lg">4.9/5</span>
+                          <span className={`font-bold ${theme.text} text-lg`}>4.9/5</span>
                           <div className="flex">
                             {[...Array(5)].map((_, i) => (
-                               <Star key={i} className="h-4 w-4 fill-tostado text-tostado" />
+                               <Star key={i} className={`h-4 w-4 fill-brand-500 ${theme.primary}`} />
                             ))}
                           </div>
                         </div>
-                        <span className="text-[10px] text-cafe-medio/60 uppercase tracking-widest font-bold">120+ reseñas en Google</span>
+                        <span className={`text-[10px] ${theme.text} opacity-60 uppercase tracking-widest font-bold`}>120+ reseñas en Google</span>
                       </div>
                    </div>
                    
@@ -178,7 +182,7 @@ const About: React.FC = () => {
                      href="https://www.google.com/maps/place/Dulzayunos+Desayunos+Sorpresa/@-31.4086471,-64.1949173,645m/data=!3m1!1e3!4m8!3m7!1s0x94329887584e4a73:0xfc168a7c46cdfb3f!8m2!3d-31.4086471!4d-64.1949173!9m1!1b1!16s%2Fg%2F11c0tjhdft?entry=ttu&g_ep=EgoyMDI2MDEyNS4wIKXMDSoASAFQAw%3D%3D" 
                      target="_blank" 
                      rel="noopener noreferrer"
-                     className="text-tostado hover:text-cafe font-bold text-sm flex items-center gap-2 transition-colors"
+                     className={`${theme.primary} hover:opacity-80 font-bold text-sm flex items-center gap-2 transition-colors`}
                    >
                      Ver todas las reseñas <ExternalLink className="w-4 h-4" />
                    </a>
@@ -187,26 +191,26 @@ const About: React.FC = () => {
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
                {reviews.map((review, idx) => (
-                  <div key={review.id} className="bg-white rounded-[32px] p-8 shadow-xl shadow-tostado/5 animate-fade-up flex flex-col h-full border border-tostado/5" style={{ animationDelay: `${idx * 100}ms` }}>
+                  <div key={review.id} className={`bg-white rounded-[32px] p-8 shadow-xl shadow-brand-500/5 animate-fade-up flex flex-col h-full border border-brand-500/5`} style={{ animationDelay: `${idx * 100}ms` }}>
                      <div className="flex items-center gap-4 mb-6">
                         {review.image ? (
                             <img src={review.image} alt={`Foto de ${review.name}`} className="w-12 h-12 rounded-full object-cover shadow-sm" width="48" height="48" loading="lazy" decoding="async" />
                         ) : (
-                            <div className="w-12 h-12 rounded-full bg-crema flex items-center justify-center text-tostado font-bold text-xl">
+                            <div className={`w-12 h-12 rounded-full ${theme.heroBg} flex items-center justify-center ${theme.primary} font-bold text-xl`}>
                                 {review.name.charAt(0)}
                             </div>
                         )}
                         <div>
-                            <span className="font-display text-cafe block leading-tight">{review.name}</span>
-                            <span className="text-[10px] text-cafe-medio/40 uppercase tracking-wider font-bold">{review.date}</span>
+                            <span className={`font-display ${theme.text} block leading-tight`}>{review.name}</span>
+                            <span className={`text-[10px] ${theme.text} opacity-40 uppercase tracking-wider font-bold`}>{review.date}</span>
                         </div>
                      </div>
                      <div className="flex gap-0.5 mb-4">
                         {[...Array(review.stars)].map((_, i) => (
-                           <Star key={i} className="h-3 w-3 fill-tostado text-tostado" />
+                           <Star key={i} className={`h-3 w-3 fill-brand-500 ${theme.primary}`} />
                         ))}
                      </div>
-                     <p className="text-cafe-medio text-sm leading-relaxed flex-1 font-light italic">"{review.text}"</p>
+                     <p className={`${theme.text} opacity-70 text-sm leading-relaxed flex-1 font-light italic`}>"{review.text}"</p>
                   </div>
                ))}
             </div>

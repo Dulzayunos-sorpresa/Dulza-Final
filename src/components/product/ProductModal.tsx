@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { X, ShoppingCart, ChevronRight, ChevronLeft, Check, AlertCircle, Clock, Star, Info } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { Product, ProductOption } from '@/types';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 interface ProductModalProps {
   product: Product | null;
@@ -11,6 +13,8 @@ interface ProductModalProps {
 }
 
 const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, onAddToCart }) => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
   const [quantity, setQuantity] = useState(1);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string[]>>({});
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
@@ -104,7 +108,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.98 }}
             transition={{ duration: 0.2 }}
-            className="relative w-full max-w-5xl bg-crema dark:bg-dark-bg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]"
+            className={`relative w-full max-w-5xl ${theme.heroBg} dark:bg-dark-bg rounded-[2rem] shadow-2xl overflow-hidden flex flex-col md:flex-row max-h-[90vh]`}
           >
             {/* Close Button */}
             <button
@@ -146,12 +150,12 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
               {/* Badges */}
               <div className="absolute top-6 left-6 flex flex-col gap-2">
                 {isNew && (
-                  <span className="bg-dorado text-texto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                  <span className={`bg-dorado text-texto text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
                     Nuevo
                   </span>
                 )}
                 {isPopular && (
-                  <span className="bg-naranja text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg">
+                  <span className={`${theme.secondary} text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider shadow-lg`}>
                     Más Vendido
                   </span>
                 )}
@@ -159,7 +163,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
             </div>
 
             {/* Right Side: Content */}
-            <div className="w-full md:w-1/2 flex flex-col bg-crema dark:bg-dark-bg min-h-0">
+            <div className={`w-full md:w-1/2 flex flex-col ${theme.heroBg} dark:bg-dark-bg min-h-0`}>
               <div className="flex-1 overflow-y-auto p-6 sm:p-10 custom-scrollbar max-h-full">
                 <AnimatePresence mode="wait">
                   {step === -1 ? (
@@ -180,24 +184,24 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                         )}
                         <h2 className="text-3xl sm:text-4xl font-bold text-texto dark:text-dark-text leading-tight">{product.name}</h2>
                         <div className="flex items-baseline gap-3">
-                          <span className="text-3xl font-bold text-naranja">${(product.price || 0).toLocaleString()}</span>
+                          <span className={`text-3xl font-bold ${theme.primary}`}>${(product.price || 0).toLocaleString()}</span>
                           {product.oldPrice && (
                             <span className="text-lg text-texto/40 dark:text-dark-text-muted/40 line-through">${product.oldPrice.toLocaleString()}</span>
                           )}
                         </div>
                       </div>
 
-                      <div className="p-6 bg-white/50 dark:bg-dark-surface/50 rounded-2xl border border-naranja/10 dark:border-white/5 space-y-4">
+                      <div className={`p-6 bg-white/50 dark:bg-dark-surface/50 rounded-2xl border border-brand-500/10 dark:border-white/5 space-y-4`}>
                         <p className="text-texto/70 dark:text-dark-text-muted leading-relaxed text-sm sm:text-base whitespace-pre-line">
                           {product.description}
                         </p>
                         <div className="flex flex-wrap gap-4 pt-2">
                           <div className="flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 text-xs font-medium">
-                            <Clock size={14} className="text-naranja" />
+                            <Clock size={14} className={`${theme.primary}`} />
                             <span>Entrega en 24hs</span>
                           </div>
                           <div className="flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 text-xs font-medium">
-                            <Info size={14} className="text-naranja" />
+                            <Info size={14} className={`${theme.primary}`} />
                             <span>Personalizable</span>
                           </div>
                         </div>
@@ -216,7 +220,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                     >
                       <button 
                         onClick={() => setStep(step - 1)}
-                        className="flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 hover:text-naranja transition-colors text-xs font-bold uppercase tracking-widest group"
+                        className={`flex items-center gap-2 text-texto/60 dark:text-dark-text-muted/60 hover:${theme.primary} transition-colors text-xs font-bold uppercase tracking-widest group`}
                       >
                         <ChevronLeft size={16} className="group-hover:-translate-x-1 transition-transform" />
                         {step === 0 ? 'Volver a detalles' : 'Anterior'}
@@ -234,7 +238,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                               <div className="space-y-1">
                                 <h3 className="font-bold text-texto dark:text-dark-text flex items-center gap-2">
                                   {product.options[step].name}
-                                  {product.options[step].isRequired && <span className="text-naranja text-[10px] uppercase tracking-widest bg-naranja/10 px-2 py-0.5 rounded-full">Obligatorio</span>}
+                                  {product.options[step].isRequired && <span className={`${theme.secondary} text-white text-[10px] uppercase tracking-widest px-2 py-0.5 rounded-full`}>Obligatorio</span>}
                                 </h3>
                                 <p className="text-xs text-texto/50 dark:text-dark-text-muted/50">
                                   {product.options[step].type === 'multi-select' ? 'Podés elegir varios' : 'Elegí una opción'}
@@ -251,13 +255,13 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                                     onClick={() => handleOptionToggle(product.options![step].name, valId, product.options![step].type === 'multi-select')}
                                     className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all text-left group ${
                                       isSelected 
-                                        ? 'border-naranja bg-naranja/5 dark:bg-naranja/10 shadow-lg shadow-naranja/5' 
-                                        : 'border-naranja/10 dark:border-white/5 bg-white dark:bg-dark-surface hover:border-naranja/30 hover:bg-naranja/[0.02] dark:hover:bg-naranja/[0.05]'
+                                        ? `border-brand-500 bg-brand-500/5 dark:bg-brand-500/10 shadow-lg shadow-brand-500/5` 
+                                        : `border-brand-500/10 dark:border-white/5 bg-white dark:bg-dark-surface hover:border-brand-500/30 hover:bg-brand-500/[0.02] dark:hover:bg-brand-500/[0.05]`
                                     }`}
                                   >
                                     <div className="flex items-center gap-4">
                                       <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all ${
-                                        isSelected ? 'bg-naranja border-naranja' : 'border-naranja/20 dark:border-white/20 group-hover:border-naranja/40'
+                                        isSelected ? `${theme.secondary} border-brand-500` : `border-brand-500/20 dark:border-white/20 group-hover:border-brand-500/40`
                                       }`}>
                                         {isSelected && <Check size={14} className="text-white" />}
                                       </div>
@@ -266,7 +270,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                                       </span>
                                     </div>
                                     {val.price && (
-                                      <span className={`text-sm font-bold ${isSelected ? 'text-naranja' : 'text-texto/40 dark:text-dark-text-muted/40'}`}>
+                                      <span className={`text-sm font-bold ${isSelected ? `${theme.primary}` : 'text-texto/40 dark:text-dark-text-muted/40'}`}>
                                         +${val.price.toLocaleString()}
                                       </span>
                                     )}
@@ -283,7 +287,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
               </div>
 
               {/* Footer */}
-              <div className="p-6 sm:p-10 bg-white dark:bg-dark-surface border-t border-naranja/5 dark:border-white/5 sticky bottom-0 flex flex-col gap-4 z-40">
+              <div className={`p-6 sm:p-10 bg-white dark:bg-dark-surface border-t border-brand-500/5 dark:border-white/5 sticky bottom-0 flex flex-col gap-4 z-40`}>
                 {product.stock !== undefined && product.stock < 5 && product.stock > 0 && (
                   <div className="flex items-center gap-1.5 text-xs font-bold text-red-500 bg-red-50 dark:bg-red-900/20 px-3 py-2 rounded-lg w-full justify-center uppercase tracking-wider">
                     <AlertCircle size={14} />
@@ -305,17 +309,17 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                   )}
                   {step === -1 ? (
                     <>
-                      <div className="flex items-center bg-crema dark:bg-dark-bg rounded-full overflow-hidden h-14 shrink-0">
+                      <div className={`flex items-center ${theme.heroBg} dark:bg-dark-bg rounded-full overflow-hidden h-14 shrink-0`}>
                         <button 
                           onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                          className="px-6 h-full hover:bg-naranja/10 transition-colors text-texto dark:text-dark-text font-bold"
+                          className={`px-6 h-full hover:${theme.primary}/10 transition-colors text-texto dark:text-dark-text font-bold`}
                         >
                           -
                         </button>
                         <span className="w-10 text-center font-bold text-texto dark:text-dark-text text-sm">{quantity}</span>
                         <button 
                           onClick={() => setQuantity(quantity + 1)}
-                          className="px-6 h-full hover:bg-naranja/10 transition-colors text-texto dark:text-dark-text font-bold"
+                          className={`px-6 h-full hover:${theme.primary}/10 transition-colors text-texto dark:text-dark-text font-bold`}
                         >
                           +
                         </button>
@@ -323,7 +327,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       {hasOptions ? (
                         <button 
                           onClick={() => setStep(0)}
-                          className="flex-1 bg-texto dark:bg-naranja text-crema h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-texto/90 dark:hover:bg-naranja/90 transition-all shadow-2xl shadow-texto/20 dark:shadow-naranja/20 active:scale-95 flex items-center justify-center gap-3"
+                          className={`flex-1 bg-texto dark:bg-brand-500 text-crema h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] hover:bg-texto/90 dark:hover:bg-brand-500/90 transition-all shadow-2xl shadow-texto/20 dark:shadow-brand-500/20 active:scale-95 flex items-center justify-center gap-3`}
                         >
                           <span>Elegir adicionales</span>
                           <ChevronRight className="h-4 w-4" />
@@ -331,7 +335,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                       ) : (
                         <button 
                           onClick={handleAddToCart}
-                          className="flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30"
+                          className={`flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 ${theme.secondary} text-white hover:bg-brand-500/90 shadow-brand-500/30`}
                         >
                           <ShoppingCart className="h-4 w-4" />
                           <span>Agregar al Carrito · ${((product.price || 0) * quantity).toLocaleString()}</span>
@@ -356,7 +360,7 @@ const ProductModal: React.FC<ProductModalProps> = ({ product, isOpen, onClose, o
                           handleAddToCart();
                         }
                       }}
-                      className={`flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 bg-naranja text-white hover:bg-naranja/90 shadow-naranja/30`}
+                      className={`flex-1 h-14 rounded-full font-bold text-[10px] uppercase tracking-[0.2em] transition-all shadow-2xl active:scale-95 flex items-center justify-center gap-3 ${theme.secondary} text-white hover:bg-brand-500/90 shadow-brand-500/30`}
                     >
                       {step < product.options!.length - 1 ? (
                         <>

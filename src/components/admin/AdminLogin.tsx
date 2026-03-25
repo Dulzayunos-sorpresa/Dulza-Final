@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { LayoutDashboard, XCircle, LogOut } from 'lucide-react';
 import { loginWithGoogle, logout, auth } from '@/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { toast } from 'sonner';
 
 interface AdminLoginProps {
   onAuthenticated: () => void;
@@ -28,7 +29,7 @@ const AdminLogin: React.FC<AdminLoginProps> = ({ onAuthenticated }) => {
       onAuthenticated();
       sessionStorage.setItem('adminAuth', 'true');
     } else {
-      alert("¡Rajá de acá! Clave incorrecta. 💅");
+      toast.error("¡Rajá de acá! Clave incorrecta. 💅");
     }
   };
 

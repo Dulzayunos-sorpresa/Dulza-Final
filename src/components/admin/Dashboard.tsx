@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   DollarSign, 
   ShoppingCart, 
@@ -23,12 +23,24 @@ import {
   Pie, 
   Cell 
 } from 'recharts';
+import { toast } from 'sonner';
+import ConfirmDialog from '../ui/ConfirmDialog';
 import { useStore } from '@/context/store';
 import { OrderStatus, PaymentStatus } from '@/types';
 
 const Dashboard: React.FC = () => {
   const { products, orders, user } = useStore();
   const [isSeeding, setIsSeeding] = React.useState(false);
+  const [showSyncConfirm, setShowSyncConfirm] = React.useState(false);
+
+  const handleSync = () => {
+    setIsSeeding(true);
+    setTimeout(() => {
+      setIsSeeding(false);
+      toast.success('Sincronización completada. Los productos deberían aparecer en unos segundos.');
+      window.location.reload();
+    }, 2000);
+  };
 
   const adminEmails = ['audisiofausto@gmail.com', 'uateventos@gmail.com'];
   const isAdmin = user && adminEmails.includes(user.email || '');
@@ -86,19 +98,7 @@ const Dashboard: React.FC = () => {
         <h1 className="text-3xl font-display text-stone-900 font-bold uppercase tracking-tighter">Panel de Control</h1>
         {isAdmin && (
           <button
-            onClick={async () => {
-              if (confirm('¿Deseas sincronizar el catálogo? Esto restaurará productos faltantes y actualizará el stock.')) {
-                setIsSeeding(true);
-                // The store already handles seeding if products are missing, 
-                // but we can trigger a manual refresh by reloading or just letting the store logic run.
-                // For now, we'll just show a success message as the store logic is already improved.
-                setTimeout(() => {
-                  setIsSeeding(false);
-                  alert('Sincronización completada. Los productos deberían aparecer en unos segundos.');
-                  window.location.reload(); // Force reload to trigger the seeding logic in store.tsx
-                }, 2000);
-              }
-            }}
+            onClick={() => setShowSyncConfirm(true)}
             disabled={isSeeding}
             className="flex items-center gap-2 px-4 py-2 bg-brand-50 text-brand-600 rounded-xl font-bold text-xs hover:bg-brand-100 transition-all border border-brand-100"
           >
@@ -107,6 +107,16 @@ const Dashboard: React.FC = () => {
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        isOpen={showSyncConfirm}
+        title="Sincronizar Catálogo"
+        description="¿Deseas sincronizar el catálogo? Esto restaurará productos faltantes y actualizará el stock."
+        confirmText="Sincronizar"
+        onConfirm={handleSync}
+        onCancel={() => setShowSyncConfirm(false)}
+        variant="info"
+      />
 
       {/* Key Metrics */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
@@ -173,7 +183,7 @@ const Dashboard: React.FC = () => {
             Ingresos (Últimos 7 días)
           </h2>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <AreaChart data={stats.revenueByDay}>
                 <defs>
                   <linearGradient id="colorRev" x1="0" y1="0" x2="0" y2="1">
@@ -199,7 +209,7 @@ const Dashboard: React.FC = () => {
             Top 5 Productos
           </h2>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <BarChart data={stats.topProducts} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f5f5f5" />
                 <XAxis type="number" hide />
@@ -223,7 +233,7 @@ const Dashboard: React.FC = () => {
             Métodos de Pago
           </h2>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={stats.paymentMethods}
@@ -252,7 +262,7 @@ const Dashboard: React.FC = () => {
             Estado de Pedidos
           </h2>
           <div className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
+            <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
               <PieChart>
                 <Pie
                   data={[

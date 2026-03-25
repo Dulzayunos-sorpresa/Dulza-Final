@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
           output: {
             manualChunks: {
               'vendor-react': ['react', 'react-dom', 'react-router-dom'],
-              'vendor-motion': ['framer-motion'],
+              'vendor-motion': ['motion/react'],
               'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore'],
               'vendor-utils': ['axios', 'lucide-react'],
             }

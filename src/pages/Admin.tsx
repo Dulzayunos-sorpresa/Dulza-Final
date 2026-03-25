@@ -1,4 +1,5 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { auth } from '@/firebase';
 import { 
@@ -12,11 +13,17 @@ import {
   Gift, 
   Plus,
   LogOut,
-  Printer
+  Printer,
+  CreditCard,
+  FileText,
+  Sparkles
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 
 // Modular Components - Lazy Loaded
+import { PrinterService } from '@/services/PrinterService';
+import { NotificationService } from '@/services/NotificationService';
+
 const AdminLogin = lazy(() => import('@/components/admin/AdminLogin'));
 const Dashboard = lazy(() => import('@/components/admin/Dashboard'));
 const OrdersManager = lazy(() => import('@/components/admin/OrdersManager'));
@@ -28,6 +35,10 @@ const CouponsManager = lazy(() => import('@/components/admin/CouponsManager'));
 const ShippingManager = lazy(() => import('@/components/admin/ShippingManager'));
 const NewOrderManager = lazy(() => import('@/components/admin/NewOrderManager'));
 const PrinterSettings = lazy(() => import('@/components/admin/PrinterSettings'));
+const TransferAccountsManager = lazy(() => import('@/components/admin/TransferAccountsManager'));
+
+const ContentManager = lazy(() => import('@/components/admin/ContentManager'));
+const SpecialLayoutsManager = lazy(() => import('@/components/admin/SpecialLayoutsManager'));
 
 const AdminLoading = React.memo(() => (
   <div className="flex items-center justify-center p-20">
@@ -60,7 +71,10 @@ const Sidebar = React.memo(({
     { id: 'subobjects', label: 'Subobjetos', icon: Users },
     { id: 'coupons', label: 'Cupones', icon: Gift },
     { id: 'shipping', label: 'Envíos', icon: Truck },
+    { id: 'special-layouts', label: 'Fechas Especiales', icon: Sparkles },
+    { id: 'transfer', label: 'Cuentas', icon: CreditCard },
     { id: 'printer', label: 'Impresora', icon: Printer },
+    { id: 'content', label: 'Contenido', icon: FileText },
   ] as const;
 
   return (
@@ -118,14 +132,25 @@ const Sidebar = React.memo(({
 });
 
 const Admin = () => {
+  const { tab } = useParams();
+  const navigate = useNavigate();
   const [user, setUser] = useState<User | null>(null);
   const [authLoading, setAuthLoading] = useState(true);
   const [isPasswordCorrect, setIsPasswordCorrect] = useState(() => {
     return sessionStorage.getItem('adminAuth') === 'true';
   });
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'orders' | 'stock' | 'new-order' | 'options' | 'subobjects' | 'coupons' | 'shipping' | 'categories' | 'printer'>('dashboard');
+  const [activeTab, setActiveTab] = useState<string>('dashboard');
 
   useEffect(() => {
+    if (tab) {
+      setActiveTab(tab);
+    } else {
+      setActiveTab('dashboard');
+    }
+  }, [tab]);
+
+  useEffect(() => {
+    NotificationService.init();
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
       setAuthLoading(false);
@@ -138,9 +163,14 @@ const Admin = () => {
     setIsPasswordCorrect(false);
   }, []);
 
-  const handleTabChange = React.useCallback((tab: any) => {
+  const handleTabChange = React.useCallback((tab: string) => {
     setActiveTab(tab);
-  }, []);
+    navigate(`/admin/${tab}`);
+  }, [navigate]);
+
+  useEffect(() => {
+    NotificationService.setCurrentTab(activeTab);
+  }, [activeTab]);
 
   if (authLoading) {
     return <AdminLoading />;
@@ -176,7 +206,10 @@ const Admin = () => {
             {activeTab === 'subobjects' && <SubobjectsManager key="subobjects" />}
             {activeTab === 'coupons' && <CouponsManager key="coupons" />}
             {activeTab === 'shipping' && <ShippingManager key="shipping" />}
+            {activeTab === 'special-layouts' && <SpecialLayoutsManager key="special-layouts" />}
             {activeTab === 'printer' && <PrinterSettings key="printer" />}
+            {activeTab === 'transfer' && <TransferAccountsManager key="transfer" />}
+            {activeTab === 'content' && <ContentManager key="content" />}
           </AnimatePresence>
         </Suspense>
       </main>

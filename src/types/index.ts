@@ -74,10 +74,21 @@ export enum PaymentStatus {
 }
 
 export enum PaymentMethod {
+  TRANSFERENCIA = 'Transferencia Bancaria',
   TRANSFERENCIA_MP = 'Mercado Pago (Transferencia)',
   TARJETA_UALA = 'Ualá (Tarjeta)',
   EFECTIVO = 'Efectivo',
   PAGOS_INTERNACIONALES = 'Pagos Internacionales (PayPal o Western Union)'
+}
+
+export interface TransferAccount {
+  id: string;
+  bankName: string;
+  accountHolder: string;
+  cbu: string;
+  alias: string;
+  isActive: boolean;
+  type: 'CBU' | 'CVU';
 }
 
 export interface Coupon {
@@ -94,6 +105,15 @@ export interface ShippingSettings {
   baseCost: number;
   pricePerKm: number;
   maxKmForAutoPayment: number;
+  isMercadoPagoEnabled?: boolean;
+  specialCategoryId?: string;
+}
+
+export type SpecialLayout = 'default' | 'father' | 'mother' | 'christmas' | 'women' | 'easter' | 'children' | 'friend';
+
+export interface UIContent {
+  activeLayout?: SpecialLayout;
+  [key: string]: any;
 }
 
 export interface Order {
@@ -125,6 +145,7 @@ export interface Order {
   externalPaymentId?: string;
   couponCode?: string;
   discountAmount?: number;
+  transferAccountId?: string;
 }
 
 export interface CartItem {

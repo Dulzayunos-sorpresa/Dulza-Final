@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Printer, Save, Trash2, AlertCircle, Info } from 'lucide-react';
+import { toast } from 'sonner';
 import { PrinterService, PrinterConfig } from '@/services/PrinterService';
 
 const PrinterSettings: React.FC = () => {
@@ -62,7 +63,7 @@ const PrinterSettings: React.FC = () => {
       
       await PrinterService.printOrder(mockOrder, []);
     } catch (error: any) {
-      alert(`Error en la prueba: ${error.message}`);
+      toast.error(`Error en la prueba: ${error.message}`);
     }
   };
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Gift, 
   Plus, 
@@ -7,14 +7,16 @@ import {
   Edit, 
   Trash2 
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { Coupon } from '@/types';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface CouponCardProps {
   coupon: Coupon;
   idx: number;
   setEditingCoupon: (coupon: Coupon) => void;
-  deleteCoupon: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
   updateCoupon: (coupon: Coupon) => void;
 }
 
@@ -22,7 +24,7 @@ const CouponCard: React.FC<CouponCardProps> = React.memo(({
   coupon, 
   idx, 
   setEditingCoupon, 
-  deleteCoupon,
+  onDeleteRequest,
   updateCoupon
 }) => {
   return (
@@ -52,11 +54,7 @@ const CouponCard: React.FC<CouponCardProps> = React.memo(({
               <Edit className="w-4 h-4" />
             </button>
             <button 
-              onClick={() => {
-                if(confirm('¿Estás seguro de eliminar este cupón?')) {
-                  deleteCoupon(coupon.id);
-                }
-              }} 
+              onClick={() => onDeleteRequest(coupon.id)} 
               className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
             >
               <Trash2 className="w-4 h-4" />
@@ -102,6 +100,7 @@ const CouponsManager: React.FC = () => {
   const { coupons, addCoupon, updateCoupon, deleteCoupon } = useStore();
   const [isAddingCoupon, setIsAddingCoupon] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
+  const [couponToDelete, setCouponToDelete] = useState<string | null>(null);
   const [newCouponForm, setNewCouponForm] = useState<Omit<Coupon, 'id'>>({
     code: '',
     discount: 0,
@@ -115,7 +114,7 @@ const CouponsManager: React.FC = () => {
       updateCoupon(editingCoupon);
       setEditingCoupon(null);
     } else {
-      if (!newCouponForm.code) return alert('El código es obligatorio');
+      if (!newCouponForm.code) return toast.error('El código es obligatorio');
       addCoupon({ 
         ...newCouponForm, 
         id: Math.random().toString(36).substr(2, 9) 
@@ -247,7 +246,7 @@ const CouponsManager: React.FC = () => {
             coupon={coupon}
             idx={idx}
             setEditingCoupon={setEditingCoupon}
-            deleteCoupon={deleteCoupon}
+            onDeleteRequest={setCouponToDelete}
             updateCoupon={updateCoupon}
           />
         ))}
@@ -265,6 +264,15 @@ const CouponsManager: React.FC = () => {
           </div>
         )}
       </div>
+
+      <ConfirmDialog 
+        isOpen={!!couponToDelete}
+        title="¿Eliminar cupón?"
+        description="Esta acción no se puede deshacer. El cupón será eliminado permanentemente."
+        confirmText="Eliminar"
+        onConfirm={() => couponToDelete && deleteCoupon(couponToDelete)}
+        onCancel={() => setCouponToDelete(null)}
+      />
     </motion.div>
   );
 };

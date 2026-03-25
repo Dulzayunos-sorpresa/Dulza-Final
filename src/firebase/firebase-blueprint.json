@@ -89,6 +89,21 @@
         "category": { "type": "string" }
       },
       "required": ["name"]
+    },
+    "TransferAccount": {
+      "title": "TransferAccount",
+      "description": "A bank account for transfers.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "bankName": { "type": "string" },
+        "accountHolder": { "type": "string" },
+        "cbu": { "type": "string" },
+        "alias": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "type": { "type": "string", "enum": ["CBU", "CVU"] }
+      },
+      "required": ["bankName", "accountHolder", "cbu", "alias", "isActive", "type"]
     }
   },
   "firestore": {
@@ -111,6 +126,10 @@
     "/subobjects/{subobjectId}": {
       "schema": { "$ref": "#/entities/ProductOptionValue" },
       "description": "Stores all product option values (subobjects)."
+    },
+    "/transferAccounts/{accountId}": {
+      "schema": { "$ref": "#/entities/TransferAccount" },
+      "description": "Stores all transfer accounts."
     }
   }
 }

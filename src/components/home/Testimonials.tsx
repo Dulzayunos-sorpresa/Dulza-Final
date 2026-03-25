@@ -1,7 +1,12 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const Testimonials = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
+
   const reviews = [
     {
       stars: "★★★★★",
@@ -78,9 +83,9 @@ const Testimonials = () => {
           transition={{ duration: 0.5 }}
           className="max-w-3xl mb-24"
         >
-          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Lo que dice la gente</p>
+          <p className={`text-[10px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>Lo que dice la gente</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-            La prueba la da<br /><span className="text-naranja italic">el receptor.</span>
+            La prueba la da<br /><span className={`${theme.primary} italic`}>el receptor.</span>
           </h2>
           <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
             No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
@@ -102,10 +107,10 @@ const Testimonials = () => {
               className={`p-10 rounded-[40px] transition-all duration-500 border ${
                 review.featured 
                 ? 'bg-texto dark:bg-dark-surface text-crema dark:text-dark-text border-texto dark:border-white/5 shadow-[0_30px_60px_-15px_rgba(20,20,20,0.2)]' 
-                : 'bg-crema/30 dark:bg-dark-surface/30 text-texto dark:text-dark-text border-naranja/5 dark:border-white/5 hover:bg-crema/50 dark:hover:bg-dark-surface/50'
+                : `${theme.heroBg}/30 dark:bg-dark-surface/30 text-texto dark:text-dark-text border-brand-100/5 dark:border-white/5 hover:${theme.heroBg}/50 dark:hover:bg-dark-surface/50`
               }`}
             >
-              <div className={`flex gap-1 mb-8 ${review.featured ? 'text-naranja' : 'text-naranja/60'}`}>
+              <div className={`flex gap-1 mb-8 ${review.featured ? theme.primary : `${theme.primary} opacity-60`}`}>
                 {[...Array(5)].map((_, i) => (
                   <motion.span 
                     key={i} 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   Search, 
   Download, 
@@ -12,6 +12,7 @@ import {
   XCircle
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { Product, ProductOption } from '@/types';
 import ProductModal from './ProductModal';
@@ -152,7 +153,7 @@ const ProductsManager: React.FC = () => {
           updateStock(product.id, parseInt(row.Stock) || 0);
         }
       });
-      alert('Stock actualizado correctamente desde Excel');
+      toast.success('Stock actualizado correctamente desde Excel');
     };
     reader.readAsBinaryString(file);
   }, [products, updateStock]);

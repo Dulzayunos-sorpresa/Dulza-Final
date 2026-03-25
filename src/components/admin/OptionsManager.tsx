@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Settings2, 
   Plus, 
@@ -12,19 +12,20 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/store';
 import { ProductOption, ProductOptionValue } from '@/types';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface OptionCardProps {
   option: ProductOption;
   idx: number;
   setEditingOption: (option: ProductOption) => void;
-  deleteOption: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
 }
 
 const OptionCard: React.FC<OptionCardProps> = React.memo(({ 
   option, 
   idx, 
   setEditingOption, 
-  deleteOption 
+  onDeleteRequest 
 }) => {
   return (
     <motion.div 
@@ -46,11 +47,7 @@ const OptionCard: React.FC<OptionCardProps> = React.memo(({
               <Edit className="w-4 h-4" />
             </button>
             <button 
-              onClick={() => {
-                if(confirm('¿Estás seguro de eliminar este grupo de opciones?')) {
-                  deleteOption(option.id);
-                }
-              }} 
+              onClick={() => onDeleteRequest(option.id)} 
               className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
             >
               <Trash2 className="w-4 h-4" />
@@ -97,6 +94,7 @@ const OptionsManager: React.FC = () => {
   const { options, addOption, updateOption, deleteOption } = useStore();
   const [isAddingOption, setIsAddingOption] = useState(false);
   const [editingOption, setEditingOption] = useState<ProductOption | null>(null);
+  const [optionToDelete, setOptionToDelete] = useState<string | null>(null);
 
   const handleSave = React.useCallback(() => {
     if (editingOption) {
@@ -151,7 +149,7 @@ const OptionsManager: React.FC = () => {
             option={option}
             idx={idx}
             setEditingOption={setEditingOption}
-            deleteOption={deleteOption}
+            onDeleteRequest={setOptionToDelete}
           />
         ))}
       </div>
@@ -295,6 +293,15 @@ const OptionsManager: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog 
+        isOpen={!!optionToDelete}
+        title="¿Eliminar grupo de opciones?"
+        description="¿Estás seguro de eliminar este grupo de opciones? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        onConfirm={() => optionToDelete && deleteOption(optionToDelete)}
+        onCancel={() => setOptionToDelete(null)}
+      />
     </motion.div>
   );
 };

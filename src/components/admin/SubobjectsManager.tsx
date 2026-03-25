@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Users, 
   Plus, 
@@ -12,19 +12,20 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/store';
 import { ProductOptionValue } from '@/types';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface SubobjectCardProps {
   subobject: ProductOptionValue;
   idx: number;
   setEditingSubobject: (subobject: ProductOptionValue) => void;
-  deleteSubobject: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
 }
 
 const SubobjectCard: React.FC<SubobjectCardProps> = React.memo(({ 
   subobject, 
   idx, 
   setEditingSubobject, 
-  deleteSubobject 
+  onDeleteRequest 
 }) => {
   return (
     <motion.div 
@@ -52,11 +53,7 @@ const SubobjectCard: React.FC<SubobjectCardProps> = React.memo(({
               <Edit className="w-4 h-4" />
             </button>
             <button 
-              onClick={() => {
-                if(confirm('¿Estás seguro de eliminar este subobjeto?')) {
-                  deleteSubobject(subobject.id);
-                }
-              }} 
+              onClick={() => onDeleteRequest(subobject.id)} 
               className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
             >
               <Trash2 className="w-4 h-4" />
@@ -75,6 +72,7 @@ const SubobjectsManager: React.FC = () => {
   const { subobjects, addSubobject, updateSubobject, deleteSubobject } = useStore();
   const [isAddingSubobject, setIsAddingSubobject] = useState(false);
   const [editingSubobject, setEditingSubobject] = useState<ProductOptionValue | null>(null);
+  const [subobjectToDelete, setSubobjectToDelete] = useState<string | null>(null);
 
   const handleSave = React.useCallback(() => {
     if (editingSubobject) {
@@ -142,7 +140,7 @@ const SubobjectsManager: React.FC = () => {
             subobject={subobject}
             idx={idx}
             setEditingSubobject={setEditingSubobject}
-            deleteSubobject={deleteSubobject}
+            onDeleteRequest={setSubobjectToDelete}
           />
         ))}
       </div>
@@ -251,6 +249,15 @@ const SubobjectsManager: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
+
+      <ConfirmDialog 
+        isOpen={!!subobjectToDelete}
+        title="¿Eliminar subobjeto?"
+        description="¿Estás seguro de eliminar este subobjeto? Esta acción no se puede deshacer."
+        confirmText="Eliminar"
+        onConfirm={() => subobjectToDelete && deleteSubobject(subobjectToDelete)}
+        onCancel={() => setSubobjectToDelete(null)}
+      />
     </motion.div>
   );
 };

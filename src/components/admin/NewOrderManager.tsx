@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   Plus, 
   Trash2, 
@@ -18,6 +18,8 @@ import {
 import { useStore } from '@/context/store';
 import { Product, PaymentMethod, CartItem } from '@/types';
 import { PrinterService } from '@/services/PrinterService';
+import { toast } from 'sonner';
+import ConfirmDialog from '../ui/ConfirmDialog';
 
 interface NewOrderManagerProps {
   onOrderCreated: () => void;
@@ -78,6 +80,7 @@ const CartItemRow: React.FC<CartItemRowProps> = React.memo(({ item, removeItem }
 const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => {
   const { products, addOrder } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
+  const [showPrintConfirm, setShowPrintConfirm] = useState<any | null>(null);
   const [orderErrors, setOrderErrors] = useState<Record<string, string>>({});
 
   const [form, setForm] = useState({
@@ -139,7 +142,7 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
   const handleSubmit = React.useCallback((e: React.FormEvent) => {
     e.preventDefault();
     if (form.items.length === 0) {
-      alert('Debe agregar al menos un producto');
+      toast.error('Debe agregar al menos un producto');
       return;
     }
 
@@ -167,10 +170,8 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
     } as any;
 
     addOrder(newOrder);
-
-    if (confirm('Pedido creado con éxito. ¿Deseas imprimir la comanda ahora?')) {
-      PrinterService.printOrder(newOrder, products);
-    }
+    toast.success('Pedido creado con éxito');
+    setShowPrintConfirm(newOrder);
     
     onOrderCreated();
   }, [form, validateForm, products, addOrder, onOrderCreated]);
@@ -198,11 +199,12 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
   }, []);
 
   return (
-    <motion.div 
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="max-w-6xl mx-auto space-y-8"
-    >
+    <>
+      <motion.div 
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-6xl mx-auto space-y-8"
+      >
       <div className="flex justify-between items-center">
         <h2 className="text-3xl font-bold text-stone-900">Crear Nuevo Pedido Manual</h2>
       </div>
@@ -450,6 +452,23 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
         </div>
       </form>
     </motion.div>
+    
+    <ConfirmDialog
+      isOpen={!!showPrintConfirm}
+      title="Pedido Creado"
+      description="¿Deseas imprimir la comanda ahora?"
+      confirmText="Imprimir"
+      cancelText="No, gracias"
+      onConfirm={() => {
+        if (showPrintConfirm) {
+          PrinterService.printOrder(showPrintConfirm, products);
+        }
+        setShowPrintConfirm(null);
+      }}
+      onCancel={() => setShowPrintConfirm(null)}
+      variant="info"
+    />
+    </>
   );
 };
 

@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo, useCallback, Suspense, lazy } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { Heart, ChevronRight, Eye, Share2, Sparkles, AlertCircle, Check } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Link, useLocation, useParams, useNavigate } from 'react-router-dom';
+import { Heart, ChevronRight, Eye, Share2, Sparkles, AlertCircle, Check, Star } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { useStore } from '@/context/store';
 import { ProductCategory, Product } from '@/types';
+import { getTheme } from '@/utils/themes';
 import ProductModal from '@/components/product/ProductModal';
 import ProductCard from '@/components/product/ProductCard';
 
@@ -15,7 +16,11 @@ const Testimonials = lazy(() => import('@/components/home/Testimonials'));
 const Urgency = lazy(() => import('@/components/home/Urgency'));
 const FAQ = lazy(() => import('@/components/home/FAQ'));
 
-const LoadingFallback = () => <div className="h-32 flex items-center justify-center text-naranja/20">...</div>;
+const LoadingFallback = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
+  return <div className={`h-32 flex items-center justify-center ${theme.primary} opacity-20`}>...</div>;
+};
 
 const containerVariants: any = {
   hidden: { opacity: 0 },
@@ -34,7 +39,10 @@ const itemVariants: any = {
 };
 
 export default function Home() {
-  const { products, addToCart, categories } = useStore();
+  const { products, addToCart, categories, uiContent, shippingSettings } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
+  const { categorySlug } = useParams();
+  const navigate = useNavigate();
   const [activeCategory, setActiveCategory] = useState<string>('');
   const [activeFilter, setActiveFilter] = useState<string>('Todos');
   const [searchQuery, setSearchQuery] = useState('');
@@ -46,6 +54,39 @@ export default function Home() {
   const rotatingWords = ["Enamoran", "Sorprenden", "Permanecen", "Emocionan", "Conectan"];
 
   const valentineCategory = ProductCategory.VALENTINE;
+
+  const specialCategory = useMemo(() => {
+    if (!shippingSettings.specialCategoryId) return null;
+    return categories.find(c => c.id === shippingSettings.specialCategoryId);
+  }, [categories, shippingSettings.specialCategoryId]);
+
+  useEffect(() => {
+    if (categorySlug) {
+      const category = categories.find(c => c.name.toLowerCase().replace(/\s+/g, '-') === categorySlug);
+      if (category) {
+        setActiveFilter(category.name);
+        // Scroll to catalog after a short delay to ensure rendering
+        setTimeout(() => {
+          const element = document.getElementById('catalog');
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      }
+    } else if (location.pathname.startsWith('/catalogo')) {
+      setActiveFilter('Todos');
+    }
+  }, [categorySlug, categories, location.pathname]);
+
+  const handleFilterChange = (catName: string) => {
+    setActiveFilter(catName);
+    const slug = catName === 'Todos' ? '' : catName.toLowerCase().replace(/\s+/g, '-');
+    if (slug) {
+      navigate(`/catalogo/${slug}`);
+    } else {
+      navigate('/');
+    }
+  };
 
   const dynamicCategories = useMemo(() => {
     const cats = new Set<string>();
@@ -172,7 +213,7 @@ export default function Home() {
   }, [allNavCategories, activeFilter, products, searchQuery]);
 
   return (
-    <div className="pb-16 relative bg-crema dark:bg-dark-bg transition-colors duration-300">
+    <div className={`pb-16 relative ${theme.bg} dark:bg-dark-bg transition-colors duration-300`}>
       {/* Hero Section */}
       <section className="min-h-[90vh] grid grid-cols-1 lg:grid-cols-2 relative overflow-hidden">
         <div className="absolute inset-0 opacity-[0.03] pointer-events-none noise-pattern dark:opacity-[0.05]"></div>
@@ -184,31 +225,41 @@ export default function Home() {
           className="flex flex-col justify-center px-6 md:px-20 py-20 relative z-10"
         >
           <div className="flex items-center gap-3 mb-8">
-            <div className="h-px w-8 bg-naranja"></div>
-            <p className="text-[11px] tracking-[0.3em] uppercase text-naranja font-bold">
-              Desayunos Reales · Córdoba
+            <div className={`h-px w-8 ${theme.secondary}`}></div>
+            <p className={`text-[11px] tracking-[0.3em] uppercase ${theme.primary} font-bold`}>
+              {theme.emoji} Desayunos Reales · Córdoba
             </p>
           </div>
           
           <h1 className="text-6xl md:text-8xl font-display text-texto dark:text-dark-text font-bold leading-[0.9] mb-10 uppercase tracking-tighter">
-            Se nota<br />que lo<br /><span className="text-naranja">pensaste.</span>
+            {uiContent.hero_title.split(' ').map((word, i) => (
+              <React.Fragment key={i}>
+                {word === 'pensaste.' ? <span className={theme.primary}>{word}</span> : word}
+                {i < uiContent.hero_title.split(' ').length - 1 && <br />}
+              </React.Fragment>
+            ))}
+            {!uiContent.hero_title.includes('pensaste.') && (
+              <>
+                <br />Se nota<br />que lo<br /><span className={theme.primary}>pensaste.</span>
+              </>
+            )}
           </h1>
           
           <p className="text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-md mb-12 font-medium">
-            El desayuno sorpresa que convierte un martes cualquiera en el momento que no se olvida. Experiencias diseñadas para emocionar.
+            {uiContent.hero_subtitle}
           </p>
           
           <div className="flex flex-wrap gap-6">
             <button 
               onClick={() => scrollToCategory('catalog')}
-              className="bg-naranja text-white px-12 py-5 rounded-full text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl shadow-naranja/30 hover:bg-naranja/90 transition-all transform hover:-translate-y-1"
+              className={`${theme.secondary} text-white px-12 py-5 rounded-full text-[11px] font-bold uppercase tracking-[0.2em] shadow-2xl shadow-brand-200 hover:opacity-90 transition-all transform hover:-translate-y-1`}
               aria-label="Sorprender ahora con un desayuno"
             >
               Sorprender ahora
             </button>
             <button 
               onClick={() => scrollToCategory('how-it-works')}
-              className="flex items-center gap-3 px-6 py-5 text-texto/60 dark:text-dark-text-muted text-[10px] font-bold uppercase tracking-widest hover:text-naranja transition-colors"
+              className={`flex items-center gap-3 px-6 py-5 text-texto/60 dark:text-dark-text-muted text-[10px] font-bold uppercase tracking-widest hover:${theme.primary} transition-colors`}
             >
               Ver cómo funciona <span className="text-lg">↓</span>
             </button>
@@ -229,13 +280,13 @@ export default function Home() {
           </div>
         </motion.div>
 
-        <div className="relative flex items-center justify-center bg-rosa-suave/30 dark:bg-dark-surface/30 overflow-hidden min-h-[500px]">
+        <div className={`relative flex items-center justify-center ${theme.heroBg} dark:bg-dark-surface/30 overflow-hidden min-h-[500px]`}>
           {/* Geometric Background Elements from Brandbook */}
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 0.03 }}
             transition={{ duration: 1.5, ease: "easeOut" }}
-            className="absolute w-[500px] h-[500px] bg-naranja rounded-full -top-20 -right-20"
+            className={`absolute w-[500px] h-[500px] ${theme.secondary} rounded-full -top-20 -right-20`}
           ></motion.div>
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
@@ -254,7 +305,7 @@ export default function Home() {
             <motion.div 
               animate={{ y: [0, -10, 0] }}
               transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -left-16 bottom-24 bg-white dark:bg-dark-surface p-5 rounded-[24px] shadow-2xl flex items-center gap-4 z-20 whitespace-nowrap border border-naranja/5 dark:border-white/5"
+              className={`absolute -left-16 bottom-24 bg-white dark:bg-dark-surface p-5 rounded-[24px] shadow-2xl flex items-center gap-4 z-20 whitespace-nowrap border border-brand-100/5 dark:border-white/5`}
             >
               <div className="w-10 h-10 rounded-full bg-crema dark:bg-dark-bg flex items-center justify-center text-xl">😭</div>
               <div className="text-[11px] leading-tight uppercase tracking-wider">
@@ -266,7 +317,7 @@ export default function Home() {
             <motion.div 
               animate={{ y: [0, 10, 0] }}
               transition={{ duration: 3, delay: 1.5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -right-12 top-24 bg-white dark:bg-dark-surface p-5 rounded-[24px] shadow-2xl flex items-center gap-4 z-20 whitespace-nowrap border border-naranja/5 dark:border-white/5"
+              className={`absolute -right-12 top-24 bg-white dark:bg-dark-surface p-5 rounded-[24px] shadow-2xl flex items-center gap-4 z-20 whitespace-nowrap border border-brand-100/5 dark:border-white/5`}
             >
               <div className="w-10 h-10 rounded-full bg-crema dark:bg-dark-bg flex items-center justify-center text-xl">🤩</div>
               <div className="text-[11px] leading-tight uppercase tracking-wider">
@@ -277,10 +328,10 @@ export default function Home() {
 
             <motion.div 
               whileHover={{ rotate: -1, scale: 1.02 }}
-              className="w-[360px] bg-white dark:bg-dark-surface rounded-[48px] p-10 shadow-2xl relative border border-naranja/5 dark:border-white/5"
+              className={`w-[360px] bg-white dark:bg-dark-surface rounded-[48px] p-10 shadow-2xl relative border ${theme.accent} dark:border-white/5`}
             >
-              <div className="absolute -top-5 left-1/2 -translate-x-1/2 bg-naranja text-white text-[11px] font-bold uppercase tracking-[0.2em] px-8 py-2.5 rounded-full whitespace-nowrap shadow-xl shadow-naranja/20">
-                ✨ Sorpresa Real
+              <div className={`absolute -top-5 left-1/2 -translate-x-1/2 ${theme.secondary} text-white text-[11px] font-bold uppercase tracking-[0.2em] px-8 py-2.5 rounded-full whitespace-nowrap shadow-xl shadow-brand-200`}>
+                {theme.emoji} Sorpresa Real
               </div>
               
               <div className="grid grid-cols-3 gap-4 mb-10">
@@ -303,7 +354,7 @@ export default function Home() {
                 ))}
               </div>
 
-              <div className="pt-8 border-t border-naranja/10 dark:border-white/5 text-center">
+              <div className={`pt-8 border-t border-brand-100/10 dark:border-white/5 text-center`}>
                 <p className="text-[11px] text-texto/50 dark:text-dark-text-muted mb-2 uppercase tracking-widest font-bold">De parte de alguien que lo pensó</p>
                 <p className="font-display text-texto dark:text-dark-text font-bold text-lg leading-tight uppercase tracking-tighter">"Se nota que lo pensaste." 🥹</p>
               </div>
@@ -333,9 +384,9 @@ export default function Home() {
       {/* Catalog Section */}
       <div id="catalog" className="max-w-7xl mx-auto px-6 md:px-20 py-32 scroll-mt-20">
         <div className="flex flex-col items-center text-center mb-20">
-          <p className="text-[11px] tracking-[0.3em] uppercase text-naranja font-bold mb-6">Elegí tu sorpresa</p>
+          <p className={`text-[11px] tracking-[0.3em] uppercase ${theme.primary} font-bold mb-6`}>Elegí tu sorpresa</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text font-bold leading-[0.9] mb-8 uppercase tracking-tighter">
-            Cada momento<br />tiene su <span className="text-naranja">desayuno.</span>
+            Cada momento<br />tiene su <span className={theme.primary}>desayuno.</span>
           </h2>
           <p className="text-lg text-texto/50 dark:text-dark-text-muted leading-relaxed max-w-lg font-medium">
             Desde el mimo sencillo hasta la experiencia completa. Todos artesanales. Todos reales.
@@ -351,33 +402,38 @@ export default function Home() {
               placeholder="Buscar desayuno..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full px-6 py-3 rounded-full border border-stone-200 dark:border-white/10 bg-white dark:bg-dark-surface text-texto dark:text-dark-text focus:ring-2 focus:ring-naranja outline-none"
+              className={`w-full px-6 py-3 rounded-full border border-stone-200 dark:border-white/10 bg-white dark:bg-dark-surface text-texto dark:text-dark-text focus:ring-2 ${theme.primary} outline-none`}
             />
           </div>
 
           {/* Categories Navigation */}
           <div className="flex gap-4 overflow-x-auto pb-4 hide-scrollbar w-full justify-start md:justify-center">
             <button
-              onClick={() => setActiveFilter('Todos')}
+              onClick={() => navigate('/catalogo')}
               className={`whitespace-nowrap px-8 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${
-                activeFilter === 'Todos' 
-                  ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
-                  : 'bg-white dark:bg-dark-surface text-texto/50 dark:text-dark-text-muted hover:bg-crema dark:hover:bg-white/5 hover:text-naranja'
+                !categorySlug 
+                  ? `${theme.secondary} text-white shadow-xl shadow-brand-200 scale-105` 
+                  : `bg-white dark:bg-dark-surface text-texto/50 dark:text-dark-text-muted hover:bg-crema dark:hover:bg-white/5 hover:${theme.primary}`
               }`}
             >
               Todos
             </button>
-            {allNavCategories.map((category) => (
+            {categories.map((category) => (
               <button
-                key={category}
-                onClick={() => setActiveFilter(category)}
-                className={`whitespace-nowrap px-8 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all ${
-                  activeFilter === category 
-                    ? 'bg-naranja text-white shadow-xl shadow-naranja/20 scale-105' 
-                    : 'bg-white dark:bg-dark-surface text-texto/50 dark:text-dark-text-muted hover:bg-crema dark:hover:bg-white/5 hover:text-naranja'
+                key={category.id}
+                onClick={() => navigate(`/catalogo/${category.slug}`)}
+                className={`whitespace-nowrap px-8 py-3 rounded-full text-[11px] font-bold uppercase tracking-widest transition-all flex items-center gap-2 ${
+                  categorySlug === category.slug
+                    ? `${theme.secondary} text-white shadow-xl shadow-brand-200 scale-105` 
+                    : category.id === shippingSettings.specialCategoryId
+                      ? 'bg-dorado/10 text-dorado border border-dorado/20 hover:bg-dorado/20'
+                      : `bg-white dark:bg-dark-surface text-texto/50 dark:text-dark-text-muted hover:bg-crema dark:hover:bg-white/5 hover:${theme.primary}`
                 }`}
               >
-                {category}
+                {category.id === shippingSettings.specialCategoryId && (
+                  <Star className={`h-3 w-3 ${categorySlug === category.slug ? 'fill-white' : 'fill-dorado text-dorado'}`} />
+                )}
+                {category.name}
               </button>
             ))}
           </div>
@@ -393,7 +449,7 @@ export default function Home() {
             >
               <div className="flex items-center gap-8 mb-16">
                 <h3 className="text-4xl font-display text-texto dark:text-dark-text font-bold uppercase tracking-tighter">{item.category}</h3>
-                <div className="h-px bg-naranja/10 dark:bg-white/5 flex-1"></div>
+                <div className={`h-px ${theme.heroBg} opacity-10 dark:bg-white/5 flex-1`}></div>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-10">
@@ -434,7 +490,7 @@ export default function Home() {
             initial={{ opacity: 0, y: 50 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 50 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 bg-naranja text-white px-6 py-3 rounded-full shadow-2xl shadow-naranja/30 font-bold text-sm tracking-wider flex items-center gap-2"
+            className={`fixed bottom-8 left-1/2 -translate-x-1/2 z-50 ${theme.secondary} text-white px-6 py-3 rounded-full shadow-2xl shadow-brand-500/30 font-bold text-sm tracking-wider flex items-center gap-2`}
           >
             <Check size={16} />
             ¡Pedido añadido al carrito!

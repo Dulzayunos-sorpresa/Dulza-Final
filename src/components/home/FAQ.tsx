@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const FAQ = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   const faqs = [
@@ -52,7 +56,7 @@ const FAQ = () => {
   };
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-crema/30 dark:bg-dark-surface/30 relative overflow-hidden">
+    <section className={`px-6 md:px-20 py-32 ${theme.heroBg}/30 dark:bg-dark-surface/30 relative overflow-hidden`}>
       <div className="max-w-5xl mx-auto relative z-10">
         <motion.div 
           initial={{ opacity: 0 }}
@@ -61,9 +65,9 @@ const FAQ = () => {
           transition={{ duration: 0.5 }}
           className="max-w-3xl mb-20"
         >
-          <p className="text-[11px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Preguntas frecuentes</p>
+          <p className={`text-[11px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>Preguntas frecuentes</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-            Todo lo que necesitás<br /><span className="text-naranja italic">saber.</span>
+            Todo lo que necesitás<br /><span className={`${theme.primary} italic`}>saber.</span>
           </h2>
           <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
             No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
@@ -84,15 +88,15 @@ const FAQ = () => {
               onClick={() => setOpenIndex(openIndex === i ? null : i)}
               className={`p-10 rounded-[40px] cursor-pointer transition-all duration-500 border ${
                 openIndex === i 
-                ? 'bg-white dark:bg-dark-surface shadow-[0_30px_60px_-15px_rgba(242,125,38,0.1)] border-naranja/10 dark:border-white/10' 
-                : 'bg-white/50 dark:bg-dark-surface/50 border-naranja/5 dark:border-white/5 hover:bg-white dark:hover:bg-dark-surface hover:border-naranja/10'
+                ? 'bg-white dark:bg-dark-surface shadow-[0_30px_60px_-15px_rgba(242,125,38,0.1)] border-brand-100/10 dark:border-white/10' 
+                : 'bg-white/50 dark:bg-dark-surface/50 border-brand-100/5 dark:border-white/5 hover:bg-white dark:hover:bg-dark-surface hover:border-brand-100/10'
               }`}
             >
               <div className="flex justify-between items-center gap-6">
                 <h3 className="text-base font-bold text-texto dark:text-dark-text uppercase tracking-tight leading-tight">{faq.q}</h3>
                 <motion.div 
                   animate={{ rotate: openIndex === i ? 45 : 0 }}
-                  className={`w-10 h-10 rounded-full border border-naranja/20 flex items-center justify-center text-naranja transition-all duration-500 ${openIndex === i ? 'bg-naranja text-white border-naranja' : ''}`}
+                  className={`w-10 h-10 rounded-full border border-brand-100/20 flex items-center justify-center ${theme.primary} transition-all duration-500 ${openIndex === i ? `${theme.secondary} text-white border-brand-500` : ''}`}
                 >
                   <span className="text-xl">+</span>
                 </motion.div>
@@ -106,7 +110,7 @@ const FAQ = () => {
                     transition={{ duration: 0.4, ease: [0.04, 0.62, 0.23, 0.98] }}
                     className="overflow-hidden"
                   >
-                    <p className="text-sm text-texto/60 dark:text-dark-text-muted leading-relaxed font-light border-l-2 border-naranja/20 dark:border-white/10 pl-6 mt-8">
+                    <p className={`text-sm text-texto/60 dark:text-dark-text-muted leading-relaxed font-light border-l-2 ${theme.primary} opacity-20 dark:border-white/10 pl-6 mt-8`}>
                       {faq.a}
                     </p>
                   </motion.div>

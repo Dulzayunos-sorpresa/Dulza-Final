@@ -1,7 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const Urgency = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
   const [timeLeft, setTimeLeft] = useState({ h: 0, m: 0, s: 0 });
 
   useEffect(() => {
@@ -24,7 +28,7 @@ const Urgency = () => {
   }, []);
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-naranja dark:bg-naranja/90 text-center relative overflow-hidden">
+    <section className={`px-6 md:px-20 py-32 ${theme.secondary} dark:bg-brand-500/90 text-center relative overflow-hidden`}>
       {/* Decorative background elements */}
       <motion.div 
         initial={{ opacity: 0 }}

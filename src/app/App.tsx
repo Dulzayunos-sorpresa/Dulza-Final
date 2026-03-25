@@ -1,9 +1,11 @@
 import React, { Suspense, lazy, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
-import { AnimatePresence, motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'motion/react';
+import { Toaster } from 'sonner';
 import { StoreProvider } from '@/context/store';
 import Layout from '@/components/layout/Layout';
 import ScrollToTop from '@/components/layout/ScrollToTop';
+import ErrorBoundary from '../components/ErrorBoundary';
 import { trackPageView } from '@/utils/analytics';
 
 // Page tracker component
@@ -72,7 +74,22 @@ const LoadingFallback = () => (
 
 const AnimatedRoutes = () => {
   const location = useLocation();
+  const isAdminPath = location.pathname.startsWith('/admin');
   
+  const content = (
+    <Suspense fallback={<LoadingFallback />}>
+      <Routes location={location}>
+        <Route path="/" element={<Home />} />
+        <Route path="/nosotros" element={<About />} />
+        <Route path="/empresas" element={<Corporate />} />
+        <Route path="/personalizados" element={<CustomOrders />} />
+        <Route path="/carrito" element={<Cart />} />
+        <Route path="/catalogo/:categorySlug?" element={<Home />} />
+        <Route path="/admin/:tab?" element={<Admin />} />
+      </Routes>
+    </Suspense>
+  );
+
   return (
     <AnimatePresence mode="wait">
       <motion.div
@@ -82,16 +99,7 @@ const AnimatedRoutes = () => {
         exit={{ opacity: 0 }}
         transition={{ duration: 0.2 }}
       >
-        <Suspense fallback={<LoadingFallback />}>
-          <Routes location={location}>
-            <Route path="/" element={<Home />} />
-            <Route path="/nosotros" element={<About />} />
-            <Route path="/empresas" element={<Corporate />} />
-            <Route path="/personalizados" element={<CustomOrders />} />
-            <Route path="/carrito" element={<Cart />} />
-            <Route path="/admin" element={<Admin />} />
-          </Routes>
-        </Suspense>
+        {isAdminPath ? content : <Layout>{content}</Layout>}
       </motion.div>
     </AnimatePresence>
   );
@@ -112,16 +120,17 @@ const App = () => {
   }, []);
 
   return (
-    <StoreProvider>
-      <BrowserRouter>
-        <ScrollToTop />
-        <PageTracker />
-        <DarkModeManager />
-        <Layout>
+    <ErrorBoundary>
+      <StoreProvider>
+        <Toaster position="top-right" richColors />
+        <BrowserRouter>
+          <ScrollToTop />
+          <PageTracker />
+          <DarkModeManager />
           <AnimatedRoutes />
-        </Layout>
-      </BrowserRouter>
-    </StoreProvider>
+        </BrowserRouter>
+      </StoreProvider>
+    </ErrorBoundary>
   );
 };
 

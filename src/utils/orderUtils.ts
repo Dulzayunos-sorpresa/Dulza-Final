@@ -1,6 +1,6 @@
-import { Order, Product, PaymentMethod } from '@/types';
+import { Order, Product, PaymentMethod, TransferAccount } from '@/types';
 
-export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
+export const formatOrderToWhatsApp = (order: Order, products: Product[], transferAccounts: TransferAccount[] = []) => {
   const date = new Date(order.createdAt).toLocaleDateString('es-AR');
   const time = new Date(order.createdAt).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit' });
   
@@ -11,8 +11,26 @@ export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
   message += `*Nombre:* ${order.customerName}\n`;
   message += `*Teléfono:* ${order.customerPhone}\n\n`;
   
-  message += `*Forma de pago:* ${order.paymentMethod}\n`;
+  const paymentMethodLabel = {
+    [PaymentMethod.TRANSFERENCIA]: 'Transferencia Bancaria',
+    [PaymentMethod.TRANSFERENCIA_MP]: 'Mercado Pago (Automático)',
+    [PaymentMethod.TARJETA_UALA]: 'Tarjeta (Ualá)',
+    [PaymentMethod.EFECTIVO]: 'Efectivo',
+    [PaymentMethod.PAGOS_INTERNACIONALES]: 'Internacional (PayPal/Western)'
+  }[order.paymentMethod] || order.paymentMethod;
+
+  message += `*Forma de pago:* ${paymentMethodLabel}\n`;
   
+  if (order.paymentMethod === PaymentMethod.TRANSFERENCIA && order.transferAccountId) {
+    const account = transferAccounts.find(a => a.id === order.transferAccountId);
+    if (account) {
+      message += `*Banco:* ${account.bankName}\n`;
+      message += `*Titular:* ${account.accountHolder}\n`;
+      message += `*${account.type}:* ${account.cbu}\n`;
+      message += `*Alias:* ${account.alias}\n`;
+    }
+  }
+
   if (order.discountAmount && order.discountAmount > 0) {
     message += `*Cupón:* ${order.couponCode}\n`;
     message += `*Descuento:* -$${order.discountAmount.toLocaleString()}\n`;
@@ -21,7 +39,7 @@ export const formatOrderToWhatsApp = (order: Order, products: Product[]) => {
   message += `*Total:* $${(order.total || 0).toLocaleString()}\n\n`;
 
   if (order.paymentMethod === PaymentMethod.TRANSFERENCIA_MP) {
-    message += `► _El cbu se envía una vez recibido el pedido_\n\n`;
+    message += `► _Pago realizado vía Mercado Pago_\n\n`;
   } else if (order.paymentMethod === PaymentMethod.PAGOS_INTERNACIONALES) {
     message += `► _Solicito los datos para el pago internacional_\n\n`;
   }

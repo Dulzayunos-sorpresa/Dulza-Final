@@ -1,7 +1,12 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const PainBanner = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
+  
   const items = [
     "No sé qué regalarle",
     "Mañana es su cumple y no tengo nada",
@@ -25,7 +30,7 @@ const PainBanner = () => {
         {[...items, ...items].map((item, i) => (
           <span key={i} className="text-[10px] md:text-xs text-crema/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em] flex items-center gap-4">
             <strong className="text-crema dark:text-dark-text font-bold">{item}</strong>
-            <span className="text-naranja opacity-50">✦</span>
+            <span className={`${theme.primary} opacity-50`}>✦</span>
           </span>
         ))}
       </motion.div>

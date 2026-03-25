@@ -27,8 +27,7 @@ export class PrinterService {
         return;
       } catch (error: any) {
         console.error('USB Printing failed:', error);
-        const retry = confirm(`Error al imprimir por USB: ${error.message || 'Error desconocido'}.\n\n¿Deseas intentar imprimir usando el diálogo del navegador?`);
-        if (!retry) return;
+        // Fallback to browser printing automatically if USB fails
       }
     }
 

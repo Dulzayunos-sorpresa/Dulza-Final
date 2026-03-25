@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { 
   LayoutDashboard, 
   Plus, 
@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { useStore } from '@/context/store';
 import { Category } from '@/types';
+import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface CategoryItemProps {
   category: Category;
@@ -18,7 +19,7 @@ interface CategoryItemProps {
   totalCategories: number;
   moveCategory: (index: number, direction: 'up' | 'down') => void;
   setEditingCategory: (category: Category) => void;
-  deleteCategory: (id: string) => void;
+  onDeleteRequest: (id: string) => void;
 }
 
 const CategoryItem: React.FC<CategoryItemProps> = React.memo(({ 
@@ -27,7 +28,7 @@ const CategoryItem: React.FC<CategoryItemProps> = React.memo(({
   totalCategories, 
   moveCategory, 
   setEditingCategory, 
-  deleteCategory 
+  onDeleteRequest 
 }) => {
   return (
     <div className="p-4 flex items-center justify-between hover:bg-stone-50 transition-colors">
@@ -61,11 +62,7 @@ const CategoryItem: React.FC<CategoryItemProps> = React.memo(({
           <Edit className="w-4 h-4" />
         </button>
         <button 
-          onClick={() => {
-            if(confirm('¿Estás seguro de eliminar esta categoría? Los productos no se eliminarán pero quedarán sin categoría.')) {
-              deleteCategory(category.id);
-            }
-          }}
+          onClick={() => onDeleteRequest(category.id)}
           className="p-2 text-stone-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
         >
           <Trash2 className="w-4 h-4" />
@@ -79,6 +76,7 @@ const CategoriesManager: React.FC = () => {
   const { categories, addCategory, updateCategory, deleteCategory, reorderCategories } = useStore();
   const [isAddingCategory, setIsAddingCategory] = useState(false);
   const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
   const [newCategoryName, setNewCategoryName] = useState('');
   const [newCategoryParentId, setNewCategoryParentId] = useState<string>('');
 
@@ -196,11 +194,20 @@ const CategoriesManager: React.FC = () => {
               totalCategories={categories.length}
               moveCategory={moveCategory}
               setEditingCategory={setEditingCategory}
-              deleteCategory={deleteCategory}
+              onDeleteRequest={setCategoryToDelete}
             />
           ))}
         </div>
       </div>
+
+      <ConfirmDialog 
+        isOpen={!!categoryToDelete}
+        title="¿Eliminar categoría?"
+        description="¿Estás seguro de eliminar esta categoría? Los productos no se eliminarán pero quedarán sin categoría."
+        confirmText="Eliminar"
+        onConfirm={() => categoryToDelete && deleteCategory(categoryToDelete)}
+        onCancel={() => setCategoryToDelete(null)}
+      />
     </motion.div>
   );
 };

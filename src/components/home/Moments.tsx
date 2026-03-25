@@ -1,7 +1,12 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const Moments = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
+
   const moments = [
     {
       icon: "🎂",
@@ -57,10 +62,10 @@ const Moments = () => {
   };
 
   return (
-    <section className="px-6 md:px-20 py-32 bg-crema dark:bg-dark-bg relative overflow-hidden">
+    <section className={`px-6 md:px-20 py-32 ${theme.heroBg}/30 dark:bg-dark-bg relative overflow-hidden`}>
       {/* Decorative elements */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-rosa-suave/20 rounded-full blur-3xl -mr-32 -mt-32" />
-      <div className="absolute bottom-0 left-0 w-96 h-96 bg-naranja/5 rounded-full blur-3xl -ml-48 -mb-48" />
+      <div className={`absolute top-0 right-0 w-64 h-64 ${theme.heroBg} opacity-20 rounded-full blur-3xl -mr-32 -mt-32`} />
+      <div className={`absolute bottom-0 left-0 w-96 h-96 ${theme.heroBg} opacity-10 rounded-full blur-3xl -ml-48 -mb-48`} />
 
       <div className="max-w-7xl mx-auto relative z-10">
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-20 gap-8">
@@ -71,9 +76,9 @@ const Moments = () => {
             transition={{ duration: 0.8 }}
             className="max-w-2xl"
           >
-            <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">Para cada momento</p>
+            <p className={`text-[10px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>Para cada momento</p>
             <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-              Hay un Dulzayunos<br />para <span className="text-naranja italic">eso.</span>
+              Hay un Dulzayunos<br />para <span className={`${theme.primary} italic`}>eso.</span>
             </h2>
             <p className="text-base md:text-lg text-texto/70 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
               Sin importar la razón — o sin razón alguna — hay una forma de hacer que mañana a la mañana alguien se sienta la persona más querida del mundo.
@@ -83,7 +88,7 @@ const Moments = () => {
             <motion.div 
               animate={{ rotate: 360 }}
               transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-              className="w-24 h-24 rounded-full border border-naranja/20 flex items-center justify-center text-naranja"
+              className={`w-24 h-24 rounded-full border border-brand-100/20 flex items-center justify-center ${theme.primary}`}
             >
               <span className="text-2xl">✦</span>
             </motion.div>
@@ -94,18 +99,18 @@ const Moments = () => {
           {moments.map((moment, i) => (
             <div 
               key={i} 
-              className="group relative bg-white dark:bg-dark-surface rounded-[40px] p-10 transition-all duration-500 border border-naranja/5 dark:border-white/5 hover:shadow-2xl hover:shadow-naranja/10 hover:-translate-y-2"
+              className={`group relative bg-white dark:bg-dark-surface rounded-[40px] p-10 transition-all duration-500 border border-brand-100/5 dark:border-white/5 hover:shadow-2xl hover:shadow-brand-500/10 hover:-translate-y-2`}
             >
               <div className="w-16 h-16 bg-crema dark:bg-dark-bg rounded-2xl flex items-center justify-center text-3xl mb-8 transition-transform duration-500 group-hover:scale-110 group-hover:rotate-6">
                 {moment.icon}
               </div>
               <h3 className="text-2xl font-display text-texto dark:text-dark-text mb-4 uppercase tracking-tight">{moment.title}</h3>
               <div className="space-y-6">
-                <p className="text-sm text-texto/60 dark:text-dark-text-muted/60 italic leading-relaxed border-l-2 border-naranja/30 pl-6 py-1">
+                <p className={`text-sm text-texto/60 dark:text-dark-text-muted/60 italic leading-relaxed border-l-2 ${theme.primary} opacity-30 pl-6 py-1`}>
                   "{moment.quote}"
                 </p>
                 <p className="text-sm text-texto dark:text-dark-text font-bold leading-relaxed flex items-start gap-3">
-                  <span className="text-naranja mt-1">→</span>
+                  <span className={`${theme.primary} mt-1`}>→</span>
                   {moment.hook}
                 </p>
               </div>

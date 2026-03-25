@@ -1,7 +1,9 @@
 import React, { memo } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { AlertCircle } from 'lucide-react';
 import { Product } from '@/types';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 interface ProductCardProps {
   product: Product;
@@ -16,14 +18,16 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
   onProductClick,
   priority = false
 }) => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
   const isLowStock = product.stock !== undefined && product.stock < 5 && product.stock > 0;
   
   return (
     <div 
       onClick={() => onProductClick(product)}
-      className="group bg-white dark:bg-dark-surface border border-naranja/10 dark:border-white/5 rounded-[40px] p-8 flex flex-col transition-all duration-500 hover:border-naranja/30 dark:hover:border-naranja/30 hover:shadow-2xl hover:shadow-naranja/5 hover:-translate-y-2 cursor-pointer"
+      className={`group bg-white dark:bg-dark-surface border border-brand-100/10 dark:border-white/5 rounded-[40px] p-8 flex flex-col transition-all duration-500 hover:border-brand-500/30 dark:hover:border-brand-500/30 hover:shadow-2xl hover:shadow-brand-500/5 hover:-translate-y-2 cursor-pointer`}
     >
-      <div className="relative aspect-square rounded-[32px] overflow-hidden mb-8 bg-crema dark:bg-dark-bg">
+      <div className={`relative aspect-square rounded-[32px] overflow-hidden mb-8 ${theme.heroBg} dark:bg-dark-bg`}>
         <img 
           src={product.image} 
           alt={`Imagen de ${product.name}`} 
@@ -39,7 +43,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
           <motion.div 
             initial={{ x: -20, opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            className="absolute top-6 left-6 bg-naranja text-white text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-lg"
+            className={`absolute top-6 left-6 ${theme.secondary} text-white text-[10px] font-bold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full shadow-lg`}
           >
             Nuevo
           </motion.div>
@@ -53,7 +57,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
         <div className="mt-auto">
           <div className="flex items-baseline gap-2 mb-6">
             <span className="text-[10px] font-bold uppercase tracking-widest text-texto/30 dark:text-dark-text-muted/50">Desde</span>
-            <span className="text-3xl font-display text-naranja font-bold tracking-tighter">${(product.price || 0).toLocaleString()}</span>
+            <span className={`text-3xl font-display ${theme.primary} font-bold tracking-tighter`}>${(product.price || 0).toLocaleString()}</span>
           </div>
           
           {isLowStock && (
@@ -67,7 +71,7 @@ const ProductCard: React.FC<ProductCardProps> = memo(({
             </motion.div>
           )}
           
-          <button className="w-full py-4 rounded-full bg-crema dark:bg-dark-bg text-naranja text-[10px] font-bold uppercase tracking-[0.2em] transition-all group-hover:bg-naranja group-hover:text-white shadow-sm group-hover:shadow-lg group-hover:shadow-naranja/20">
+          <button className={`w-full py-4 rounded-full ${theme.heroBg} dark:bg-dark-bg ${theme.primary} text-[10px] font-bold uppercase tracking-[0.2em] transition-all group-hover:${theme.secondary} group-hover:text-white shadow-sm group-hover:shadow-lg group-hover:shadow-brand-500/20`}>
             Pedir este desayuno
           </button>
         </div>

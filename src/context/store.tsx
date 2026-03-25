@@ -1,9 +1,10 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo, useRef } from 'react';
-import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, Coupon, ShippingSettings, Category, ProductOptionValue } from '@/types';
+import { Product, CartItem, Order, OrderStatus, ProductOption, PaymentStatus, Coupon, ShippingSettings, Category, ProductOptionValue, TransferAccount } from '@/types';
 import axios from 'axios';
-import { db, auth } from '@/firebase';
+import { db, auth, handleFirestoreError, OperationType } from '@/firebase';
 import { collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, query, orderBy } from 'firebase/firestore';
 import { onAuthStateChanged, User, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { toast } from 'sonner';
 import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import { NotificationService } from '@/services/NotificationService';
 
@@ -44,6 +45,12 @@ export interface StoreContextType {
   updateCoupon: (coupon: Coupon) => void;
   deleteCoupon: (couponId: string) => void;
   validateCoupon: (code: string) => Coupon | undefined;
+  transferAccounts: TransferAccount[];
+  addTransferAccount: (account: TransferAccount) => void;
+  updateTransferAccount: (account: TransferAccount) => void;
+  deleteTransferAccount: (accountId: string) => void;
+  uiContent: UIContent;
+  updateUIContent: (content: UIContent) => Promise<void>;
   user: User | null;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
@@ -59,10 +66,23 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [options, setOptions] = useState<ProductOption[]>([]);
   const [subobjects, setSubobjects] = useState<ProductOptionValue[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
+  const [transferAccounts, setTransferAccounts] = useState<TransferAccount[]>([]);
+  const [uiContent, setUIContent] = useState<UIContent>({
+    activeLayout: 'default',
+    hero_title: "Regalos que",
+    hero_subtitle: "Desayunos artesanales y regalos personalizados para sorprender a quienes más querés.",
+    about_title: "Nuestra Historia",
+    about_text: "Somos un emprendimiento familiar dedicado a crear momentos inolvidables.",
+    corporate_title: "Regalos Empresariales",
+    corporate_text: "Sorprendé a tus colaboradores y clientes con regalos únicos y personalizados.",
+    custom_title: "Regalos Personalizados",
+    custom_text: "Creamos la caja perfecta para esa persona especial. Vos elegís, nosotros lo hacemos realidad."
+  });
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings>({
     baseCost: 3000,
     pricePerKm: 1350,
-    maxKmForAutoPayment: 25 // Default threshold for "Zona 10"
+    maxKmForAutoPayment: 25,
+    isMercadoPagoEnabled: true
   });
   const [user, setUser] = useState<User | null>(null);
 
@@ -114,6 +134,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     let unsubscribeOrders = () => {};
     let unsubscribeCoupons = () => {};
     let unsubscribeShipping = () => {};
+    let unsubscribeTransferAccounts = () => {};
+    let unsubscribeUIContent = () => {};
 
     const timeoutId = setTimeout(() => {
       unsubscribeOptions = onSnapshot(collection(db, 'options'), (snapshot) => {
@@ -168,21 +190,53 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           setDoc(doc(db, 'settings', 'shipping'), {
             baseCost: 3000,
             pricePerKm: 1350,
-            maxKmForAutoPayment: 25
+            maxKmForAutoPayment: 25,
+            isMercadoPagoEnabled: true,
+            specialCategoryId: ''
           }).catch(console.error);
         }
       }, (error) => {
         if (error.code !== 'permission-denied') console.error('Firestore Error (shipping):', error);
       });
+
+      unsubscribeUIContent = onSnapshot(doc(db, 'settings', 'ui_content'), (snapshot) => {
+        if (snapshot.exists()) {
+          setUIContent(snapshot.data() as UIContent);
+        } else if (isAdmin) {
+          setDoc(doc(db, 'settings', 'ui_content'), {
+            activeLayout: 'default',
+            hero_title: "Regalos que",
+            hero_subtitle: "Desayunos artesanales y regalos personalizados para sorprender a quienes más querés.",
+            about_title: "Nuestra Historia",
+            about_text: "Somos un emprendimiento familiar dedicado a crear momentos inolvidables.",
+            corporate_title: "Regalos Empresariales",
+            corporate_text: "Sorprendé a tus colaboradores y clientes con regalos únicos y personalizados.",
+            custom_title: "Regalos Personalizados",
+            custom_text: "Creamos la caja perfecta para esa persona especial. Vos elegís, nosotros lo hacemos realidad."
+          }).catch(console.error);
+        }
+      }, (error) => {
+        if (error.code !== 'permission-denied') console.error('Firestore Error (ui_content):', error);
+      });
+
+      unsubscribeTransferAccounts = onSnapshot(collection(db, 'transferAccounts'), (snapshot) => {
+        const accounts: TransferAccount[] = [];
+        snapshot.forEach(doc => accounts.push(doc.data() as TransferAccount));
+        setTransferAccounts(accounts);
+      }, (error) => {
+        if (error.code !== 'permission-denied') console.error('Firestore Error (transferAccounts):', error);
+      });
     }, 2000);
 
     return () => {
       clearTimeout(timeoutId);
-      unsubscribeOptions();
-      unsubscribeSubobjects();
-      unsubscribeOrders();
-      unsubscribeCoupons();
-      unsubscribeShipping();
+      unsubscribeOptions?.();
+      unsubscribeSubobjects?.();
+      unsubscribeOrders?.();
+      unsubscribeCoupons?.();
+      unsubscribeShipping?.();
+      unsubscribeTransferAccounts?.();
+      unsubscribeUIContent?.();
     };
   }, [isAdmin]);
 
@@ -190,7 +244,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'categories', category.id), category);
     } catch (error) {
-      console.error('Error adding category:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'categories');
     }
   }, []);
 
@@ -198,7 +252,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await updateDoc(doc(db, 'categories', category.id), { ...category });
     } catch (error) {
-      console.error('Error updating category:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'categories');
     }
   }, []);
 
@@ -206,7 +260,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await deleteDoc(doc(db, 'categories', categoryId));
     } catch (error) {
-      console.error('Error deleting category:', error);
+      handleFirestoreError(error, OperationType.DELETE, 'categories');
     }
   }, []);
 
@@ -215,14 +269,14 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const batch = newCategories.map(cat => updateDoc(doc(db, 'categories', cat.id), { order: cat.order }));
       await Promise.all(batch);
     } catch (error) {
-      console.error('Error reordering categories:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'categories');
     }
   }, []);
 
   const addToCart = useCallback((productId: string, quantity: number, selectedOptions?: { optionId: string; values: string[] }[]) => {
     const product = products.find(p => p.id === productId);
     if (!product || (product.stock !== undefined && product.stock < quantity)) {
-      alert('No hay stock suficiente');
+      toast.error('No hay stock suficiente');
       return;
     }
 
@@ -263,7 +317,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'products', product.id), product);
     } catch (error) {
-      console.error('Error adding product:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'products');
     }
   }, []);
 
@@ -271,7 +325,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'products', updatedProduct.id), updatedProduct);
     } catch (error) {
-      console.error('Error updating product:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'products');
     }
   }, []);
 
@@ -279,7 +333,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await updateDoc(doc(db, 'products', productId), { stock: newStock });
     } catch (error) {
-      console.error('Error updating stock:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'products');
     }
   }, []);
 
@@ -351,7 +405,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await updateDoc(doc(db, 'orders', orderId), { status });
     } catch (error) {
-      console.error('Error updating order status:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'orders');
     }
   }, []);
 
@@ -359,7 +413,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await updateDoc(doc(db, 'orders', orderId), { paymentStatus });
     } catch (error) {
-      console.error('Error updating payment status:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'orders');
     }
   }, []);
 
@@ -378,7 +432,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         total: newTotal
       });
     } catch (error) {
-      console.error('Error updating shipping:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'orders');
     }
   }, [orders]);
 
@@ -386,7 +440,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await deleteDoc(doc(db, 'orders', orderId));
     } catch (error) {
-      console.error('Error deleting order:', error);
+      handleFirestoreError(error, OperationType.DELETE, 'orders');
     }
   }, []);
 
@@ -394,7 +448,15 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'settings', 'shipping'), settings);
     } catch (error) {
-      console.error('Error updating shipping settings:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'settings/shipping');
+    }
+  }, []);
+
+  const updateUIContent = useCallback(async (content: UIContent) => {
+    try {
+      await setDoc(doc(db, 'settings', 'ui_content'), content);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'settings/ui_content');
     }
   }, []);
 
@@ -402,7 +464,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'options', option.id), option);
     } catch (error) {
-      console.error('Error adding option:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'options');
     }
   }, []);
 
@@ -410,7 +472,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'subobjects', subobject.id), subobject);
     } catch (error) {
-      console.error('Error adding subobject:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'subobjects');
     }
   }, []);
 
@@ -424,7 +486,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         await updateOption({ ...o, values: newValues });
       }
     } catch (error) {
-      console.error('Error updating subobject:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'subobjects');
     }
   }, [options]);
 
@@ -438,7 +500,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         await updateOption({ ...o, values: newValues });
       }
     } catch (error) {
-      console.error('Error deleting subobject:', error);
+      handleFirestoreError(error, OperationType.DELETE, 'subobjects');
     }
   }, [options]);
 
@@ -452,7 +514,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         await updateDoc(doc(db, 'products', p.id), { options: newOptions });
       }
     } catch (error) {
-      console.error('Error updating option:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'options');
     }
   }, [products]);
 
@@ -466,7 +528,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         await updateDoc(doc(db, 'products', p.id), { options: newOptions });
       }
     } catch (error) {
-      console.error('Error deleting option:', error);
+      handleFirestoreError(error, OperationType.DELETE, 'options');
     }
   }, [products]);
 
@@ -475,7 +537,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       const selectedOptions = options.filter(o => optionIds.includes(o.id));
       await updateDoc(doc(db, 'products', productId), { options: selectedOptions });
     } catch (error) {
-      console.error('Error updating product options:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'products');
     }
   }, [options]);
 
@@ -483,7 +545,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await setDoc(doc(db, 'coupons', coupon.id), coupon);
     } catch (error) {
-      console.error('Error adding coupon:', error);
+      handleFirestoreError(error, OperationType.WRITE, 'coupons');
     }
   }, []);
 
@@ -491,7 +553,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await updateDoc(doc(db, 'coupons', coupon.id), { ...coupon });
     } catch (error) {
-      console.error('Error updating coupon:', error);
+      handleFirestoreError(error, OperationType.UPDATE, 'coupons');
     }
   }, []);
 
@@ -499,7 +561,31 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     try {
       await deleteDoc(doc(db, 'coupons', couponId));
     } catch (error) {
-      console.error('Error deleting coupon:', error);
+      handleFirestoreError(error, OperationType.DELETE, 'coupons');
+    }
+  }, []);
+
+  const addTransferAccount = useCallback(async (account: TransferAccount) => {
+    try {
+      await setDoc(doc(db, 'transferAccounts', account.id), account);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'transferAccounts');
+    }
+  }, []);
+
+  const updateTransferAccount = useCallback(async (account: TransferAccount) => {
+    try {
+      await setDoc(doc(db, 'transferAccounts', account.id), account);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, 'transferAccounts');
+    }
+  }, []);
+
+  const deleteTransferAccount = useCallback(async (accountId: string) => {
+    try {
+      await deleteDoc(doc(db, 'transferAccounts', accountId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, 'transferAccounts');
     }
   }, []);
 
@@ -569,6 +655,12 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateCoupon,
     deleteCoupon,
     validateCoupon,
+    transferAccounts,
+    addTransferAccount,
+    updateTransferAccount,
+    deleteTransferAccount,
+    uiContent,
+    updateUIContent,
     shippingSettings,
     user,
     loginWithGoogle,
@@ -581,7 +673,8 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateShippingSettings, updateStock, options, addOption, updateOption,
     deleteOption, updateProductOptions, subobjects, addSubobject,
     updateSubobject, deleteSubobject, addCoupon, updateCoupon, deleteCoupon,
-    validateCoupon, shippingSettings, user, loginWithGoogle, logout
+    validateCoupon, transferAccounts, addTransferAccount, updateTransferAccount,
+    deleteTransferAccount, uiContent, updateUIContent, shippingSettings, user, loginWithGoogle, logout
   ]);
 
   return (

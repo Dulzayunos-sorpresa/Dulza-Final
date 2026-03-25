@@ -1,7 +1,12 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
+import { useStore } from '@/context/store';
+import { getTheme } from '@/utils/themes';
 
 const HowItWorks = () => {
+  const { uiContent } = useStore();
+  const theme = getTheme(uiContent.activeLayout);
+
   const steps = [
     {
       num: "01",
@@ -70,9 +75,9 @@ const HowItWorks = () => {
           transition={{ duration: 0.8 }}
           className="max-w-3xl mb-24"
         >
-          <p className="text-[10px] md:text-xs uppercase tracking-[0.3em] text-naranja font-bold mb-6">El proceso</p>
+          <p className={`text-[10px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>El proceso</p>
           <h2 className="text-5xl md:text-7xl font-display text-crema dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-            De cero a sorpresa<br /><span className="text-naranja italic">en minutos.</span>
+            De cero a sorpresa<br /><span className={`${theme.primary} italic`}>en minutos.</span>
           </h2>
           <p className="text-base md:text-lg text-crema/50 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
             No hace falta planificarlo con días de anticipación. Si pedís antes de medianoche, llegamos mañana a la mañana.
@@ -86,13 +91,13 @@ const HowItWorks = () => {
               className="relative group transition-transform duration-500 hover:-translate-y-2"
             >
               <div className="flex items-baseline gap-4 mb-8">
-                <div className="font-display text-6xl font-bold text-naranja leading-none transition-all duration-500 opacity-20 group-hover:opacity-40 group-hover:scale-110">
+                <div className={`font-display text-6xl font-bold ${theme.primary} leading-none transition-all duration-500 opacity-20 group-hover:opacity-40 group-hover:scale-110`}>
                   {step.num}
                 </div>
-                <div className="w-12 h-[1px] bg-naranja/30 group-hover:w-16 transition-all duration-500" />
+                <div className={`w-12 h-[1px] ${theme.heroBg} opacity-30 group-hover:w-16 transition-all duration-500`} />
               </div>
               
-              <div className="w-14 h-14 bg-crema/5 dark:bg-white/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-naranja/10 transition-all duration-500 group-hover:scale-110">
+              <div className="w-14 h-14 bg-crema/5 dark:bg-white/5 rounded-2xl flex items-center justify-center text-2xl mb-6 group-hover:bg-brand-500/10 transition-all duration-500 group-hover:scale-110">
                 {step.icon}
               </div>
               
@@ -102,7 +107,7 @@ const HowItWorks = () => {
               </p>
               
               {i < 3 && (
-                <div className="hidden lg:block absolute top-12 -right-12 text-naranja/20 text-3xl animate-pulse">
+                <div className={`hidden lg:block absolute top-12 -right-12 ${theme.primary} opacity-20 text-3xl animate-pulse`}>
                   →
                 </div>
               )}
