@@ -98,10 +98,14 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
     familyName: '',
     blockLot: '',
     houseNumber: '',
-    paymentMethod: 'TRANSFERENCIA' as PaymentMethod,
+    paymentMethod: PaymentMethod.TRANSFERENCIA,
+    transferAccountId: '',
     notes: '',
     items: [] as any[]
   });
+
+  const { transferAccounts } = useStore();
+  const activeTransferAccounts = React.useMemo(() => transferAccounts.filter(a => a.isActive), [transferAccounts]);
 
   const filteredProducts = React.useMemo(() => products.filter(p => 
     p.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -159,21 +163,44 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
     // Simple total calculation for manual order
     const total = subtotal;
 
-    const newOrder = {
-      ...form,
-      id: Math.random().toString(36).substr(2, 9),
-      createdAt: new Date().toISOString(),
-      status: 'NUEVO',
-      paymentStatus: 'PENDIENTE',
+    const orderData = {
+      customerName: form.customerName,
+      customerPhone: form.customerPhone,
+      deliveryType: form.deliveryType,
+      deliveryAddress: form.deliveryType === 'PICKUP' ? 'Retiro en Local' : (form.isPrivateNeighborhood ? form.neighborhood : form.deliveryAddress),
+      deliveryDate: form.deliveryDate,
+      deliveryTime: form.deliveryTime,
+      recipientName: form.recipientName,
+      recipientPhone: form.recipientPhone,
+      neighborhood: form.neighborhood,
+      reference: form.reference,
+      isPrivateNeighborhood: form.isPrivateNeighborhood,
+      familyName: form.familyName,
+      blockLot: form.blockLot,
+      houseNumber: form.houseNumber,
+      paymentMethod: form.paymentMethod,
+      transferAccountId: form.transferAccountId,
+      notes: form.notes,
+      items: form.items.map(i => ({
+        productId: i.productId,
+        quantity: i.quantity,
+        name: i.name,
+        price: i.price
+      })),
       total,
-      items: form.items.map(i => ({ ...i, id: Math.random().toString(36).substr(2, 9) }))
-    } as any;
+      shippingCost: 0,
+      shippingZone: 'Manual',
+      distanceKm: 0
+    };
 
-    addOrder(newOrder);
-    toast.success('Pedido creado con éxito');
-    setShowPrintConfirm(newOrder);
-    
-    onOrderCreated();
+    addOrder(orderData).then(({ order }) => {
+      toast.success('Pedido creado con éxito');
+      setShowPrintConfirm(order);
+      onOrderCreated();
+    }).catch(err => {
+      console.error(err);
+      toast.error('Error al crear el pedido');
+    });
   }, [form, validateForm, products, addOrder, onOrderCreated]);
 
   const addItem = React.useCallback((product: Product) => {
@@ -373,11 +400,30 @@ const NewOrderManager: React.FC<NewOrderManagerProps> = ({ onOrderCreated }) => 
                   onChange={(e) => setForm({...form, paymentMethod: e.target.value as PaymentMethod})}
                   className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
                 >
-                  <option value="EFECTIVO">Efectivo</option>
-                  <option value="TRANSFERENCIA">Transferencia</option>
-                  <option value="TARJETA">Tarjeta (Ualá/MP)</option>
+                  <option value={PaymentMethod.EFECTIVO}>Efectivo</option>
+                  <option value={PaymentMethod.TRANSFERENCIA}>Transferencia</option>
+                  <option value={PaymentMethod.TRANSFERENCIA_MP}>Mercado Pago / Transferencia</option>
+                  <option value={PaymentMethod.TARJETA_UALA}>Tarjeta (Ualá)</option>
+                  <option value={PaymentMethod.PAGOS_INTERNACIONALES}>Pagos Internacionales</option>
                 </select>
               </div>
+
+              {form.paymentMethod === PaymentMethod.TRANSFERENCIA && (
+                <div className="space-y-2">
+                  <label className="text-sm font-bold text-stone-600">Cuenta de Transferencia</label>
+                  <select 
+                    value={form.transferAccountId}
+                    onChange={(e) => setForm({...form, transferAccountId: e.target.value})}
+                    className="w-full px-4 py-3 bg-stone-50 border border-stone-200 rounded-xl outline-none focus:ring-2 focus:ring-brand-500"
+                    required
+                  >
+                    <option value="">Seleccionar cuenta...</option>
+                    {activeTransferAccounts.map(acc => (
+                      <option key={acc.id} value={acc.id}>{acc.bankName} - {acc.accountHolder}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </div>
 
             <div className="space-y-2">

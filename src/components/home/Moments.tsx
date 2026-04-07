@@ -78,10 +78,14 @@ const Moments = () => {
           >
             <p className={`text-[10px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>Para cada momento</p>
             <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-              Hay un Dulzayunos<br />para <span className={`${theme.primary} italic`}>eso.</span>
+              {uiContent.moments_title || 'Para cada'}
+              <br />
+              <span className={`${theme.primary} italic`}>
+                {uiContent.moments_subtitle || 'momento'}
+              </span>
             </h2>
             <p className="text-base md:text-lg text-texto/70 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
-              Sin importar la razón — o sin razón alguna — hay una forma de hacer que mañana a la mañana alguien se sienta la persona más querida del mundo.
+              {uiContent.moments_description || 'Nuestros desayunos están pensados para acompañar cada historia.'}
             </p>
           </motion.div>
           <div className="hidden md:block">

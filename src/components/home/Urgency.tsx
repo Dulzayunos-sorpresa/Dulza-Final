@@ -48,11 +48,14 @@ const Urgency = () => {
         >
           <p className="text-[11px] md:text-xs uppercase tracking-[0.4em] text-white/80 font-bold mb-8">No pierdas tiempo</p>
           <h2 className="text-5xl md:text-8xl font-display text-white leading-[0.85] mb-10 uppercase tracking-tighter">
-            Su cumpleaños es mañana.<br />
-            <span className="text-texto dark:text-dark-text italic">Todavía llegás.</span>
+            {uiContent.urgency_title || 'No dejes pasar'}
+            <br />
+            <span className="text-texto dark:text-dark-text italic">
+              {uiContent.urgency_subtitle || 'esta oportunidad'}
+            </span>
           </h2>
           <p className="text-lg md:text-xl text-white/80 mb-16 font-light max-w-2xl mx-auto">
-            Pedidos antes de medianoche → entrega mañana a la mañana.
+            {uiContent.urgency_description || 'Los cupos para mañana se están agotando. Asegurá tu sorpresa ahora.'}
           </p>
         </motion.div>
 

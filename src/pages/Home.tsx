@@ -10,6 +10,7 @@ import ProductCard from '@/components/product/ProductCard';
 
 // Lazy load below-the-fold components
 const PainBanner = lazy(() => import('@/components/home/PainBanner'));
+const MoodBanner = lazy(() => import('@/components/home/MoodBanner'));
 const Moments = lazy(() => import('@/components/home/Moments'));
 const HowItWorks = lazy(() => import('@/components/home/HowItWorks'));
 const Testimonials = lazy(() => import('@/components/home/Testimonials'));
@@ -51,7 +52,7 @@ export default function Home() {
   const [wordIndex, setWordIndex] = useState(0);
   const location = useLocation();
 
-  const rotatingWords = ["Enamoran", "Sorprenden", "Permanecen", "Emocionan", "Conectan"];
+  const rotatingWords = ["Permanecen", "Sorprenden", "Conectan", "Enamoran", "Emocionan"];
 
   const valentineCategory = ProductCategory.VALENTINE;
 
@@ -232,21 +233,25 @@ export default function Home() {
           </div>
           
           <h1 className="text-6xl md:text-8xl font-display text-texto dark:text-dark-text font-bold leading-[0.9] mb-10 uppercase tracking-tighter">
-            {uiContent.hero_title.split(' ').map((word, i) => (
-              <React.Fragment key={i}>
-                {word === 'pensaste.' ? <span className={theme.primary}>{word}</span> : word}
-                {i < uiContent.hero_title.split(' ').length - 1 && <br />}
-              </React.Fragment>
-            ))}
-            {!uiContent.hero_title.includes('pensaste.') && (
-              <>
-                <br />Se nota<br />que lo<br /><span className={theme.primary}>pensaste.</span>
-              </>
-            )}
+            Regalá momentos que<br />
+            <span className="relative inline-block h-[1.1em] overflow-hidden align-top">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={wordIndex}
+                  initial={{ y: '100%', opacity: 0 }}
+                  animate={{ y: '0%', opacity: 1 }}
+                  exit={{ y: '-100%', opacity: 0 }}
+                  transition={{ duration: 0.5, ease: [0.23, 1, 0.32, 1] }}
+                  className={`block ${theme.primary}`}
+                >
+                  {rotatingWords[wordIndex]}.
+                </motion.span>
+              </AnimatePresence>
+            </span>
           </h1>
           
           <p className="text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-md mb-12 font-medium">
-            {uiContent.hero_subtitle}
+            Desayunos artesanales que sorprenden y conectan corazones en toda Córdoba.
           </p>
           
           <div className="flex flex-wrap gap-6">
@@ -362,6 +367,10 @@ export default function Home() {
           </motion.div>
         </div>
       </section>
+
+      <Suspense fallback={<LoadingFallback />}>
+        <MoodBanner />
+      </Suspense>
 
       <Suspense fallback={<LoadingFallback />}>
         <PainBanner />

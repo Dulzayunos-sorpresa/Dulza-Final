@@ -8,8 +8,12 @@ import {
   XCircle, 
   Save, 
   Image as ImageIcon, 
-  Camera 
+  Camera,
+  Download,
+  Upload
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { ProductOptionValue } from '@/types';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -74,6 +78,52 @@ const SubobjectsManager: React.FC = () => {
   const [editingSubobject, setEditingSubobject] = useState<ProductOptionValue | null>(null);
   const [subobjectToDelete, setSubobjectToDelete] = useState<string | null>(null);
 
+  const handleExportSubobjects = React.useCallback(() => {
+    const data = subobjects.map(s => ({
+      ID: s.id,
+      Nombre: s.name,
+      Descripción: s.description || '',
+      Precio: s.price,
+      Imagen: s.image || ''
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Subobjetos");
+    XLSX.writeFile(wb, "subobjetos.xlsx");
+  }, [subobjects]);
+
+  const handleImportSubobjects = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        for (const row of data) {
+          const subobjectData: ProductOptionValue = {
+            id: row.ID || Math.random().toString(36).substr(2, 9),
+            name: row.Nombre,
+            description: row.Descripción || '',
+            price: parseFloat(row.Precio) || 0,
+            image: row.Imagen || ''
+          };
+          await addSubobject(subobjectData);
+        }
+        toast.success(`${data.length} subobjetos importados/actualizados`);
+      } catch (error) {
+        console.error('Error importing subobjects:', error);
+        toast.error('Error al importar subobjetos');
+      }
+    };
+    reader.readAsBinaryString(file);
+  }, [addSubobject]);
+
   const handleSave = React.useCallback(() => {
     if (editingSubobject) {
       updateSubobject(editingSubobject);
@@ -124,13 +174,33 @@ const SubobjectsManager: React.FC = () => {
           </h2>
           <p className="text-stone-500 text-sm">Administra los subobjetos que pueden ser añadidos a los productos.</p>
         </div>
-        <button 
-          onClick={handleAddSubobject}
-          className="bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-600 transition-all shadow-md"
-        >
-          <Plus className="w-5 h-5" />
-          Nuevo Subobjeto
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleExportSubobjects}
+            className="bg-white text-stone-600 border border-stone-200 px-4 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-50 transition-all shadow-sm"
+            title="Exportar a Excel"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden md:inline">Exportar</span>
+          </button>
+          <label className="bg-white text-stone-600 border border-stone-200 px-4 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-50 transition-all shadow-sm cursor-pointer" title="Importar desde Excel">
+            <Upload className="w-5 h-5" />
+            <span className="hidden md:inline">Importar</span>
+            <input 
+              type="file" 
+              accept=".xlsx, .xls" 
+              onChange={handleImportSubobjects} 
+              className="hidden" 
+            />
+          </label>
+          <button 
+            onClick={handleAddSubobject}
+            className="bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-600 transition-all shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+            Nuevo Subobjeto
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

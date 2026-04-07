@@ -1,0 +1,69 @@
+{
+  "entities": {
+    "billing_accounts": {
+      "title": "Billing Accounts",
+      "description": "Bank accounts or digital wallets used for receiving payments.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Name of the account (e.g., Mercado Pago, Santander)."
+        },
+        "balance": {
+          "type": "number",
+          "description": "Current total balance of the account."
+        },
+        "lastUpdated": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last time the balance was updated."
+        }
+      },
+      "required": ["name", "balance"]
+    },
+    "billing_transactions": {
+      "title": "Billing Transactions",
+      "description": "Individual financial transactions (transfers, payments, etc.).",
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "type": "string",
+          "description": "ID of the account where the transaction occurred."
+        },
+        "amount": {
+          "type": "number",
+          "description": "Amount of the transaction."
+        },
+        "type": {
+          "type": "string",
+          "enum": ["income", "expense"],
+          "description": "Type of transaction."
+        },
+        "description": {
+          "type": "string",
+          "description": "Description or reason for the transaction."
+        },
+        "date": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Date and time of the transaction."
+        },
+        "orderId": {
+          "type": "string",
+          "description": "Optional ID of the associated order."
+        }
+      },
+      "required": ["accountId", "amount", "type", "date"]
+    }
+  },
+  "firestore": {
+    "/billing_accounts/{accountId}": {
+      "schema": "billing_accounts",
+      "description": "Collection of billing accounts."
+    },
+    "/billing_transactions/{transactionId}": {
+      "schema": "billing_transactions",
+      "description": "Collection of billing transactions."
+    }
+  }
+}

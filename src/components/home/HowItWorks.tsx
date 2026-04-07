@@ -77,10 +77,14 @@ const HowItWorks = () => {
         >
           <p className={`text-[10px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>El proceso</p>
           <h2 className="text-5xl md:text-7xl font-display text-crema dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-            De cero a sorpresa<br /><span className={`${theme.primary} italic`}>en minutos.</span>
+            {uiContent.how_it_works_title || 'Cómo'}
+            <br />
+            <span className={`${theme.primary} italic`}>
+              {uiContent.how_it_works_subtitle || 'funciona'}
+            </span>
           </h2>
           <p className="text-base md:text-lg text-crema/50 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
-            No hace falta planificarlo con días de anticipación. Si pedís antes de medianoche, llegamos mañana a la mañana.
+            {uiContent.how_it_works_description || 'Hacer un regalo inolvidable es más simple de lo que pensás.'}
           </p>
         </motion.div>
 

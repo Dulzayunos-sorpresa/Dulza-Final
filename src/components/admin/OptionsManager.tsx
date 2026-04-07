@@ -8,8 +8,12 @@ import {
   XCircle, 
   Save, 
   ChevronRight, 
-  ChevronLeft 
+  ChevronLeft,
+  Download,
+  Upload
 } from 'lucide-react';
+import * as XLSX from 'xlsx';
+import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { ProductOption, ProductOptionValue } from '@/types';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
@@ -96,6 +100,54 @@ const OptionsManager: React.FC = () => {
   const [editingOption, setEditingOption] = useState<ProductOption | null>(null);
   const [optionToDelete, setOptionToDelete] = useState<string | null>(null);
 
+  const handleExportOptions = React.useCallback(() => {
+    const data = options.map(o => ({
+      ID: o.id,
+      Nombre: o.name,
+      Descripción: o.description || '',
+      Tipo: o.type,
+      Obligatorio: o.isRequired ? 'SÍ' : 'NO',
+      Valores: JSON.stringify(o.values)
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Opciones");
+    XLSX.writeFile(wb, "opciones_productos.xlsx");
+  }, [options]);
+
+  const handleImportOptions = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
+
+        for (const row of data) {
+          const optionData: ProductOption = {
+            id: row.ID || Math.random().toString(36).substr(2, 9),
+            name: row.Nombre,
+            description: row.Descripción || '',
+            type: row.Tipo as 'select' | 'multi-select',
+            isRequired: row.Obligatorio === 'SÍ',
+            values: row.Valores ? JSON.parse(row.Valores) : []
+          };
+          await addOption(optionData);
+        }
+        toast.success(`${data.length} grupos de opciones importados/actualizados`);
+      } catch (error) {
+        console.error('Error importing options:', error);
+        toast.error('Error al importar opciones');
+      }
+    };
+    reader.readAsBinaryString(file);
+  }, [addOption]);
+
   const handleSave = React.useCallback(() => {
     if (editingOption) {
       updateOption(editingOption);
@@ -133,13 +185,33 @@ const OptionsManager: React.FC = () => {
           </h2>
           <p className="text-stone-500 text-sm">Crea grupos de opciones (ej: Sabores, Rellenos) para vincular a tus productos.</p>
         </div>
-        <button 
-          onClick={handleAddOption}
-          className="bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-600 transition-all shadow-md"
-        >
-          <Plus className="w-5 h-5" />
-          Nueva Grupo de Opciones
-        </button>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={handleExportOptions}
+            className="bg-white text-stone-600 border border-stone-200 px-4 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-50 transition-all shadow-sm"
+            title="Exportar a Excel"
+          >
+            <Download className="w-5 h-5" />
+            <span className="hidden md:inline">Exportar</span>
+          </button>
+          <label className="bg-white text-stone-600 border border-stone-200 px-4 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-stone-50 transition-all shadow-sm cursor-pointer" title="Importar desde Excel">
+            <Upload className="w-5 h-5" />
+            <span className="hidden md:inline">Importar</span>
+            <input 
+              type="file" 
+              accept=".xlsx, .xls" 
+              onChange={handleImportOptions} 
+              className="hidden" 
+            />
+          </label>
+          <button 
+            onClick={handleAddOption}
+            className="bg-brand-500 text-white px-6 py-3 rounded-xl font-bold flex items-center gap-2 hover:bg-brand-600 transition-all shadow-md"
+          >
+            <Plus className="w-5 h-5" />
+            Nuevo Grupo de Opciones
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

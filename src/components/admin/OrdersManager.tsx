@@ -17,11 +17,15 @@ import {
   XCircle, 
   Send,
   Volume2,
-  VolumeX
+  VolumeX,
+  FileDown,
+  Plus
 } from 'lucide-react';
 import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
 import { useStore } from '@/context/store';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
+import NewOrderManager from './NewOrderManager';
 import { OrderStatus, PaymentStatus, Order, PaymentMethod, TransferAccount } from '@/types';
 import { formatOrderToWhatsApp } from '@/utils/orderUtils';
 import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
@@ -323,6 +327,7 @@ const OrdersManager: React.FC = () => {
   } = useStore();
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<OrderStatus | 'TODOS'>('TODOS');
+  const [showNewOrder, setShowNewOrder] = useState(false);
 
   const [orderToDelete, setOrderToDelete] = useState<string | null>(null);
   const [isSoundEnabled, setIsSoundEnabled] = useState(() => NotificationService.getEnabled());
@@ -340,6 +345,42 @@ const OrdersManager: React.FC = () => {
   const changeSound = (soundId: string) => {
     setSelectedSoundId(soundId);
     NotificationService.setSound(soundId);
+  };
+
+  const exportToExcel = () => {
+    try {
+      const data = filteredOrders.map(o => ({
+        ID: o.id.slice(-6),
+        Fecha: new Date(o.createdAt).toLocaleDateString(),
+        Cliente: o.customerName,
+        Telefono: o.customerPhone,
+        Tipo_Envio: o.deliveryType === 'PICKUP' ? 'Retiro' : 'Envío',
+        Direccion: o.deliveryType === 'DELIVERY' 
+          ? (o.isPrivateNeighborhood ? `${o.neighborhood}, Fam. ${o.familyName}` : o.deliveryAddress)
+          : 'N/A',
+        Barrio: o.neighborhood || 'N/A',
+        Fecha_Entrega: o.deliveryDate,
+        Hora_Entrega: o.deliveryTime,
+        Metodo_Pago: o.paymentMethod,
+        Estado_Pago: o.paymentStatus,
+        Estado_Pedido: o.status,
+        Total: o.total,
+        Items: o.items.map(item => {
+          const p = products.find(prod => prod.id === item.productId);
+          return `${item.quantity}x ${p?.name || 'Producto'}`;
+        }).join(', '),
+        Notas: o.notes || ''
+      }));
+
+      const ws = XLSX.utils.json_to_sheet(data);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
+      XLSX.writeFile(wb, `pedidos_dulzayunos_${new Date().toISOString().split('T')[0]}.xlsx`);
+      toast.success('Excel exportado correctamente');
+    } catch (error) {
+      console.error('Error al exportar Excel:', error);
+      toast.error('Error al exportar el archivo Excel');
+    }
   };
 
   const SHIPPING_ZONES = React.useMemo(() => [
@@ -390,110 +431,152 @@ const OrdersManager: React.FC = () => {
       exit={{ opacity: 0, x: -20 }}
       className="space-y-6"
     >
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
-          <input 
-            type="text"
-            placeholder="Buscar por nombre o ID..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
-          />
+      <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-stone-100 shadow-sm">
+        <div>
+          <h2 className="text-3xl font-display text-stone-800">Gestión de Pedidos</h2>
+          <p className="text-stone-500 font-medium">Control total de ventas y entregas</p>
         </div>
-        <div className="flex flex-wrap gap-2 w-full lg:w-auto items-center">
-          <button
-            onClick={toggleSound}
-            className={`p-2 rounded-xl transition-all border relative ${
-              isSoundEnabled 
-                ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
-                : 'bg-stone-50 text-stone-400 border-stone-200 hover:bg-stone-100'
-            }`}
-            title={isSoundEnabled ? "Sonido activado" : "Sonido desactivado"}
-          >
-            {isSoundEnabled && (
-              <span className="absolute -top-1 -right-1 flex h-3 w-3">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
-              </span>
-            )}
-            {isSoundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
-          </button>
-          
-          <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-200">
-            <span className="text-[10px] font-bold text-stone-400 uppercase px-2">Sonido:</span>
-            {NOTIFICATION_SOUNDS.map(sound => (
-              <button
-                key={sound.id}
-                onClick={() => changeSound(sound.id)}
-                className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                  selectedSoundId === sound.id 
-                    ? 'bg-brand-500 text-white shadow-sm' 
-                    : 'text-stone-500 hover:bg-stone-200'
-                }`}
-              >
-                {sound.name}
-              </button>
-            ))}
-          </div>
-
-          <div className="h-8 w-px bg-stone-100 mx-1 hidden lg:block" />
-          {['TODOS', ...Object.values(OrderStatus)].map(status => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status as OrderStatus | 'TODOS')}
-              className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
-                filterStatus === status 
-                  ? 'bg-brand-500 text-white shadow-md' 
-                  : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
-              }`}
-            >
-              {status}
-            </button>
-          ))}
-        </div>
+        <button 
+          onClick={() => setShowNewOrder(!showNewOrder)}
+          className={`flex items-center gap-2 px-6 py-3 rounded-2xl font-bold transition-all shadow-lg ${
+            showNewOrder 
+              ? 'bg-stone-100 text-stone-600 hover:bg-stone-200' 
+              : 'bg-brand-600 text-white hover:bg-brand-700 shadow-brand-200'
+          }`}
+        >
+          {showNewOrder ? (
+            <>
+              <ShoppingCart className="w-5 h-5" />
+              Ver Pedidos
+            </>
+          ) : (
+            <>
+              <Plus className="w-5 h-5" />
+              Nuevo Pedido
+            </>
+          )}
+        </button>
       </div>
 
-      {orders.length === 0 ? (
-        <div className="bg-white rounded-2xl p-12 text-center border border-stone-200 shadow-sm">
-          <ShoppingCart className="w-16 h-16 text-stone-300 mx-auto mb-4" />
-          <p className="text-stone-500 font-medium">No hay pedidos registrados aún.</p>
-        </div>
+      {showNewOrder ? (
+        <NewOrderManager onOrderCreated={() => setShowNewOrder(false)} />
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 overflow-x-auto pb-4">
-          {Object.values(OrderStatus).map(statusColumn => {
-            const columnOrders = ordersByStatus[statusColumn] || [];
-
-            if (filterStatus !== 'TODOS' && filterStatus !== statusColumn) return null;
-
-            return (
-              <div key={statusColumn} className="min-w-[280px] flex flex-col bg-stone-50 rounded-2xl p-3 border border-stone-200">
-                <div className="flex justify-between items-center mb-3 px-1">
-                  <h3 className="font-bold text-stone-700 uppercase tracking-wider text-[11px]">{statusColumn}</h3>
-                  <span className="bg-white text-stone-500 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-stone-100">{columnOrders.length}</span>
-                </div>
-                <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-300px)] pr-1 custom-scrollbar">
-                  {columnOrders.map((order, idx) => (
-                    <OrderCard 
-                      key={order.id}
-                      order={order}
-                      idx={idx}
-                      products={products}
-                      updateOrderStatus={updateOrderStatus}
-                      updateOrderPaymentStatus={updateOrderPaymentStatus}
-                      updateOrderShipping={updateOrderShipping}
-                      onDeleteRequest={setOrderToDelete}
-                      hasFreeDelivery={hasFreeDelivery}
-                      getGoogleMapsLink={getGoogleMapsLink}
-                      SHIPPING_ZONES={SHIPPING_ZONES}
-                      transferAccounts={transferAccounts}
-                    />
-                  ))}
-                </div>
+        <>
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 bg-white p-4 rounded-2xl border border-stone-100 shadow-sm">
+            <div className="relative flex-1 w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400" />
+              <input 
+                type="text"
+                placeholder="Buscar por nombre o ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-stone-50 border border-stone-200 rounded-xl focus:ring-2 focus:ring-brand-500 outline-none text-sm"
+              />
+            </div>
+            <div className="flex flex-wrap gap-2 w-full lg:w-auto items-center">
+              <button
+                onClick={toggleSound}
+                className={`p-2 rounded-xl transition-all border relative ${
+                  isSoundEnabled 
+                    ? 'bg-emerald-50 text-emerald-600 border-emerald-100 hover:bg-emerald-100' 
+                    : 'bg-stone-50 text-stone-400 border-stone-200 hover:bg-stone-100'
+                }`}
+                title={isSoundEnabled ? "Sonido activado" : "Sonido desactivado"}
+              >
+                {isSoundEnabled && (
+                  <span className="absolute -top-1 -right-1 flex h-3 w-3">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                  </span>
+                )}
+                {isSoundEnabled ? <Volume2 className="w-5 h-5" /> : <VolumeX className="w-5 h-5" />}
+              </button>
+              
+              <div className="flex items-center gap-1 bg-stone-50 p-1 rounded-xl border border-stone-200">
+                <span className="text-[10px] font-bold text-stone-400 uppercase px-2">Sonido:</span>
+                {NOTIFICATION_SOUNDS.map(sound => (
+                  <button
+                    key={sound.id}
+                    onClick={() => changeSound(sound.id)}
+                    className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
+                      selectedSoundId === sound.id 
+                        ? 'bg-brand-500 text-white shadow-sm' 
+                        : 'text-stone-500 hover:bg-stone-200'
+                    }`}
+                  >
+                    {sound.name}
+                  </button>
+                ))}
               </div>
-            );
-          })}
-        </div>
+
+              <button
+                onClick={exportToExcel}
+                className="flex items-center gap-2 px-3 py-2 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 shadow-sm transition-all"
+                title="Exportar a Excel"
+              >
+                <FileDown className="w-4 h-4" />
+                <span className="hidden sm:inline">Exportar</span>
+              </button>
+
+              <div className="h-8 w-px bg-stone-100 mx-1 hidden lg:block" />
+              {['TODOS', ...Object.values(OrderStatus)].map(status => (
+                <button
+                  key={status}
+                  onClick={() => setFilterStatus(status as OrderStatus | 'TODOS')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    filterStatus === status 
+                      ? 'bg-brand-500 text-white shadow-md' 
+                      : 'bg-stone-100 text-stone-600 hover:bg-stone-200'
+                  }`}
+                >
+                  {status}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {orders.length === 0 ? (
+            <div className="bg-white rounded-2xl p-12 text-center border border-stone-200 shadow-sm">
+              <ShoppingCart className="w-16 h-16 text-stone-300 mx-auto mb-4" />
+              <p className="text-stone-500 font-medium">No hay pedidos registrados aún.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 overflow-x-auto pb-4">
+              {Object.values(OrderStatus).map(statusColumn => {
+                const columnOrders = ordersByStatus[statusColumn] || [];
+
+                if (filterStatus !== 'TODOS' && filterStatus !== statusColumn) return null;
+
+                return (
+                  <div key={statusColumn} className="min-w-[280px] flex flex-col bg-stone-50 rounded-2xl p-3 border border-stone-200">
+                    <div className="flex justify-between items-center mb-3 px-1">
+                      <h3 className="font-bold text-stone-700 uppercase tracking-wider text-[11px]">{statusColumn}</h3>
+                      <span className="bg-white text-stone-500 text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border border-stone-100">{columnOrders.length}</span>
+                    </div>
+                    <div className="flex flex-col gap-3 overflow-y-auto max-h-[calc(100vh-300px)] pr-1 custom-scrollbar">
+                      {columnOrders.map((order, idx) => (
+                        <OrderCard 
+                          key={order.id}
+                          order={order}
+                          idx={idx}
+                          products={products}
+                          updateOrderStatus={updateOrderStatus}
+                          updateOrderPaymentStatus={updateOrderPaymentStatus}
+                          updateOrderShipping={updateOrderShipping}
+                          onDeleteRequest={setOrderToDelete}
+                          hasFreeDelivery={hasFreeDelivery}
+                          getGoogleMapsLink={getGoogleMapsLink}
+                          SHIPPING_ZONES={SHIPPING_ZONES}
+                          transferAccounts={transferAccounts}
+                        />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </>
       )}
 
       <ConfirmDialog 

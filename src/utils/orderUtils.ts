@@ -21,8 +21,11 @@ export const formatOrderToWhatsApp = (order: Order, products: Product[], transfe
 
   message += `*Forma de pago:* ${paymentMethodLabel}\n`;
   
-  if (order.paymentMethod === PaymentMethod.TRANSFERENCIA && order.transferAccountId) {
-    const account = transferAccounts.find(a => a.id === order.transferAccountId);
+  if (order.paymentMethod === PaymentMethod.TRANSFERENCIA) {
+    const account = order.transferAccountId 
+      ? transferAccounts.find(a => a.id === order.transferAccountId)
+      : transferAccounts.find(a => a.isActive);
+      
     if (account) {
       message += `*Banco:* ${account.bankName}\n`;
       message += `*Titular:* ${account.accountHolder}\n`;

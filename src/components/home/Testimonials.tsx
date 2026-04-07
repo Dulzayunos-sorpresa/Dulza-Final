@@ -85,10 +85,14 @@ const Testimonials = () => {
         >
           <p className={`text-[10px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>Lo que dice la gente</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-            La prueba la da<br /><span className={`${theme.primary} italic`}>el receptor.</span>
+            {uiContent.testimonials_title || 'Historias'}
+            <br />
+            <span className={`${theme.primary} italic`}>
+              {uiContent.testimonials_subtitle || 'reales'}
+            </span>
           </h2>
           <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
-            No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
+            {uiContent.testimonials_description || 'Lo que más nos importa es el momento que logramos crear.'}
           </p>
         </motion.div>
 

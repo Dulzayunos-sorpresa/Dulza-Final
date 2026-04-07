@@ -43,9 +43,17 @@ const Cart: React.FC = () => {
     paymentMethod: PaymentMethod.TRANSFERENCIA,
     transferAccountId: '',
     notes: '',
+    isEmptyDedication: false,
     selectedZone: '',
     distanceKm: 0
   });
+
+  // Set default transfer account if available
+  useEffect(() => {
+    if (!formData.transferAccountId && activeTransferAccounts.length > 0) {
+      setFormData(prev => ({ ...prev, transferAccountId: activeTransferAccounts[0].id }));
+    }
+  }, [activeTransferAccounts, formData.transferAccountId]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -438,6 +446,14 @@ const Cart: React.FC = () => {
 
     if (!formData.deliveryTime.trim()) newErrors.deliveryTime = 'El horario es obligatorio';
 
+    if (!formData.isEmptyDedication && !formData.notes.trim()) {
+      newErrors.notes = 'La dedicatoria es obligatoria (o seleccioná "Que venga vacía")';
+    }
+
+    if (formData.paymentMethod === PaymentMethod.TRANSFERENCIA && !formData.transferAccountId) {
+      newErrors.transferAccountId = 'Seleccioná una cuenta bancaria';
+    }
+
     setErrors(newErrors);
     return newErrors;
   }, [formData]);
@@ -483,7 +499,7 @@ const Cart: React.FC = () => {
         blockLot: formData.blockLot,
         houseNumber: formData.houseNumber,
         paymentMethod: formData.paymentMethod as PaymentMethod,
-        notes: formData.notes,
+        notes: formData.isEmptyDedication ? '(Tarjeta vacía)' : formData.notes,
         items: cart,
         total: subtotal - discountAmount,
         shippingCost: 0,
@@ -529,7 +545,7 @@ const Cart: React.FC = () => {
         blockLot: formData.blockLot,
         houseNumber: formData.houseNumber,
         paymentMethod: formData.paymentMethod as PaymentMethod,
-        notes: formData.notes,
+        notes: formData.isEmptyDedication ? '(Tarjeta vacía)' : formData.notes,
         items: cart,
         total: total,
         shippingCost: 0,
@@ -1093,15 +1109,29 @@ const Cart: React.FC = () => {
                 </div>
 
                 <div className="space-y-3">
-                  <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">Tarjeta dedicatoria</label>
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-[0.2em]">Tarjeta dedicatoria</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="checkbox" 
+                        id="isEmptyDedication"
+                        checked={formData.isEmptyDedication}
+                        onChange={(e) => setFormData({...formData, isEmptyDedication: e.target.checked, notes: e.target.checked ? '' : formData.notes})}
+                        className={`w-4 h-4 ${theme.primary} rounded border-brand-100/20 focus:ring-brand-500/20 cursor-pointer`}
+                      />
+                      <label htmlFor="isEmptyDedication" className="text-[10px] font-bold text-texto/60 dark:text-dark-text-muted cursor-pointer uppercase tracking-wider">Que venga vacía</label>
+                    </div>
+                  </div>
                   <div className="relative">
                     <MessageSquare className={`absolute left-4 top-4 w-4 h-4 ${theme.primary}/40`} />
                     <textarea 
-                      placeholder="Escribí un mensaje especial..."
+                      placeholder={formData.isEmptyDedication ? "La tarjeta se enviará vacía..." : "Escribí un mensaje especial..."}
                       value={formData.notes}
+                      disabled={formData.isEmptyDedication}
                       onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                      className={`w-full pl-12 pr-4 py-4 ${theme.heroBg}/20 dark:bg-dark-bg/20 border border-brand-100/5 dark:border-white/5 rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 h-32 resize-none transition-all`}
+                      className={`w-full pl-12 pr-4 py-4 ${theme.heroBg}/20 dark:bg-dark-bg/20 border ${errors.notes ? 'border-red-500' : 'border-brand-100/5 dark:border-white/5'} rounded-2xl outline-none text-sm font-medium text-texto dark:text-dark-text placeholder:text-texto/30 dark:placeholder:text-dark-text-muted/30 h-32 resize-none transition-all ${formData.isEmptyDedication ? 'opacity-50 cursor-not-allowed' : ''}`}
                     />
+                    {errors.notes && <p className="text-[10px] text-red-500 mt-1 ml-1 font-bold">{errors.notes}</p>}
                   </div>
                 </div>
               </div>
@@ -1224,6 +1254,26 @@ const Cart: React.FC = () => {
                         </div>
                       </div>
                     )}
+
+                    {formData.paymentMethod === PaymentMethod.TRANSFERENCIA && activeTransferAccounts.length > 1 && (
+                      <div className="space-y-2">
+                        <label className="text-[10px] font-bold text-texto/40 dark:text-dark-text-muted/40 uppercase tracking-wider">Seleccioná la cuenta</label>
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+                          {activeTransferAccounts.map(acc => (
+                            <button
+                              key={acc.id}
+                              type="button"
+                              onClick={() => setFormData({...formData, transferAccountId: acc.id})}
+                              className={`px-4 py-2 rounded-xl border-2 text-[10px] font-bold whitespace-nowrap transition-all ${formData.transferAccountId === acc.id ? `border-brand-500 ${theme.heroBg} ${theme.primary}` : 'border-brand-100/5 dark:border-white/5 text-texto/40 dark:text-dark-text-muted/40'}`}
+                            >
+                              {acc.bankName}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {errors.transferAccountId && <p className="text-[10px] text-red-500 font-bold">{errors.transferAccountId}</p>}
                     
                     {formData.paymentMethod === PaymentMethod.TRANSFERENCIA && formData.transferAccountId && (
                       <div className={`p-6 ${theme.heroBg}/30 dark:bg-dark-bg/30 rounded-[32px] border border-brand-500/10 space-y-3`}>
@@ -1418,7 +1468,7 @@ const Cart: React.FC = () => {
             {redirectType === 'success' && returnedOrder ? (
               <button
                 onClick={() => {
-                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(returnedOrder, products))}`;
+                  const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(returnedOrder, products, transferAccounts))}`;
                   window.location.href = whatsappUrl;
                 }}
                 className="w-full bg-verde text-white py-4 rounded-2xl font-bold hover:bg-verde/90 transition-all shadow-xl shadow-verde/20 flex items-center justify-center gap-3"
@@ -1438,7 +1488,7 @@ const Cart: React.FC = () => {
                     </button>
                     <button
                       onClick={() => {
-                        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(returnedOrder, products))}`;
+                        const whatsappUrl = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(formatOrderToWhatsApp(returnedOrder, products, transferAccounts))}`;
                         window.location.href = whatsappUrl;
                       }}
                       className="w-full bg-verde text-white py-4 rounded-2xl font-bold hover:bg-verde/90 transition-all shadow-xl shadow-verde/20 flex items-center justify-center gap-3"

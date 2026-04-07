@@ -52,11 +52,39 @@ export interface StoreContextType {
   uiContent: UIContent;
   updateUIContent: (content: UIContent) => Promise<void>;
   user: User | null;
+  isAdmin: boolean;
   loginWithGoogle: () => Promise<void>;
   logout: () => Promise<void>;
 }
 
 export const StoreContext = createContext<StoreContextType | undefined>(undefined);
+
+const DEFAULT_UI_CONTENT: UIContent = {
+  activeLayout: 'default',
+  hero_title: "Regalos que",
+  hero_subtitle: "Desayunos artesanales y regalos personalizados para sorprender a quienes más querés.",
+  about_title: "Nuestra Historia",
+  about_text: "Somos un emprendimiento familiar dedicado a crear momentos inolvidables.",
+  corporate_title: "Regalos Empresariales",
+  corporate_text: "Sorprendé a tus colaboradores y clientes con regalos únicos y personalizados.",
+  custom_title: "Regalos Personalizados",
+  custom_text: "Creamos la caja perfecta para esa persona especial. Vos elegís, nosotros lo hacemos realidad.",
+  urgency_title: "Su cumpleaños es mañana.",
+  urgency_subtitle: "Todavía llegás.",
+  urgency_description: "Pedidos antes de medianoche → entrega mañana a la mañana.",
+  moments_title: "Hay un Dulzayunos",
+  moments_subtitle: "para eso.",
+  moments_description: "Sin importar la razón — o sin razón alguna — hay una forma de hacer que mañana a la mañana alguien se sienta la persona más querida del mundo.",
+  faq_title: "Todo lo que necesitás",
+  faq_subtitle: "saber.",
+  faq_description: "No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.",
+  how_it_works_title: "De cero a sorpresa",
+  how_it_works_subtitle: "en minutos.",
+  how_it_works_description: "No hace falta planificarlo con días de anticipación. Si pedís antes de medianoche, llegamos mañana a la mañana.",
+  testimonials_title: "Lo que dicen",
+  testimonials_subtitle: "nuestros clientes.",
+  testimonials_description: "Más de 2.400 sorpresas entregadas con amor en Córdoba."
+};
 
 export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [categories, setCategories] = useState<Category[]>([]);
@@ -67,17 +95,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
   const [subobjects, setSubobjects] = useState<ProductOptionValue[]>([]);
   const [coupons, setCoupons] = useState<Coupon[]>([]);
   const [transferAccounts, setTransferAccounts] = useState<TransferAccount[]>([]);
-  const [uiContent, setUIContent] = useState<UIContent>({
-    activeLayout: 'default',
-    hero_title: "Regalos que",
-    hero_subtitle: "Desayunos artesanales y regalos personalizados para sorprender a quienes más querés.",
-    about_title: "Nuestra Historia",
-    about_text: "Somos un emprendimiento familiar dedicado a crear momentos inolvidables.",
-    corporate_title: "Regalos Empresariales",
-    corporate_text: "Sorprendé a tus colaboradores y clientes con regalos únicos y personalizados.",
-    custom_title: "Regalos Personalizados",
-    custom_text: "Creamos la caja perfecta para esa persona especial. Vos elegís, nosotros lo hacemos realidad."
-  });
+  const [uiContent, setUIContent] = useState<UIContent>(DEFAULT_UI_CONTENT);
   const [shippingSettings, setShippingSettings] = useState<ShippingSettings>({
     baseCost: 3000,
     pricePerKm: 1350,
@@ -201,19 +219,9 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
       unsubscribeUIContent = onSnapshot(doc(db, 'settings', 'ui_content'), (snapshot) => {
         if (snapshot.exists()) {
-          setUIContent(snapshot.data() as UIContent);
+          setUIContent({ ...DEFAULT_UI_CONTENT, ...snapshot.data() } as UIContent);
         } else if (isAdmin) {
-          setDoc(doc(db, 'settings', 'ui_content'), {
-            activeLayout: 'default',
-            hero_title: "Regalos que",
-            hero_subtitle: "Desayunos artesanales y regalos personalizados para sorprender a quienes más querés.",
-            about_title: "Nuestra Historia",
-            about_text: "Somos un emprendimiento familiar dedicado a crear momentos inolvidables.",
-            corporate_title: "Regalos Empresariales",
-            corporate_text: "Sorprendé a tus colaboradores y clientes con regalos únicos y personalizados.",
-            custom_title: "Regalos Personalizados",
-            custom_text: "Creamos la caja perfecta para esa persona especial. Vos elegís, nosotros lo hacemos realidad."
-          }).catch(console.error);
+          setDoc(doc(db, 'settings', 'ui_content'), DEFAULT_UI_CONTENT).catch(console.error);
         }
       }, (error) => {
         if (error.code !== 'permission-denied') console.error('Firestore Error (ui_content):', error);
@@ -663,6 +671,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     updateUIContent,
     shippingSettings,
     user,
+    isAdmin,
     loginWithGoogle,
     logout
   }), [
@@ -674,7 +683,7 @@ export const StoreProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     deleteOption, updateProductOptions, subobjects, addSubobject,
     updateSubobject, deleteSubobject, addCoupon, updateCoupon, deleteCoupon,
     validateCoupon, transferAccounts, addTransferAccount, updateTransferAccount,
-    deleteTransferAccount, uiContent, updateUIContent, shippingSettings, user, loginWithGoogle, logout
+    deleteTransferAccount, uiContent, updateUIContent, shippingSettings, user, isAdmin, loginWithGoogle, logout
   ]);
 
   return (

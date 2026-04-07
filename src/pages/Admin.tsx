@@ -33,11 +33,11 @@ const OptionsManager = lazy(() => import('@/components/admin/OptionsManager'));
 const SubobjectsManager = lazy(() => import('@/components/admin/SubobjectsManager'));
 const CouponsManager = lazy(() => import('@/components/admin/CouponsManager'));
 const ShippingManager = lazy(() => import('@/components/admin/ShippingManager'));
-const NewOrderManager = lazy(() => import('@/components/admin/NewOrderManager'));
 const PrinterSettings = lazy(() => import('@/components/admin/PrinterSettings'));
 const TransferAccountsManager = lazy(() => import('@/components/admin/TransferAccountsManager'));
+const BillingManager = lazy(() => import('@/components/admin/BillingManager'));
+const SettingsManager = lazy(() => import('@/components/admin/SettingsManager'));
 
-const ContentManager = lazy(() => import('@/components/admin/ContentManager'));
 const SpecialLayoutsManager = lazy(() => import('@/components/admin/SpecialLayoutsManager'));
 
 const AdminLoading = React.memo(() => (
@@ -64,7 +64,6 @@ const Sidebar = React.memo(({
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orders', label: 'Pedidos', icon: ShoppingCart },
-    { id: 'new-order', label: 'Nuevo Pedido', icon: Plus },
     { id: 'stock', label: 'Productos', icon: Package },
     { id: 'categories', label: 'Categorías', icon: Tag },
     { id: 'options', label: 'Opciones', icon: Settings2 },
@@ -73,8 +72,9 @@ const Sidebar = React.memo(({
     { id: 'shipping', label: 'Envíos', icon: Truck },
     { id: 'special-layouts', label: 'Fechas Especiales', icon: Sparkles },
     { id: 'transfer', label: 'Cuentas', icon: CreditCard },
+    { id: 'billing', label: 'Facturación', icon: FileText },
     { id: 'printer', label: 'Impresora', icon: Printer },
-    { id: 'content', label: 'Contenido', icon: FileText },
+    { id: 'settings', label: 'Configuración', icon: Settings2 },
   ] as const;
 
   return (
@@ -84,12 +84,17 @@ const Sidebar = React.memo(({
           <h1 className="text-2xl font-display text-brand-600">Dulzayunos</h1>
           <p className="text-stone-400 text-xs font-bold uppercase tracking-widest mt-1">Panel de Control</p>
         </div>
-        <button 
-          onClick={onLogout}
-          className="lg:hidden p-2 text-stone-400 hover:text-red-500 transition-colors"
-        >
-          <LogOut className="w-6 h-6" />
-        </button>
+        <div className="flex items-center gap-2 lg:hidden">
+          <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-[10px]">
+            {user.email?.[0].toUpperCase()}
+          </div>
+          <button 
+            onClick={onLogout}
+            className="p-2 text-stone-400 hover:text-red-500 transition-colors"
+          >
+            <LogOut className="w-5 h-5" />
+          </button>
+        </div>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-1">
@@ -110,22 +115,24 @@ const Sidebar = React.memo(({
       </nav>
 
       <div className="p-4 border-t border-stone-100 hidden lg:block">
-        <div className="flex items-center gap-3 p-3 bg-stone-50 rounded-2xl mb-4">
-          <div className="w-10 h-10 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold">
-            {user.email?.[0].toUpperCase()}
+        <div className="flex items-center justify-between px-3 py-2 bg-stone-50 rounded-xl">
+          <div className="flex items-center gap-2 overflow-hidden">
+            <div className="w-8 h-8 rounded-full bg-brand-100 flex items-center justify-center text-brand-600 font-bold text-xs shrink-0">
+              {user.email?.[0].toUpperCase()}
+            </div>
+            <div className="overflow-hidden">
+              <p className="text-[10px] font-bold text-stone-800 truncate">{user.email}</p>
+              <p className="text-[8px] text-stone-400 font-bold uppercase">Admin</p>
+            </div>
           </div>
-          <div className="flex-1 overflow-hidden">
-            <p className="text-xs font-bold text-stone-800 truncate">{user.email}</p>
-            <p className="text-[10px] text-stone-400 font-bold uppercase">Administrador</p>
-          </div>
+          <button 
+            onClick={onLogout}
+            className="p-2 text-stone-400 hover:text-red-500 transition-colors shrink-0"
+            title="Cerrar Sesión"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
-        <button 
-          onClick={onLogout}
-          className="w-full flex items-center justify-center gap-2 py-3 rounded-xl font-bold text-sm text-stone-500 hover:bg-red-50 hover:text-red-600 transition-all"
-        >
-          <LogOut className="w-4 h-4" />
-          Cerrar Sesión
-        </button>
       </div>
     </aside>
   );
@@ -199,7 +206,6 @@ const Admin = () => {
           <AnimatePresence mode="wait">
             {activeTab === 'dashboard' && <Dashboard key="dashboard" />}
             {activeTab === 'orders' && <OrdersManager key="orders" />}
-            {activeTab === 'new-order' && <NewOrderManager key="new-order" onOrderCreated={() => setActiveTab('orders')} />}
             {activeTab === 'stock' && <ProductsManager key="stock" />}
             {activeTab === 'categories' && <CategoriesManager key="categories" />}
             {activeTab === 'options' && <OptionsManager key="options" />}
@@ -209,7 +215,8 @@ const Admin = () => {
             {activeTab === 'special-layouts' && <SpecialLayoutsManager key="special-layouts" />}
             {activeTab === 'printer' && <PrinterSettings key="printer" />}
             {activeTab === 'transfer' && <TransferAccountsManager key="transfer" />}
-            {activeTab === 'content' && <ContentManager key="content" />}
+            {activeTab === 'billing' && <BillingManager key="billing" />}
+            {activeTab === 'settings' && <SettingsManager key="settings" />}
           </AnimatePresence>
         </Suspense>
       </main>

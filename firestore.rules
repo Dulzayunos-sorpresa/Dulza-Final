@@ -118,5 +118,15 @@ service cloud.firestore {
       // Only admins can update settings
       allow write: if isAdmin();
     }
+
+    match /billing_accounts/{accountId} {
+      // Only admins can read, create, update, delete billing accounts
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /billing_transactions/{transactionId} {
+      // Only admins can read, create, update, delete billing transactions
+      allow read, create, update, delete: if isAdmin();
+    }
   }
 }

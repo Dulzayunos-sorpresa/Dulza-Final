@@ -123,16 +123,20 @@ const ProductsManager: React.FC = () => {
     const data = products.map(p => ({
       ID: p.id,
       Nombre: p.name,
+      Subtítulo: p.subtitle || '',
       Categoría: p.category,
       Precio: p.price,
+      Precio_Anterior: p.oldPrice || '',
       Stock: p.stock || 0,
       Visible: !p.isHidden ? 'SÍ' : 'NO',
-      Descripción: p.description
+      Descripción: p.description,
+      Imagen: p.image,
+      Envío_Gratis: p.freeDelivery ? 'SÍ' : 'NO'
     }));
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Productos");
-    XLSX.writeFile(wb, "productos_stock.xlsx");
+    XLSX.writeFile(wb, "productos_completo.xlsx");
   }, [products]);
 
   const handleImportProducts = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -140,23 +144,39 @@ const ProductsManager: React.FC = () => {
     if (!file) return;
 
     const reader = new FileReader();
-    reader.onload = (evt) => {
-      const bstr = evt.target?.result;
-      const wb = XLSX.read(bstr, { type: 'binary' });
-      const wsname = wb.SheetNames[0];
-      const ws = wb.Sheets[wsname];
-      const data = XLSX.utils.sheet_to_json(ws) as any[];
+    reader.onload = async (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: 'binary' });
+        const wsname = wb.SheetNames[0];
+        const ws = wb.Sheets[wsname];
+        const data = XLSX.utils.sheet_to_json(ws) as any[];
 
-      data.forEach(row => {
-        const product = products.find(p => p.id === row.ID);
-        if (product) {
-          updateStock(product.id, parseInt(row.Stock) || 0);
+        for (const row of data) {
+          const productData: Product = {
+            id: row.ID || Math.random().toString(36).substr(2, 9),
+            name: row.Nombre,
+            subtitle: row.Subtítulo || '',
+            category: row.Categoría,
+            price: parseFloat(row.Precio) || 0,
+            oldPrice: row.Precio_Anterior ? parseFloat(row.Precio_Anterior) : undefined,
+            stock: parseInt(row.Stock) || 0,
+            isHidden: row.Visible === 'NO',
+            description: row.Descripción || '',
+            image: row.Imagen || '',
+            freeDelivery: row.Envío_Gratis === 'SÍ'
+          };
+          
+          await addProduct(productData);
         }
-      });
-      toast.success('Stock actualizado correctamente desde Excel');
+        toast.success(`${data.length} productos importados/actualizados correctamente`);
+      } catch (error) {
+        console.error('Error importing products:', error);
+        toast.error('Error al importar el archivo Excel');
+      }
     };
     reader.readAsBinaryString(file);
-  }, [products, updateStock]);
+  }, [addProduct]);
 
   const handleImageUpload = React.useCallback((e: React.ChangeEvent<HTMLInputElement>, isGallery: boolean = false) => {
     const file = e.target.files?.[0];

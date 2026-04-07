@@ -67,10 +67,14 @@ const FAQ = () => {
         >
           <p className={`text-[11px] md:text-xs uppercase tracking-[0.3em] ${theme.primary} font-bold mb-6`}>Preguntas frecuentes</p>
           <h2 className="text-5xl md:text-7xl font-display text-texto dark:text-dark-text leading-[0.9] mb-8 uppercase tracking-tighter">
-            Todo lo que necesitás<br /><span className={`${theme.primary} italic`}>saber.</span>
+            {uiContent.faq_title || 'Dudas'}
+            <br />
+            <span className={`${theme.primary} italic`}>
+              {uiContent.faq_subtitle || 'frecuentes'}
+            </span>
           </h2>
           <p className="text-base md:text-lg text-texto/60 dark:text-dark-text-muted leading-relaxed max-w-xl font-light">
-            No tenemos que explicar por qué funciona. Lo hacen ellos solos cuando abren la puerta.
+            {uiContent.faq_description || 'Todo lo que necesitás saber para que tu sorpresa sea perfecta.'}
           </p>
         </motion.div>
 
