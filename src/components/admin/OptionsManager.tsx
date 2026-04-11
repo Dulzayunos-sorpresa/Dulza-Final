@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { ProductOption, ProductOptionValue } from '@/types';
+import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface OptionCardProps {
@@ -113,6 +114,7 @@ const OptionsManager: React.FC = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Opciones");
     XLSX.writeFile(wb, "opciones_productos.xlsx");
+    trackEvent(AnalyticsEvents.EXPORT_EXCEL, { type: 'options', count: options.length });
   }, [options]);
 
   const handleImportOptions = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -139,6 +141,7 @@ const OptionsManager: React.FC = () => {
           };
           await addOption(optionData);
         }
+        trackEvent(AnalyticsEvents.IMPORT_EXCEL, { type: 'options', count: data.length });
         toast.success(`${data.length} grupos de opciones importados/actualizados`);
       } catch (error) {
         console.error('Error importing options:', error);

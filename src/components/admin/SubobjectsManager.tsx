@@ -16,6 +16,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { ProductOptionValue } from '@/types';
+import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import ConfirmDialog from '@/components/ui/ConfirmDialog';
 
 interface SubobjectCardProps {
@@ -90,6 +91,7 @@ const SubobjectsManager: React.FC = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Subobjetos");
     XLSX.writeFile(wb, "subobjetos.xlsx");
+    trackEvent(AnalyticsEvents.EXPORT_EXCEL, { type: 'subobjects', count: subobjects.length });
   }, [subobjects]);
 
   const handleImportSubobjects = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -115,6 +117,7 @@ const SubobjectsManager: React.FC = () => {
           };
           await addSubobject(subobjectData);
         }
+        trackEvent(AnalyticsEvents.IMPORT_EXCEL, { type: 'subobjects', count: data.length });
         toast.success(`${data.length} subobjetos importados/actualizados`);
       } catch (error) {
         console.error('Error importing subobjects:', error);

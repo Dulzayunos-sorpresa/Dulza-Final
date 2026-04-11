@@ -15,6 +15,7 @@ import * as XLSX from 'xlsx';
 import { toast } from 'sonner';
 import { useStore } from '@/context/store';
 import { Product, ProductOption } from '@/types';
+import { trackEvent, AnalyticsEvents } from '@/utils/analytics';
 import ProductModal from './ProductModal';
 
 interface ProductRowProps {
@@ -55,17 +56,24 @@ const ProductRow: React.FC<ProductRowProps> = React.memo(({
         />
       </td>
       <td className="px-6 py-4">
-        <button
-          onClick={() => updateProduct({ ...product, isHidden: !product.isHidden })}
-          className={`p-2 rounded-lg transition-colors ${
-            product.isHidden 
-              ? 'bg-stone-100 text-stone-400 hover:bg-stone-200' 
-              : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
-          }`}
-          title={product.isHidden ? 'Mostrar al cliente' : 'Ocultar al cliente'}
-        >
-          {product.isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => updateProduct({ ...product, isHidden: !product.isHidden })}
+            className={`p-2 rounded-lg transition-colors ${
+              product.isHidden 
+                ? 'bg-stone-100 text-stone-400 hover:bg-stone-200' 
+                : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'
+            }`}
+            title={product.isHidden ? 'Mostrar al cliente' : 'Ocultar al cliente'}
+          >
+            {product.isHidden ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+          <span className={`text-[10px] font-bold uppercase tracking-wider ${
+            product.isHidden ? 'text-stone-400' : 'text-emerald-600'
+          }`}>
+            {product.isHidden ? '(OCULTO)' : '(ACTIVO)'}
+          </span>
+        </div>
       </td>
       <td className="px-6 py-4">
         <div className="flex flex-wrap gap-1 max-w-[200px]">
@@ -137,6 +145,7 @@ const ProductsManager: React.FC = () => {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Productos");
     XLSX.writeFile(wb, "productos_completo.xlsx");
+    trackEvent(AnalyticsEvents.EXPORT_EXCEL, { type: 'products', count: products.length });
   }, [products]);
 
   const handleImportProducts = React.useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
@@ -169,6 +178,7 @@ const ProductsManager: React.FC = () => {
           
           await addProduct(productData);
         }
+        trackEvent(AnalyticsEvents.IMPORT_EXCEL, { type: 'products', count: data.length });
         toast.success(`${data.length} productos importados/actualizados correctamente`);
       } catch (error) {
         console.error('Error importing products:', error);

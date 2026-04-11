@@ -36,4 +36,6 @@ export const AnalyticsEvents = {
   APPLY_COUPON: 'apply_coupon',
   OUT_OF_COVERAGE: 'out_of_coverage_inquiry',
   ORDER_PRINTED: 'order_printed',
+  EXPORT_EXCEL: 'export_excel',
+  IMPORT_EXCEL: 'import_excel',
 };

@@ -376,6 +376,7 @@ const OrdersManager: React.FC = () => {
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Pedidos");
       XLSX.writeFile(wb, `pedidos_dulzayunos_${new Date().toISOString().split('T')[0]}.xlsx`);
+      trackEvent(AnalyticsEvents.EXPORT_EXCEL, { type: 'orders', count: filteredOrders.length });
       toast.success('Excel exportado correctamente');
     } catch (error) {
       console.error('Error al exportar Excel:', error);
