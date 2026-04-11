@@ -170,41 +170,71 @@ const ProductsManager: React.FC = () => {
           return isNaN(parsed) ? 0 : parsed;
         };
 
-        for (const row of data) {
-          // Map headers flexibly to support different Excel formats
-          const name = row.Nombre || row['Nombre (presentación)'];
-          if (!name) continue; // Skip empty rows
+        const errors: { row: number, name: string, error: string }[] = [];
+        let importedCount = 0;
 
-          const description = row.Descripción || row['Descripción (presentación)'] || '';
-          const category = row.Categoría || 'General';
-          const price = parsePrice(row.Precio);
-          const oldPrice = row.Oferta ? parsePrice(row.Oferta) : (row.Precio_Anterior ? parsePrice(row.Precio_Anterior) : undefined);
-          const stock = parseInt(row.Stock) || 0;
-          const isHidden = row.Estado === 'INACTIVO' || row.Visible === 'NO';
-          const subtitle = row.Grupo || row.Subtítulo || '';
-          const image = row['Identificador de imágen'] || row['Identificador de imagen'] || row.Imagen || '';
-          const tags = row.Etiquetas ? row.Etiquetas.split(',').map((t: string) => t.trim()) : [];
-          const freeDelivery = row.Envío_Gratis === 'SÍ' || tags.includes('ENVÍO GRATIS');
-
-          const productData: Product = {
-            id: row.ID || Math.random().toString(36).substr(2, 9),
-            name,
-            subtitle,
-            category,
-            price,
-            oldPrice,
-            stock,
-            isHidden,
-            description,
-            image,
-            tags,
-            freeDelivery
-          };
+        for (let i = 0; i < data.length; i++) {
+          const row = data[i];
+          const rowNumber = i + 2; // +1 for 0-index, +1 for header row
           
-          await addProduct(productData);
+          try {
+            // Map headers flexibly to support different Excel formats
+            const name = row.Nombre || row['Nombre (presentación)'];
+            if (!name) continue; // Skip empty rows
+
+            const description = row.Descripción || row['Descripción (presentación)'] || '';
+            const category = row.Categoría || 'General';
+            const price = parsePrice(row.Precio);
+            const oldPrice = row.Oferta ? parsePrice(row.Oferta) : (row.Precio_Anterior ? parsePrice(row.Precio_Anterior) : undefined);
+            const stock = parseInt(row.Stock) || 0;
+            const isHidden = row.Estado === 'INACTIVO' || row.Visible === 'NO';
+            const subtitle = row.Grupo || row.Subtítulo || '';
+            const image = row['Identificador de imágen'] || row['Identificador de imagen'] || row.Imagen || '';
+            const tags = row.Etiquetas ? row.Etiquetas.split(',').map((t: string) => t.trim()) : [];
+            const freeDelivery = row.Envío_Gratis === 'SÍ' || tags.includes('ENVÍO GRATIS');
+
+            const productData: Product = {
+              id: row.ID || Math.random().toString(36).substr(2, 9),
+              name,
+              subtitle,
+              category,
+              price,
+              oldPrice,
+              stock,
+              isHidden,
+              description,
+              image,
+              tags,
+              freeDelivery
+            };
+            
+            await addProduct(productData);
+            importedCount++;
+          } catch (rowError) {
+            const name = row.Nombre || row['Nombre (presentación)'] || 'Desconocido';
+            errors.push({ 
+              row: rowNumber, 
+              name, 
+              error: rowError instanceof Error ? rowError.message : String(rowError) 
+            });
+          }
         }
-        trackEvent(AnalyticsEvents.IMPORT_EXCEL, { type: 'products', count: data.length });
-        toast.success(`${data.length} productos importados/actualizados correctamente`);
+
+        trackEvent(AnalyticsEvents.IMPORT_EXCEL, { 
+          type: 'products', 
+          count: importedCount,
+          errorCount: errors.length 
+        });
+
+        if (errors.length > 0) {
+          const errorMsg = errors.map(e => `Fila ${e.row} (${e.name})`).join(', ');
+          toast.warning(`${importedCount} importados. Errores en: ${errorMsg}`, {
+            duration: 6000
+          });
+          console.error('Detalle de errores de importación:', errors);
+        } else {
+          toast.success(`${importedCount} productos importados correctamente`);
+        }
       } catch (error) {
         console.error('Error importing products:', error);
         toast.error('Error al importar el archivo Excel');
