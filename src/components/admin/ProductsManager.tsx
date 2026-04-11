@@ -160,12 +160,13 @@ const ProductsManager: React.FC = () => {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
+        console.log('Primeras 2 filas del Excel:', data.slice(0, 2));
 
         const parsePrice = (val: any) => {
           if (typeof val === 'number') return val;
           if (!val) return 0;
           // Remove currency symbols, dots (thousands), and replace comma with dot (decimal)
-          const cleaned = val.toString().replace(/[$.]/g, '').replace(',', '.');
+          const cleaned = val.toString().replace(/[$.]/g, '').replace(',', '.').trim();
           const parsed = parseFloat(cleaned);
           return isNaN(parsed) ? 0 : parsed;
         };
@@ -180,7 +181,10 @@ const ProductsManager: React.FC = () => {
           try {
             // Map headers flexibly to support different Excel formats
             const name = row.Nombre || row['Nombre (presentación)'];
-            if (!name) continue; // Skip empty rows
+            if (!name) {
+              console.warn(`Fila ${rowNumber} saltada: No tiene nombre.`);
+              continue; 
+            }
 
             const description = row.Descripción || row['Descripción (presentación)'] || '';
             const category = row.Categoría || 'General';
@@ -190,20 +194,20 @@ const ProductsManager: React.FC = () => {
             const isHidden = row.Estado === 'INACTIVO' || row.Visible === 'NO';
             const subtitle = row.Grupo || row.Subtítulo || '';
             const image = row['Identificador de imágen'] || row['Identificador de imagen'] || row.Imagen || '';
-            const tags = row.Etiquetas ? row.Etiquetas.split(',').map((t: string) => t.trim()) : [];
+            const tags = row.Etiquetas ? String(row.Etiquetas).split(',').map((t: string) => t.trim()) : [];
             const freeDelivery = row.Envío_Gratis === 'SÍ' || tags.includes('ENVÍO GRATIS');
 
             const productData: Product = {
-              id: row.ID || Math.random().toString(36).substr(2, 9),
-              name,
-              subtitle,
-              category,
+              id: String(row.ID || Math.random().toString(36).substr(2, 9)),
+              name: String(name),
+              subtitle: String(subtitle),
+              category: String(category),
               price,
               oldPrice,
               stock,
               isHidden,
-              description,
-              image,
+              description: String(description),
+              image: String(image),
               tags,
               freeDelivery
             };
@@ -212,10 +216,11 @@ const ProductsManager: React.FC = () => {
             importedCount++;
           } catch (rowError) {
             const name = row.Nombre || row['Nombre (presentación)'] || 'Desconocido';
+            const errorMessage = rowError instanceof Error ? rowError.message : String(rowError);
             errors.push({ 
               row: rowNumber, 
-              name, 
-              error: rowError instanceof Error ? rowError.message : String(rowError) 
+              name: String(name), 
+              error: errorMessage
             });
           }
         }
@@ -227,9 +232,10 @@ const ProductsManager: React.FC = () => {
         });
 
         if (errors.length > 0) {
-          const errorMsg = errors.map(e => `Fila ${e.row} (${e.name})`).join(', ');
-          toast.warning(`${importedCount} importados. Errores en: ${errorMsg}`, {
-            duration: 6000
+          const firstErrors = errors.slice(0, 3);
+          const errorMsg = firstErrors.map(e => `Fila ${e.row}: ${e.error.slice(0, 50)}...`).join('\n');
+          toast.warning(`${importedCount} importados. Errores en ${errors.length} filas. Primeros errores:\n${errorMsg}`, {
+            duration: 8000
           });
           console.error('Detalle de errores de importación:', errors);
         } else {
