@@ -131,15 +131,19 @@ const OptionsManager: React.FC = () => {
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
         for (const row of data) {
-          const optionData: ProductOption = {
-            id: row.ID || Math.random().toString(36).substr(2, 9),
-            name: row.Nombre,
-            description: row.Descripción || '',
-            type: row.Tipo as 'select' | 'multi-select',
-            isRequired: row.Obligatorio === 'SÍ',
-            values: row.Valores ? JSON.parse(row.Valores) : []
-          };
-          await addOption(optionData);
+          try {
+            const optionData: ProductOption = {
+              id: String(row.ID || Math.random().toString(36).substr(2, 9)),
+              name: String(row.Nombre || 'Sin nombre'),
+              description: String(row.Descripción || ''),
+              type: (row.Tipo || 'select') as 'select' | 'multi-select',
+              isRequired: row.Obligatorio === 'SÍ',
+              values: row.Valores ? JSON.parse(row.Valores) : []
+            };
+            await addOption(optionData);
+          } catch (err) {
+            console.error('Error importing option row:', row, err);
+          }
         }
         trackEvent(AnalyticsEvents.IMPORT_EXCEL, { type: 'options', count: data.length });
         toast.success(`${data.length} grupos de opciones importados/actualizados`);

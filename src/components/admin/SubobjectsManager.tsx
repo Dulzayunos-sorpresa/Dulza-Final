@@ -116,14 +116,18 @@ const SubobjectsManager: React.FC = () => {
         };
 
         for (const row of data) {
-          const subobjectData: ProductOptionValue = {
-            id: row.ID || Math.random().toString(36).substr(2, 9),
-            name: row.Nombre,
-            description: row.Descripción || '',
-            price: parsePrice(row.Precio),
-            image: row.Imagen || ''
-          };
-          await addSubobject(subobjectData);
+          try {
+            const subobjectData: ProductOptionValue = {
+              id: String(row.ID || Math.random().toString(36).substr(2, 9)),
+              name: String(row.Nombre || 'Sin nombre'),
+              description: String(row.Descripción || ''),
+              price: parsePrice(row.Precio),
+              image: String(row.Imagen || '')
+            };
+            await addSubobject(subobjectData);
+          } catch (err) {
+            console.error('Error importing subobject row:', row, err);
+          }
         }
         trackEvent(AnalyticsEvents.IMPORT_EXCEL, { type: 'subobjects', count: data.length });
         toast.success(`${data.length} subobjetos importados/actualizados`);

@@ -189,7 +189,7 @@ const ProductsManager: React.FC = () => {
             const description = row.Descripción || row['Descripción (presentación)'] || '';
             const category = row.Categoría || 'General';
             const price = parsePrice(row.Precio);
-            const oldPrice = row.Oferta ? parsePrice(row.Oferta) : (row.Precio_Anterior ? parsePrice(row.Precio_Anterior) : undefined);
+            const oldPriceValue = row.Oferta ? parsePrice(row.Oferta) : (row.Precio_Anterior ? parsePrice(row.Precio_Anterior) : null);
             const stock = parseInt(row.Stock) || 0;
             const isHidden = row.Estado === 'INACTIVO' || row.Visible === 'NO';
             const subtitle = row.Grupo || row.Subtítulo || '';
@@ -203,7 +203,6 @@ const ProductsManager: React.FC = () => {
               subtitle: String(subtitle),
               category: String(category),
               price,
-              oldPrice,
               stock,
               isHidden,
               description: String(description),
@@ -211,6 +210,10 @@ const ProductsManager: React.FC = () => {
               tags,
               freeDelivery
             };
+
+            if (oldPriceValue !== null) {
+              productData.oldPrice = oldPriceValue;
+            }
             
             await addProduct(productData);
             importedCount++;
