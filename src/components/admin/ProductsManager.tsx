@@ -161,19 +161,44 @@ const ProductsManager: React.FC = () => {
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
 
+        const parsePrice = (val: any) => {
+          if (typeof val === 'number') return val;
+          if (!val) return 0;
+          // Remove currency symbols, dots (thousands), and replace comma with dot (decimal)
+          const cleaned = val.toString().replace(/[$.]/g, '').replace(',', '.');
+          const parsed = parseFloat(cleaned);
+          return isNaN(parsed) ? 0 : parsed;
+        };
+
         for (const row of data) {
+          // Map headers flexibly to support different Excel formats
+          const name = row.Nombre || row['Nombre (presentación)'];
+          if (!name) continue; // Skip empty rows
+
+          const description = row.Descripción || row['Descripción (presentación)'] || '';
+          const category = row.Categoría || 'General';
+          const price = parsePrice(row.Precio);
+          const oldPrice = row.Oferta ? parsePrice(row.Oferta) : (row.Precio_Anterior ? parsePrice(row.Precio_Anterior) : undefined);
+          const stock = parseInt(row.Stock) || 0;
+          const isHidden = row.Estado === 'INACTIVO' || row.Visible === 'NO';
+          const subtitle = row.Grupo || row.Subtítulo || '';
+          const image = row['Identificador de imágen'] || row['Identificador de imagen'] || row.Imagen || '';
+          const tags = row.Etiquetas ? row.Etiquetas.split(',').map((t: string) => t.trim()) : [];
+          const freeDelivery = row.Envío_Gratis === 'SÍ' || tags.includes('ENVÍO GRATIS');
+
           const productData: Product = {
             id: row.ID || Math.random().toString(36).substr(2, 9),
-            name: row.Nombre,
-            subtitle: row.Subtítulo || '',
-            category: row.Categoría,
-            price: parseFloat(row.Precio) || 0,
-            oldPrice: row.Precio_Anterior ? parseFloat(row.Precio_Anterior) : undefined,
-            stock: parseInt(row.Stock) || 0,
-            isHidden: row.Visible === 'NO',
-            description: row.Descripción || '',
-            image: row.Imagen || '',
-            freeDelivery: row.Envío_Gratis === 'SÍ'
+            name,
+            subtitle,
+            category,
+            price,
+            oldPrice,
+            stock,
+            isHidden,
+            description,
+            image,
+            tags,
+            freeDelivery
           };
           
           await addProduct(productData);

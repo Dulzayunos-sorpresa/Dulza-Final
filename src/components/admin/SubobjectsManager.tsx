@@ -106,13 +106,21 @@ const SubobjectsManager: React.FC = () => {
         const wsname = wb.SheetNames[0];
         const ws = wb.Sheets[wsname];
         const data = XLSX.utils.sheet_to_json(ws) as any[];
+        
+        const parsePrice = (val: any) => {
+          if (typeof val === 'number') return val;
+          if (!val) return 0;
+          const cleaned = val.toString().replace(/[$.]/g, '').replace(',', '.');
+          const parsed = parseFloat(cleaned);
+          return isNaN(parsed) ? 0 : parsed;
+        };
 
         for (const row of data) {
           const subobjectData: ProductOptionValue = {
             id: row.ID || Math.random().toString(36).substr(2, 9),
             name: row.Nombre,
             description: row.Descripción || '',
-            price: parseFloat(row.Precio) || 0,
+            price: parsePrice(row.Precio),
             image: row.Imagen || ''
           };
           await addSubobject(subobjectData);
